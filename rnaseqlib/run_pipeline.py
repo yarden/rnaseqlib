@@ -6,13 +6,15 @@ import os
 import sys
 import time
 
+import utils
 import settings
 
 def run_pipeline(settings_filename, output_dir):
     """
     Run pipeline given settings file.
     """
-    settings.load_settings(settings_filename)
+    settings_info, parsed_settings = \
+        settings.load_settings(settings_filename)
 
 
 def main():
