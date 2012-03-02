@@ -1,0 +1,11 @@
+[paths]
+# Relevant paths, including bedtools
+
+[data]
+# Data-related information
+
+[bowtie]
+# Bowtie arguments 
+
+[tophat]
+# Tophat arguments 
