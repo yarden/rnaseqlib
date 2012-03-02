@@ -9,7 +9,6 @@ import utils
 from numpy import *
 from scipy import *
 
-
 def compute_qc_metrics(bam_filename, output_dir, settings):
     """
     Compute QC metrics.
