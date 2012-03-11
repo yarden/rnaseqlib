@@ -73,6 +73,7 @@ class Pipeline:
         self.settings_info, self.parsed_settings = self.settings
 
         # Determine if we're in paired-end mode
+        if self.settings_info["data"]["is_paired_end"] = 
 
         # Compile flags
         print "Loaded pipeline settings (%s)." \
@@ -126,7 +127,7 @@ class Pipeline:
             # Perform QC
             sample = self.run_qc(sample)
             # Run gene expression analysis
-            self.run_analysis(sample)
+            sample = self.run_analysis(sample)
 
             
     def map_reads(self, sample):
