@@ -22,6 +22,9 @@ def run_pipeline(settings_filename,
     # Run pipeline
     rna_pipeline.run()
 
+    # Summarize the results
+    rna_pipeline.summarize_run()
+
 
 def main():
     from optparse import OptionParser
@@ -32,6 +35,9 @@ def main():
     parser.add_option("--settings", dest="settings", nargs=1,
                       default=None,
                       help="Settings filename.")
+#    parser.add_option("--summarize-run", dest="summarize_run", nargs=1,
+#                      default=None,
+#                      help="Summarize the run.")
     parser.add_option("--output-dir", dest="output_dir", nargs=1,
                       default=None,
                       help="Output directory.")

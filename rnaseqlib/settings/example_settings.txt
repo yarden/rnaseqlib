@@ -18,7 +18,7 @@ indir = /lab/solexa_jaenisch/solexa_jaenisch2/yarden/Musashi-seq/rawdata/demulti
 outdir = /lab/solexa_jaenisch/solexa_jaenisch2/yarden/Musashi-seq/pipeline-output/with-bowtie/
 
 # Stranded library? Describe ordering
-stranded = None
+stranded = "fa"
 
 # Whether paired-end or not
 paired_end = True

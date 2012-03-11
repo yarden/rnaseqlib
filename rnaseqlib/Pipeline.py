@@ -11,14 +11,9 @@ class Sample:
                  settings=None):
         self.label = label
         self.seq_filename = seq_filename
+        self.settings = None
         self.group = None
 
-        
-    def set_group(self, group):
-        """
-        If paired-end, set sample group.
-        """
-        self.group = group
         
 
 class Pipeline:
@@ -45,6 +40,8 @@ class Pipeline:
         self.check_settings()
 
         # Load samples
+        self.sample_to_group = None
+        self.group_to_samples = None
         self.samples = None
         self.load_pipeline_samples()
 
@@ -73,12 +70,35 @@ class Pipeline:
         self.settings_info, self.parsed_settings = self.settings
 
         # Determine if we're in paired-end mode
-        if self.settings_info["data"]["is_paired_end"] = 
+        self.is_paired_end = False
+        if self.settings_info["data"]["paired_end"]:
+            self.is_paired_end = True
 
         # Compile flags
         print "Loaded pipeline settings (%s)." \
             %(self.settings_filename)
 
+
+    def load_groups(self, settings):
+        """
+        If paired-end, set sample groups.
+        """
+        if settings == None or \
+            ("sample_groups" not in settings["data"]["sample_groups"]):
+            return
+        
+        sample_groups = settings["data"]["sample_groups"]
+
+        sample_to_group = {}
+        group_to_samples = defaultdict(list)
+
+        # Map sample to its group
+        for sample, group in sample_groups:
+            sample_to_group[sample] = group
+            # Map each group to its samples
+            group_to_samples[group].append(sample)
+        self.sample_to_group = sample_to_group
+        self.group_to_samples = group_to_samples
 
         
     def load_pipeline_samples(self):
@@ -86,7 +106,7 @@ class Pipeline:
         Load samples.
         """
         print "Loading pipeline samples..."
-        self.samples = []
+        samples = []
         sequence_files = self.settings_info["data"]["sequence_files"]
         num_seq_files = len(sequence_files)
         print "  - Total of %d sequence files." %(num_seq_files)
@@ -95,17 +115,16 @@ class Pipeline:
                 print "Error: Must provide a sequence filename and a " \
                     "sample label for each entry."
                 sys.exit(1)
-                
             seq_filename, sample_label = seq_entry
             # Ensure file exists
             if not os.path.isfile(seq_filename):
                 print "Error: %s does not exist!" %(seq_filename)
                 sys.exit(1)
-
-            # If paired-end, compile the sample groups
-            if self.is_paired_end:
-                # Add a "group" field
-                pass
+            sample = Sample(sample_label,
+                            seq_filename,
+                            settings=settings)
+            samples.append(sample)
+        self.samples = samples
 
         
     def run():

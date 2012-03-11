@@ -1,16 +1,16 @@
 import ConfigParser
 from collections import defaultdict
 
-def tryEval(s):
-  try:
-    return eval(s, {}, {})
-  except:
-    return s
+# def tryEval(s):
+#   try:
+#     return eval(s, {}, {})
+#   except:
+#     return s
 
-def evalDict(d):
-    for k, v in d.iteritems():
-	d[k] = tryEval(v)
-    return d
+# def evalDict(d):
+#     for k, v in d.iteritems():
+# 	d[k] = tryEval(v)
+#     return d
 
 def load_settings(config_filename,
                   # Float parameters
@@ -45,19 +45,4 @@ def load_settings(config_filename,
     
     return settings_info, parsed_settings
 
-
-def parse_plot_settings(settings_filename, event=None, chrom=None,
-                        # Float parameters
-                        no_posteriors=False):
-    """
-    Populate a settings dictionary with the plotting parameters, parsed
-    as the right datatype.
-    """
-    settings = get_default_settings()
-    
-    config = ConfigParser.ConfigParser()
-
-    print "Reading settings from: %s" %(settings_filename)
-    config.read(settings_filename)
-    
         
