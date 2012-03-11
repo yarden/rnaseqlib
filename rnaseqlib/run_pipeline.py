@@ -8,23 +8,32 @@ import time
 
 import utils
 import settings
+import Pipeline as rna_pipeline
 
-def run_pipeline(settings_filename, output_dir):
+
+def run_pipeline(settings_filename,
+                 output_dir):
     """
     Run pipeline given settings file.
     """
-    settings_info, parsed_settings = \
-        settings.load_settings(settings_filename)
+    # Create pipeline instance
+    rna_pipeline.Pipeline(settings_filename,
+                          output_dir)
+    # Run pipeline
+    rna_pipeline.run()
 
 
 def main():
     from optparse import OptionParser
     parser = OptionParser()
-    parser.add_option("--run", dest="run", nargs=1, default=None,
+    parser.add_option("--run", dest="run", nargs=1,
+                      default=None,
                       help="Run pipeline.")
-    parser.add_option("--settings", dest="settings", nargs=1, default=None,
+    parser.add_option("--settings", dest="settings", nargs=1,
+                      default=None,
                       help="Settings filename.")
-    parser.add_option("--output-dir", dest="output_dir", nargs=1, default=None,
+    parser.add_option("--output-dir", dest="output_dir", nargs=1,
+                      default=None,
                       help="Output directory.")
     (options, args) = parser.parse_args()
 
@@ -42,7 +51,8 @@ def main():
         os.makedirs(output_dir)
 
     if options.run != None:
-        run_pipeline(settings_filename, output_dir)
+        run_pipeline(settings_filename,
+                     output_dir)
     
 
 if __name__ == '__main__':

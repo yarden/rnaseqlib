@@ -1,0 +1,13 @@
+Overview of RNA-Seq pipeline
+=====
+
+Three step pipeline:
+
+1. Map data (parallelized per sample)
+2. Perform QC
+3. Compute gene expression values/other statistics
+
+A complete pipeline does 1, 2, 3 sequentially for each sample.
+
+
+

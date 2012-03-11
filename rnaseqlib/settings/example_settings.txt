@@ -1,8 +1,45 @@
 [paths]
-# Relevant paths, including bedtools
+# Paths to directories where tools live, including bedtools
+tophat = "/usr/bin/"
+bowtie = "/usr/bin/"
+bedtools = "/usr/bin/"
+
+[params]
+# Parameters for run 
+# Options are "bowtie" and "tophat"
+mapper = "tophat"
 
 [data]
 # Data-related information
+# Directory where sequence files are
+indir = /lab/solexa_jaenisch/solexa_jaenisch2/yarden/Musashi-seq/rawdata/demultiplex/
+
+# Directory to output things
+outdir = /lab/solexa_jaenisch/solexa_jaenisch2/yarden/Musashi-seq/pipeline-output/with-bowtie/
+
+# Whether paired-end or not
+paired_end = True
+
+# Mapping
+sequence_files = [
+    ["KH2_NoDox_111012_110831Bur_A_yarden_Burge_L6_1_sequence.fastq", "KH2_NoDox_A_p1"],
+    ["KH2_NoDox_111012_110831Bur_A_yarden_Burge_L6_2_sequence.fastq", "KH2_NoDox_A_p2"],
+    ["Mixture_KH2_DOX_MSI1_DOX_111012_110831Bur_A_yarden_Burge_L6_1_sequence.fastq", "Mix_KH2_DOX_MSI1_DOX_p1"],
+    ["Mixture_KH2_DOX_MSI1_DOX_111012_110831Bur_A_yarden_Burge_L6_2_sequence.fastq", "Mix_KH2_DOX_MSI1_DOX_p2"],
+    ["MSI1_NoDox_111012_110831Bur_A_yarden_Burge_L6_1_sequence.fastq", "MSI1_NoDox_A_p1"],
+    ["MSI1_NoDox_111012_110831Bur_A_yarden_Burge_L6_2_sequence.fastq", "MSI1_NoDox_A_p2"],
+    ["MSI1_NoDox_111104_D11-3363-4_yarden_Burge_L8_1_sequence.fastq", "MSI1_NoDox_B_p1"],
+    ["MSI1_NoDox_111104_D11-3363-4_yarden_Burge_L8_2_sequence.fastq", "MSI1_NoDox_B_p2"],
+    ["MSI1_DOX_111104_D11-3363-4_yarden_Burge_L8_1_sequence.fastq", "MSI1_DOX_A_p1"],
+    ["MSI1_DOX_111104_D11-3363-4_yarden_Burge_L8_2_sequence.fastq", "MSI1_DOX_A_p2"]]
+
+# Groups for paired-end analysis
+sample_groups = [
+  ["KH2_NoDox_A", ["KH2_NoDox_A_p1", "KH2_NoDox_A_p2"]],
+  ["Mix_KH2_DOX_MSI1_DOX", ["Mix_KH2_DOX_MSI1_DOX_p1"]],
+  ["MSI1_NoDox_A", ["MSI1_NoDox_A_p1", "MSI1_NoDox_A_p2"]],
+  ["MSI1_DOX", ["MSI1_DOX_A_p1", "MSI1_DOX_A_p2"]]]
+
 
 [bowtie]
 # Bowtie arguments 
