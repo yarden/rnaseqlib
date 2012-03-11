@@ -21,7 +21,6 @@ def run_pipeline(settings_filename,
                           output_dir)
     # Run pipeline
     rna_pipeline.run()
-
     # Summarize the results
     rna_pipeline.summarize_run()
 
