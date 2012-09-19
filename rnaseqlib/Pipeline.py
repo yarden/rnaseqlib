@@ -138,7 +138,6 @@ class Pipeline:
             sys.exit(1)
         else:
             print "Running on %d samples" %(num_samples)
-
         # For each sample
         for sample in self.samples
             # Map the data
