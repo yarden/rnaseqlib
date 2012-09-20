@@ -14,7 +14,6 @@ class Sample:
         self.settings = None
         self.group = None
 
-        
 
 class Pipeline:
     """
@@ -28,7 +27,6 @@ class Pipeline:
         """
         # Load settings file
         self.settings_filename = settings_filename
-
         # Load settings
         self.settings = None
         self.settings_info = None
@@ -47,7 +45,7 @@ class Pipeline:
 
         
     def check_settings(self):
-        if self.settings == None or self.settings_info == None \
+        if (self.settings == None) or (self.settings_info == None) \
             or self.parsed_settings == None:
             print "Error: No settings loaded!"
             sys.exit(1)
@@ -83,7 +81,7 @@ class Pipeline:
         """
         If paired-end, set sample groups.
         """
-        if settings == None or \
+        if (settings == None) or \
             ("sample_groups" not in settings["data"]["sample_groups"]):
             return
         
@@ -132,14 +130,14 @@ class Pipeline:
         Run pipeline. 
         """
         print "Running pipeline..."
-        num_samples = len(self.samples):
-        if num_samples:
+        num_samples = len(self.samples)
+        if num_samples == 0:
             print "Error: No samples to run on."
             sys.exit(1)
         else:
             print "Running on %d samples" %(num_samples)
         # For each sample
-        for sample in self.samples
+        for sample in self.samples:
             # Map the data
             sample = self.map_reads(sample)
             # Perform QC
