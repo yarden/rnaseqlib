@@ -190,7 +190,6 @@ class Pipeline:
         Map reads.
         """
         print "Mapping reads..."
-        
         return sample
     
 
