@@ -63,7 +63,7 @@ def trim_polyA_ends(fastq_filename,
             
             
 
-def read_len_dist():
+def compute_read_len_dist():
     """
     Compute distribution of read lengths.
     """

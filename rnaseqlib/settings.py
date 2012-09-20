@@ -25,7 +25,8 @@ def load_settings(config_filename,
                   # data structures,
                   STR_PARAMS=["indir",
                               "outdir",
-                              "stranded"],
+                              "stranded",
+                              "mapper"],
                   DATA_PARAMS=["sequence_files", 
                                "sample_groups"]):
     config = ConfigParser.ConfigParser()

@@ -1,3 +1,7 @@
+import os
+import sys
+import time
+
 class QualityControl:
     """ 
     Quality control object. Defined for every

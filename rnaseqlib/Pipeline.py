@@ -3,6 +3,10 @@ import sys
 import time
 import settings
 
+import rnaseqlib
+import rnaseqlib.mapping.mapper_wrappers as mapper_wrappers
+
+
 class Sample:
     """
     Sample to run on.
@@ -33,6 +37,7 @@ class Pipeline:
         """
         Initialize pipeline.
         """
+        self.output_dir = output_dir
         # Load settings file
         self.settings_filename = settings_filename
         # Load settings
@@ -190,6 +195,26 @@ class Pipeline:
         Map reads.
         """
         print "Mapping reads..."
+        mapper = self.settings_info["mapping"]["mapper"]
+        mapping_cmd = None
+        if mapper == "bowtie":
+            bowtie_path = self.settings_info["mapping"]["bowtie_path"]
+            input_filename = None
+            index_filename = None
+            output_filename = None
+            # Number of mismatches to use in mapping
+            # Optional bowtie arguments
+            bowtie_options = None
+            mapping_cmd = mapper_wrappers.get_bowtie_mapping_cmd(bowtie_path,
+                                                                 sample.seq_filename,
+                                                                 index_filename,
+                                                                 output_filename,
+                                                                 bowtie_options=bowtie_options)
+        elif mapper == "tophat":
+            raise Exception, "Not implemented yet."
+        else:
+            print "Error: unsupported mapper %s" %(mapper)
+            sys.exit(1)
         return sample
     
 
