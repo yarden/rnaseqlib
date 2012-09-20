@@ -17,12 +17,12 @@ def run_pipeline(settings_filename,
     Run pipeline given settings file.
     """
     # Create pipeline instance
-    rna_pipeline.Pipeline(settings_filename,
-                          output_dir)
+    pipeline = rna_pipeline.Pipeline(settings_filename,
+                                     output_dir)
     # Run pipeline
-    rna_pipeline.run()
+    pipeline.run()
     # Summarize the results
-    rna_pipeline.summarize_run()
+    #rna_pipeline.summarize_run()
 
 
 def main():

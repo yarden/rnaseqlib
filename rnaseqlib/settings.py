@@ -32,11 +32,8 @@ def load_settings(config_filename,
     print "Loading settings from: %s" %(config_filename)
     parsed_settings = config.read(config_filename)
     settings_info = defaultdict(dict)
-    
     for section in config.sections():
-        print "Parsing section: ", section
         for option in config.options(section):
-            print "option -> ", option
             if option in FLOAT_PARAMS:
                 settings_info[section][option] = config.getfloat(section, option)
             elif option in INT_PARAMS:

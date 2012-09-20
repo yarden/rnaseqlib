@@ -28,10 +28,10 @@ class Pipeline:
         # Load settings file
         self.settings_filename = settings_filename
         # Load settings
-        self.settings = None
-        self.settings_info = None
+        self.sequence_filenames = None
         self.parsed_settings = None
-        self.settings = self.load_pipeline_settings()
+        self.settings_info = None
+        self.load_pipeline_settings()
         # Paired-end or not
         self.is_paired_end = None
         # Check settings are correct
@@ -45,7 +45,8 @@ class Pipeline:
 
         
     def check_settings(self):
-        if (self.settings == None) or (self.settings_info == None) \
+        print self.settings_info
+        if (self.settings_info == None) \
             or self.parsed_settings == None:
             print "Error: No settings loaded!"
             sys.exit(1)
@@ -69,9 +70,12 @@ class Pipeline:
 
         # Determine if we're in paired-end mode
         self.is_paired_end = False
-        if self.settings_info["data"]["paired_end"]:
+        if self.settings_info["mapping"]["paired"]:
             self.is_paired_end = True
 
+        # Load the sequence files
+        self.load_sequence_files()
+        
         # Compile flags
         print "Loaded pipeline settings (%s)." \
             %(self.settings_filename)
@@ -98,6 +102,34 @@ class Pipeline:
         self.sample_to_group = sample_to_group
         self.group_to_samples = group_to_samples
 
+
+    def load_sequence_files(self):
+        """
+        Load sequence files from settings file.
+        """
+        if self.settings_info is None:
+            print "Error: cannot load sequence files if settings " \
+                "are not loaded."
+            sys.exit(1)
+        seq_files = self.settings_info["data"]["sequence_files"]
+        # Get the absolute path names, with the prefix input directory,
+        # for each sequence file
+        sequence_filenames = []
+        input_dir = os.path.abspath(self.settings_info["data"]["indir"])
+        for seq_entry in seq_files:
+            if len(seq_entry) != 2:
+                print "Error: Must provide a sequence filename and a " \
+                    "sample label for each entry."
+                sys.exit(1)
+            fname, seq_label = seq_entry
+            seq_fname = os.path.join(input_dir, fname)
+            if not os.path.isfile(seq_fname):
+                print "Error: Cannot find sequence file %s" %(seq_fname)
+                sys.exit(1)
+            sequence_filenames.append([seq_fname, seq_label])
+        self.sequence_filenames = sequence_filenames
+        return sequence_filenames
+    
         
     def load_pipeline_samples(self):
         """
@@ -105,14 +137,9 @@ class Pipeline:
         """
         print "Loading pipeline samples..."
         samples = []
-        sequence_files = self.settings_info["data"]["sequence_files"]
-        num_seq_files = len(sequence_files)
+        num_seq_files = len(self.sequence_filenames)
         print "  - Total of %d sequence files." %(num_seq_files)
-        for seq_entry in sequence_files:
-            if len(seq_entry) != 2:
-                print "Error: Must provide a sequence filename and a " \
-                    "sample label for each entry."
-                sys.exit(1)
+        for seq_entry in self.sequence_filenames:
             seq_filename, sample_label = seq_entry
             # Ensure file exists
             if not os.path.isfile(seq_filename):
@@ -125,7 +152,7 @@ class Pipeline:
         self.samples = samples
 
         
-    def run():
+    def run(self):
         """
         Run pipeline. 
         """
