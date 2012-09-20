@@ -8,11 +8,19 @@ class Sample:
     Sample to run on.
     """
     def __init__(self, label, seq_filename,
-                 settings=None):
+                 settings_info=None):
         self.label = label
         self.seq_filename = seq_filename
-        self.settings = None
+        self.settings_info = settings_info
         self.group = None
+        self.sample_type = None
+        if self.settings_info is not None:
+            self.sample_type = self.settings_info["pipeline"]["data_type"]
+
+    def __str__(self):
+        return "Sample(%s, %s, %s)" %(self.label,
+                                      self.sample_type,
+                                      self.seq_filename)
 
 
 class Pipeline:
@@ -31,21 +39,20 @@ class Pipeline:
         self.sequence_filenames = None
         self.parsed_settings = None
         self.settings_info = None
-        self.load_pipeline_settings()
+        self.data_type = None
         # Paired-end or not
         self.is_paired_end = None
-        # Check settings are correct
-        self.check_settings()
-
         # Load samples
         self.sample_to_group = None
         self.group_to_samples = None
         self.samples = None
+        # Check settings are correct
+        self.load_pipeline_settings()
+        self.check_settings()
         self.load_pipeline_samples()
 
         
     def check_settings(self):
-        print self.settings_info
         if (self.settings_info == None) \
             or self.parsed_settings == None:
             print "Error: No settings loaded!"
@@ -67,18 +74,25 @@ class Pipeline:
             sys.exit(1)
         self.settings = settings.load_settings(self.settings_filename)
         self.settings_info, self.parsed_settings = self.settings
-
         # Determine if we're in paired-end mode
         self.is_paired_end = False
         if self.settings_info["mapping"]["paired"]:
             self.is_paired_end = True
-
         # Load the sequence files
         self.load_sequence_files()
-        
         # Compile flags
-        print "Loaded pipeline settings (%s)." \
+        print "Loaded pipeline settings (source: %s)." \
             %(self.settings_filename)
+        
+
+    def load_samples(self):
+        """
+        Load samples. If paired-end, load their groups
+        information.
+        """
+        if self.is_paired_end:
+            # If paired-end, load the groups information
+            self.load_groups()
 
 
     def load_groups(self, settings):
@@ -88,12 +102,9 @@ class Pipeline:
         if (settings == None) or \
             ("sample_groups" not in settings["data"]["sample_groups"]):
             return
-        
         sample_groups = settings["data"]["sample_groups"]
-
         sample_to_group = {}
         group_to_samples = defaultdict(list)
-
         # Map sample to its group
         for sample, group in sample_groups:
             sample_to_group[sample] = group
@@ -147,7 +158,7 @@ class Pipeline:
                 sys.exit(1)
             sample = Sample(sample_label,
                             seq_filename,
-                            settings=settings)
+                            settings_info=self.settings_info)
             samples.append(sample)
         self.samples = samples
 
@@ -165,6 +176,7 @@ class Pipeline:
             print "Running on %d samples" %(num_samples)
         # For each sample
         for sample in self.samples:
+            print "Processing %s" %(sample)
             # Map the data
             sample = self.map_reads(sample)
             # Perform QC
@@ -177,6 +189,8 @@ class Pipeline:
         """
         Map reads.
         """
+        print "Mapping reads..."
+        
         return sample
     
 
@@ -189,7 +203,4 @@ class Pipeline:
     
     def run_analysis(self, sample):
         return sample
-        
-
-        
         
