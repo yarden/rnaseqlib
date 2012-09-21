@@ -4,6 +4,7 @@ import time
 import settings
 
 import rnaseqlib
+import rnaseqlib.utils as utils
 import rnaseqlib.mapping.mapper_wrappers as mapper_wrappers
 
 
@@ -33,11 +34,14 @@ class Pipeline:
     """
     def __init__(self,
                  settings_filename,
-                 output_dir):
+                 log_output_dir):
         """
         Initialize pipeline.
         """
-        self.output_dir = output_dir
+        # Output directory for logging pipeline activity
+        self.log_output_dir = log_output_dir
+        # Output directory for actual pipeline output
+        self.output_dir = None
         # Load settings file
         self.settings_filename = settings_filename
         # Load settings
@@ -55,6 +59,35 @@ class Pipeline:
         self.load_pipeline_settings()
         self.check_settings()
         self.load_pipeline_samples()
+        # Pipeline output subdirectories
+        self.pipeline_outdirs = {}
+        self.init_outdirs()
+        
+
+    def init_outdirs(self):
+        """
+        Create the output directories for the pipeline.
+
+        Structure is:
+
+        output_dir
+          - rawdata: trimmed reads, etc.
+          - mapping: mapped data files
+          - qc: quality control output
+          - analysis: analysis output
+        """
+        toplevel_dirs = ["rawdata",
+                         "mapping",
+                         "qc",
+                         "analysis"]
+        print "Initializing the pipeline output directories."
+        utils.make_dir(self.output_dir)
+        for dirname in toplevel_dirs:
+            dirpath = os.path.join(self.output_dir, dirname)
+            print " - Creating: %s" %(dirpath)
+            utils.make_dir(dirpath)
+            self.pipeline_outdirs[dirname] = dirpath
+        
 
         
     def check_settings(self):
@@ -85,9 +118,19 @@ class Pipeline:
             self.is_paired_end = True
         # Load the sequence files
         self.load_sequence_files()
+        # Load the directory where pipeline output should go
+        self.output_dir = utils.pathify(self.settings_info["data"]["outdir"])
         # Compile flags
         print "Loaded pipeline settings (source: %s)." \
             %(self.settings_filename)
+
+
+    def load_cluster(self):
+        """
+        Load cluster submission object for the particular
+        pipeline settings we were given.
+        """
+        self.my_cluster = cluster.Cluster(self.settings_info)
         
 
     def load_samples(self):
@@ -197,11 +240,12 @@ class Pipeline:
         print "Mapping reads..."
         mapper = self.settings_info["mapping"]["mapper"]
         mapping_cmd = None
+        job_name = "%s_%s" %(sample.label, mapper)
         if mapper == "bowtie":
             bowtie_path = self.settings_info["mapping"]["bowtie_path"]
-            input_filename = None
-            index_filename = None
-            output_filename = None
+            index_filename = self.settings_info["mapping"]["bowtie_index"]
+            output_filename = os.path.join(self.pipeline_outdirs["mapping"],
+                                           sample.label)
             # Number of mismatches to use in mapping
             # Optional bowtie arguments
             bowtie_options = None
@@ -210,6 +254,7 @@ class Pipeline:
                                                                  index_filename,
                                                                  output_filename,
                                                                  bowtie_options=bowtie_options)
+            self.my_cluster.launch_job(mapping_cmd)
         elif mapper == "tophat":
             raise Exception, "Not implemented yet."
         else:
