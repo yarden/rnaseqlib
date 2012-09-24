@@ -5,8 +5,10 @@ import os
 import sys
 import time
 
+import rnaseqlib.fastq_utils
+
 import yklib
-import yklib.fastq_utils
+import yklib.utils as utils
 
 def rstrip_stretch(s, letter):
     """
@@ -60,7 +62,7 @@ def trim_polyA_ends(fastq_filename,
     t2 = time.time()
     print "Trimming took %.2f mins." %((t2 - t1)/60.)
     output_file.close()
-            
+    return output_filename
             
 
 def compute_read_len_dist():
@@ -68,5 +70,8 @@ def compute_read_len_dist():
     Compute distribution of read lengths.
     """
     pass
-    
+
+if __name__ == "__main__":
+    test_file = "/home/yarden/jaen/test_ribo.fastq"
+    trim_polyA_ends(test_file, "/home/yarden/jaen/test_polyA/")
     

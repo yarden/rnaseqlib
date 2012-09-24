@@ -12,14 +12,16 @@ def waitUntilDone(jobID, sleep=1):
         
 def launchJob(cmd, scriptOptions, verbose=True, test=False, fast=True,
               queue_type="quick", scratchDir="/tmp"):
-    """ Submits a job on the cluster which will run command 'cmd', with options 'scriptOptions'
+    """
+    Submits a job on the cluster which will run command 'cmd', with options 'scriptOptions'
 
     Optionally:
     verbose: output the job script
     test: don't actually submit the job script (usually used in conjunction with verbose)
     fast: submit only to the fast nodes on coyote
 
-    Returns a job ID if the job was submitted properly """
+    Returns a job ID if the job was submitted properly
+    """
 
     if type(cmd) not in [type(list()), type(tuple())]:
         cmd = [cmd]

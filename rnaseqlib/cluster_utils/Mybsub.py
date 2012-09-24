@@ -12,9 +12,13 @@ def waitUntilDone(jobID, sleep=10):
         time.sleep(sleep)
     time.sleep(sleep)
         
-def launchJob(cmd, scriptOptions, verbose=True, test=False,
+def launchJob(cmd, job_name,
+              scriptOptions,
+              verbose=False,
+              test=False,
               queue_type="normal"):
-    """ Submits a job on the cluster which will run command 'cmd', with options 'scriptOptions'
+    """
+    Submits a job on the cluster which will run command 'cmd', with options 'scriptOptions'
 
     Optionally:
     verbose: output the job script
@@ -27,8 +31,8 @@ def launchJob(cmd, scriptOptions, verbose=True, test=False,
 
     scriptOptions.setdefault("workingdir", os.getcwd())
     scriptOptions.setdefault("ppn", "1")
-    scriptOptions.setdefault("jobname", os.path.basename(sys.argv[0]))
     scriptOptions.setdefault("scriptuser", getpass.getuser())
+    scriptOptions.setdefault("jobname", job_name)
     # remove queue name option
     #scriptOptions.setdefault("queue", queue_type)
     scriptOptions.setdefault("outdir", "")
@@ -42,8 +46,11 @@ def launchJob(cmd, scriptOptions, verbose=True, test=False,
         
     pid = os.getpid()
     outscriptName = "%s.%i"%(scriptOptions["jobname"], pid)
-    
-    scriptOptions["outf"] = os.path.abspath(os.path.join(scriptOptions["outdir"], outscriptName+".out"))
+
+    script_outdir = os.path.join(scriptOptions["outdir"],
+                                 "cluster_scripts")
+    scriptOptions["outf"] = os.path.abspath(os.path.join(script_outdir,
+                                                         outscriptName+".out"))
     print "Dumping script to: %s" %(scriptOptions["outf"])
 
     outtext = """#!/bin/sh
@@ -77,8 +84,7 @@ def launchJob(cmd, scriptOptions, verbose=True, test=False,
             output = qsub.communicate()
             if "is submitted to" in output[0]:
                 jobID = int(output[0].strip().split()[1][1:-1])
-                if verbose:
-                    print "Process launched with job ID:", jobID
+                print "Process launched with job ID:", jobID
                 return jobID
             else:
                 raise Exception("Failed to launch job '%s': %s"%(outscriptName, str(output)))

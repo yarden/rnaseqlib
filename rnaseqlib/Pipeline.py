@@ -6,6 +6,7 @@ import settings
 import rnaseqlib
 import rnaseqlib.utils as utils
 import rnaseqlib.mapping.mapper_wrappers as mapper_wrappers
+import cluster_utils.cluster as cluster
 
 
 class Sample:
@@ -15,7 +16,12 @@ class Sample:
     def __init__(self, label, seq_filename,
                  settings_info=None):
         self.label = label
+        # Original sequence file associated with sample
         self.seq_filename = seq_filename
+        # Post-processed sequence file, e.g. trimmed reads
+        # for CLIP or Ribo-Seq
+        # By default, just identical to raw sequence filename
+        self.reads_filename = seq_filename
         self.settings_info = settings_info
         self.group = None
         self.sample_type = None
@@ -51,13 +57,16 @@ class Pipeline:
         self.data_type = None
         # Paired-end or not
         self.is_paired_end = None
-        # Load samples
         self.sample_to_group = None
         self.group_to_samples = None
-        self.samples = None
+        self.samples = []
+        # Cluster objects to use
+        self.my_cluster = None
         # Check settings are correct
         self.load_pipeline_settings()
+        self.load_cluster()
         self.check_settings()
+        # Load samples
         self.load_pipeline_samples()
         # Pipeline output subdirectories
         self.pipeline_outdirs = {}
@@ -133,16 +142,6 @@ class Pipeline:
         self.my_cluster = cluster.Cluster(self.settings_info)
         
 
-    def load_samples(self):
-        """
-        Load samples. If paired-end, load their groups
-        information.
-        """
-        if self.is_paired_end:
-            # If paired-end, load the groups information
-            self.load_groups()
-
-
     def load_groups(self, settings):
         """
         If paired-end, set sample groups.
@@ -210,6 +209,16 @@ class Pipeline:
             samples.append(sample)
         self.samples = samples
 
+
+    def preprocess_reads(self, sample):
+        """
+        Pre-process reads.
+        """
+        if sample.sample_type == "riboseq":
+            # Preprocess riboseq samples by trimming trailing
+            # As
+            trimmed_filename = ribo_utils.trim_polyA_ends
+
         
     def run(self):
         """
@@ -225,6 +234,8 @@ class Pipeline:
         # For each sample
         for sample in self.samples:
             print "Processing %s" %(sample)
+            # Pre-process the data if needed
+            sample = self.preprocess_reads(sample)
             # Map the data
             sample = self.map_reads(sample)
             # Perform QC
@@ -242,19 +253,22 @@ class Pipeline:
         mapping_cmd = None
         job_name = "%s_%s" %(sample.label, mapper)
         if mapper == "bowtie":
+            print "Mapping sample: %s" %(sample)
             bowtie_path = self.settings_info["mapping"]["bowtie_path"]
             index_filename = self.settings_info["mapping"]["bowtie_index"]
             output_filename = os.path.join(self.pipeline_outdirs["mapping"],
                                            sample.label)
+            bowtie_options = self.settings_info["mapping"]["bowtie_options"]
             # Number of mismatches to use in mapping
             # Optional bowtie arguments
-            bowtie_options = None
             mapping_cmd = mapper_wrappers.get_bowtie_mapping_cmd(bowtie_path,
-                                                                 sample.seq_filename,
+                                                                 sample.reads_filename,
                                                                  index_filename,
                                                                  output_filename,
                                                                  bowtie_options=bowtie_options)
-            self.my_cluster.launch_job(mapping_cmd)
+            print "Executing: %s" %(mapping_cmd)
+            #job_id = self.my_cluster.launch_job(mapping_cmd, job_name,
+            #                                    unless_exists=output_filename)
         elif mapper == "tophat":
             raise Exception, "Not implemented yet."
         else:
