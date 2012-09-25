@@ -1,7 +1,7 @@
 import os, os.path, subprocess, sys, time, getpass
 from optparse import OptionParser
 
-def waitUntilDone(jobID, sleep=10):
+def waitUntilDone(jobID, sleep=20):
     """ Waits until a job ID is no longer found in the bjobs output """
     while True:
         output = subprocess.Popen("bjobs %i"%jobID, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
@@ -11,7 +11,8 @@ def waitUntilDone(jobID, sleep=10):
                 break
         time.sleep(sleep)
     time.sleep(sleep)
-        
+
+    
 def launchJob(cmd, job_name,
               scriptOptions,
               verbose=False,

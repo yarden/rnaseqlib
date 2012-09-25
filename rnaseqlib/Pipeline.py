@@ -23,6 +23,12 @@ class Sample:
         # for CLIP or Ribo-Seq
         # By default, just identical to raw sequence filename
         self.reads_filename = seq_filename
+        # Bowtie mapping for sample
+        self.bowtie_filename = None
+        # Tophat mapping for sample
+        self.tophat_filename = None
+        # BAM filename
+        self.bam_filename = None
         self.settings_info = settings_info
         self.group = None
         self.sample_type = None
@@ -263,8 +269,8 @@ class Pipeline:
             print "Mapping sample: %s" %(sample)
             bowtie_path = self.settings_info["mapping"]["bowtie_path"]
             index_filename = self.settings_info["mapping"]["bowtie_index"]
-            output_filename = os.path.join(self.pipeline_outdirs["mapping"],
-                                           sample.label)
+            output_filename = "%s.bowtie" %(os.path.join(self.pipeline_outdirs["mapping"],
+                                                         sample.label))
             bowtie_options = self.settings_info["mapping"]["bowtie_options"]
             # Number of mismatches to use in mapping
             # Optional bowtie arguments
@@ -274,9 +280,13 @@ class Pipeline:
                                                          index_filename,
                                                          output_filename,
                                                          bowtie_options=bowtie_options)
+            # Record the bowtie output filename for this sample
+            sample.bowtie_filename = bowtie_output_filename
             print "Executing: %s" %(mapping_cmd)
-            #job_id = self.my_cluster.launch_job(mapping_cmd, job_name,
-            #                                    unless_exists=output_filename)
+            self.launch_and_wait(mapping_cmd, job_name,
+                                 unless_exists=output_filename)
+            job_id = self.my_cluster.launch_job(mapping_cmd, job_name,
+                                                unless_exists=output_filename)
         elif mapper == "tophat":
             raise Exception, "Not implemented yet."
         else:

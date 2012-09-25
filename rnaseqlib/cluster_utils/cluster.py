@@ -20,6 +20,24 @@ class Cluster:
             sys.exit(1)
             
 
+    def launch_and_wait(self, cmd, job_name,
+                        unless_exists=None,
+                        extra_sleep=2):
+        """
+        Launch job and wait until it's done.
+        """
+        job_id = self.launch_job(cmd, job_name,
+                                 unless_exists=unless_exists)
+        if job_id is None:
+            # Job submission failed
+            return None
+        else:
+            # Job is submitted (assigned an ID) so now
+            # wait for it to finish
+            self.wait_on_job(job_id)
+        time.sleep(extra_sleep)
+    
+
     def launch_job(self, cmd, job_name,
                    unless_exists=None):
         """
@@ -47,4 +65,8 @@ class Cluster:
         
 
     def wait_on_job(self, job_id):
-        pass
+        if self.cluster_type == "bsub":
+            print "Waiting on %s.." %(job_id)
+            Mybsub.waitUntilDone()
+        else:
+            raise Exception, "Not implemented yet."

@@ -43,8 +43,8 @@ def trim_polyA_ends(fastq_filename,
     output_filename = os.path.join(output_dir, output_basename)
     utils.make_dir(output_dir)
     if os.path.isfile(output_filename):
-        print "Error: %s already exists!" %(output_filename)
-        sys.exit(1)
+        print "SKIPPING: %s already exists!" %(output_filename)
+        return output_filename
     print "  - Outputting trimmed sequences to: %s" %(output_filename)
     input_file = fastq_utils.read_open_fastq(fastq_filename)
     output_file = fastq_utils.write_open_fastq(output_filename)
