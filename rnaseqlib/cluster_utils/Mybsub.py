@@ -101,16 +101,25 @@ if __name__ == "__main__":
     
     parser = OptionParser(usage=usage)
 
-    parser.add_option("-d", "--dir", dest="workingdir", help="Working directory (default: current)")
-    parser.add_option("-n", "--nodes", dest="nodes", help="Number of nodes or a comma-separated list of nodes to launch to")
-    parser.add_option("-p", "--ppn", dest="ppn", help="Requested number of processors (per node) (default: 1)")
-    parser.add_option("-j", "--jobname", dest="jobname", help="Job name (default: Mypbm.PID)")
-    parser.add_option("-q", "--queue", dest="queue", help="Queue to submit to (default: short)")
-    parser.add_option("-o", "--outdir", dest="outdir", help="Directory to save output file to (default:)")
-    parser.add_option("-v", "--verbose", dest="verbose", help="Show output script on command line", action="store_true", default=False)
-    parser.add_option("-t", "--test", dest="test", help="Write script file but don't run it", default=False,
+    parser.add_option("-d", "--dir", dest="workingdir",
+                      help="Working directory (default: current)")
+    parser.add_option("-n", "--nodes", dest="nodes",
+                      help="Number of nodes or a comma-separated list of nodes to launch to")
+    parser.add_option("-p", "--ppn", dest="ppn",
+                      help="Requested number of processors (per node) (default: 1)")
+    parser.add_option("-j", "--jobname", dest="jobname",
+                      help="Job name (default: Mypbm.PID)")
+    parser.add_option("-q", "--queue", dest="queue",
+                      help="Queue to submit to (default: short)")
+    parser.add_option("-o", "--outdir", dest="outdir",
+                      help="Directory to save output file to (default:)")
+    parser.add_option("-v", "--verbose", dest="verbose",
+                      help="Show output script on command line", action="store_true", default=False)
+    parser.add_option("-t", "--test", dest="test",
+                      help="Write script file but don't run it", default=False,
                       action="store_true")
-    parser.add_option("-w", "--wait", dest="wait", help="Wait until job has finished", default=False,
+    parser.add_option("-w", "--wait", dest="wait",
+                      help="Wait until job has finished", default=False,
                       action="store_true")
     
     (options, args) = parser.parse_args()
