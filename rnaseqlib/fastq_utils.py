@@ -10,6 +10,26 @@ from yklib import settings
 from yklib import cluster
 from itertools import ifilter, islice
 
+import gzip
+
+def read_open_fastq(fastq_filename):
+    fastq_file = None
+    if fastq_filename.endswith(".gz"):
+        fastq_file = gzip.open(fastq_filename, "rb")
+    else:
+        fastq_file = open(fastq_filename, "r")
+    return fastq_file
+
+    
+def write_open_fastq(fastq_filename):
+    fastq_file = None
+    if fastq_filename.endswith(".gz"):
+        fastq_file = gzip.open(fastq_filename, "wb")
+    else:
+        fastq_file = open(fastq_filename, "w")
+    return fastq_file
+    
+
 def read_fastq(fastqfile):
     "parse a fastq-formatted file, yielding a (header, sequence, header2, quality) tuple"
     fastqiter = (l.strip('\n') for l in fastqfile)  # strip trailing newlines

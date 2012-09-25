@@ -6,6 +6,7 @@ import settings
 import rnaseqlib
 import rnaseqlib.utils as utils
 import rnaseqlib.mapping.mapper_wrappers as mapper_wrappers
+import rnaseqlib.ribo.ribo_utils as ribo_utils
 import cluster_utils.cluster as cluster
 
 
@@ -214,11 +215,17 @@ class Pipeline:
         """
         Pre-process reads.
         """
+        print "Preprocessing: %s" %(sample)
         if sample.sample_type == "riboseq":
             # Preprocess riboseq samples by trimming trailing
             # As
-            trimmed_filename = ribo_utils.trim_polyA_ends
-
+            trimmed_filename = ribo_utils.trim_polyA_ends(sample.seq_filename,
+                                                          self.pipeline_outdirs["rawdata"])
+            # Adjust the trimmed file to be the "reads" sequence file for this
+            # sample
+            sample.reads_filename = trimmed_filename
+        return sample
+            
         
     def run(self):
         """
@@ -261,11 +268,12 @@ class Pipeline:
             bowtie_options = self.settings_info["mapping"]["bowtie_options"]
             # Number of mismatches to use in mapping
             # Optional bowtie arguments
-            mapping_cmd = mapper_wrappers.get_bowtie_mapping_cmd(bowtie_path,
-                                                                 sample.reads_filename,
-                                                                 index_filename,
-                                                                 output_filename,
-                                                                 bowtie_options=bowtie_options)
+            mapping_cmd, bowtie_output_filename = \
+                  mapper_wrappers.get_bowtie_mapping_cmd(bowtie_path,
+                                                         sample.reads_filename,
+                                                         index_filename,
+                                                         output_filename,
+                                                         bowtie_options=bowtie_options)
             print "Executing: %s" %(mapping_cmd)
             #job_id = self.my_cluster.launch_job(mapping_cmd, job_name,
             #                                    unless_exists=output_filename)

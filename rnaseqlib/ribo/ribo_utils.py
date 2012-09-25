@@ -5,7 +5,8 @@ import os
 import sys
 import time
 
-import rnaseqlib.fastq_utils
+import rnaseqlib
+import rnaseqlib.fastq_utils as fastq_utils
 
 import yklib
 import yklib.utils as utils
@@ -38,24 +39,25 @@ def trim_polyA_ends(fastq_filename,
     print "Trimming polyA trails from: %s" %(fastq_filename)
     # Strip the trailing extension
     output_basename = ".".join(os.path.basename(fastq_filename).split(".")[0:-1])
-    output_basename = "%s.trimmed_polyA.fastq" %(output_basename)
+    output_basename = "%s.trimmed_polyA.fastq.gz" %(output_basename)
     output_filename = os.path.join(output_dir, output_basename)
     utils.make_dir(output_dir)
     if os.path.isfile(output_filename):
         print "Error: %s already exists!" %(output_filename)
         sys.exit(1)
     print "  - Outputting trimmed sequences to: %s" %(output_filename)
-    output_file = open(output_filename, "w")
+    input_file = fastq_utils.read_open_fastq(fastq_filename)
+    output_file = fastq_utils.write_open_fastq(output_filename)
     t1 = time.time()
-    for line in fastq_utils.read_fastq(open(fastq_filename)):
+    for line in fastq_utils.read_fastq(input_file):
         header, seq, header2, qual = line
-        if not seq.endswith("A"):
+        if seq.endswith("A"):
             # Skip sequences that do not end with at least N
             # many As
-            if seq[-min_polyA_len] != ("A" * min_polyA_len):
+            if seq[-min_polyA_len:] != ("A" * min_polyA_len):
                 continue
             # Get sequence stripped of contiguous strech of polyAs
-            stripped_seq = rstrip_stretch(s[min_polyA_len:], "A")
+            stripped_seq = rstrip_stretch(seq, "A")
             new_rec = (header, stripped_seq, header2, qual)
             # Write the record with trimmed sequence back out to file
             fastq_utils.write_fastq(output_file, new_rec)
