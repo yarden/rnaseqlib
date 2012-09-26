@@ -12,9 +12,12 @@ class Cluster:
     """
     Cluster submission.
     """
-    def __init__(self, settings_info,
+    def __init__(self,
+                 settings_info,
+                 output_dir,
                  supported_types=["bsub", "qsub"]):
         self.cluster_type = settings_info["mapping"]["cluster_type"]
+        self.output_dir = output_dir
         if self.cluster_type not in supported_types:
             print "Error: unsupported cluster type %s" %(self.cluster_type)
             sys.exit(1)
@@ -58,6 +61,7 @@ class Cluster:
         if self.cluster_type == "bsub":
             job_id = Mybsub.launchJob(cmd, job_name,
                                       script_options,
+                                      self.output_dir,
                                       queue_type="normal")
         if job_id is None:
             print "WARNING: Job %s not submitted." %(job_name)
@@ -67,6 +71,6 @@ class Cluster:
     def wait_on_job(self, job_id):
         if self.cluster_type == "bsub":
             print "Waiting on %s.." %(job_id)
-            Mybsub.waitUntilDone()
+            Mybsub.waitUntilDone(job_id)
         else:
             raise Exception, "Not implemented yet."

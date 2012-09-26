@@ -7,8 +7,11 @@ import rnaseqlib
 import rnaseqlib.utils as utils
 import rnaseqlib.mapping.mapper_wrappers as mapper_wrappers
 import rnaseqlib.ribo.ribo_utils as ribo_utils
-import cluster_utils.cluster as cluster
 
+# Import all paths
+from rnaseqlib.paths import *
+
+import cluster_utils.cluster as cluster
 
 class Sample:
     """
@@ -103,7 +106,6 @@ class Pipeline:
             print " - Creating: %s" %(dirpath)
             utils.make_dir(dirpath)
             self.pipeline_outdirs[dirname] = dirpath
-        
 
         
     def check_settings(self):
@@ -146,7 +148,8 @@ class Pipeline:
         Load cluster submission object for the particular
         pipeline settings we were given.
         """
-        self.my_cluster = cluster.Cluster(self.settings_info)
+        self.my_cluster = cluster.Cluster(self.settings_info,
+                                          self.output_dir)
         
 
     def load_groups(self, settings):
@@ -231,14 +234,25 @@ class Pipeline:
             # sample
             sample.reads_filename = trimmed_filename
         return sample
+
+
+    def get_sample_by_label(self, label):
+        """
+        Return a sample by its label.
+        """
+        for sample in self.samples:
+            if sample.label == label:
+                return sample
+        return None
             
         
-    def run(self):
+    def run(self, label=None):
         """
         Run pipeline. 
         """
+        samples_to_run = self.samples
         print "Running pipeline..."
-        num_samples = len(self.samples)
+        num_samples = len(samples_to_run)
         if num_samples == 0:
             print "Error: No samples to run on."
             sys.exit(1)
@@ -247,14 +261,30 @@ class Pipeline:
         # For each sample
         for sample in self.samples:
             print "Processing %s" %(sample)
-            # Pre-process the data if needed
-            sample = self.preprocess_reads(sample)
-            # Map the data
-            sample = self.map_reads(sample)
-            # Perform QC
-            sample = self.run_qc(sample)
-            # Run gene expression analysis
-            sample = self.run_analysis(sample)
+            job_name = "pipeline_run_%s" %(sample.label)
+            sample_cmd = "python %s --run-on-sample %s --settings %s --output-dir %s" \
+                %(PIPELINE_RUN_SCRIPT,
+                  sample.label,
+                  self.settings_filename,
+                  self.output_dir)
+            print "Executing: %s" %(sample_cmd)
+            self.my_cluster.launch_and_wait(sample_cmd, job_name)
+
+
+    def run_on_sample(self, label):
+        # Fetch the sample by its label
+        sample = self.get_sample_by_label(label)
+        if sample is None:
+            print "Error: Cannot find sample %s" %(label)
+            sys.exit(1)
+        # Pre-process the data if needed
+        sample = self.preprocess_reads(sample)
+        # Map the data
+        sample = self.map_reads(sample)
+        # Perform QC
+        sample = self.run_qc(sample)
+        # Run gene expression analysis
+        sample = self.run_analysis(sample)
 
             
     def map_reads(self, sample):
@@ -282,11 +312,8 @@ class Pipeline:
                                                          bowtie_options=bowtie_options)
             # Record the bowtie output filename for this sample
             sample.bowtie_filename = bowtie_output_filename
-            print "Executing: %s" %(mapping_cmd)
-            self.launch_and_wait(mapping_cmd, job_name,
-                                 unless_exists=output_filename)
-            job_id = self.my_cluster.launch_job(mapping_cmd, job_name,
-                                                unless_exists=output_filename)
+            self.my_cluster.launch_and_wait(mapping_cmd, job_name,
+                                            unless_exists=output_filename)
         elif mapper == "tophat":
             raise Exception, "Not implemented yet."
         else:

@@ -24,6 +24,16 @@ def run_pipeline(settings_filename,
     # Summarize the results
     #rna_pipeline.summarize_run()
 
+def run_on_sample(sample_label,
+                  settings_filename,
+                  output_dir):
+    """
+    Run pipeline on one particular sample.
+    """
+    pipeline = rna_pipeline.Pipeline(settings_filename,
+                                     output_dir)
+    pipeline.run_on_sample(sample_label)
+
 
 def main():
     from optparse import OptionParser
@@ -31,6 +41,8 @@ def main():
     parser.add_option("--run", dest="run", action="store_true",
                       default=False,
                       help="Run pipeline.")
+    parser.add_option("--run-on-sample", dest="run_on_sample", nargs=1, default=None,
+                      help="Run on a particular sample. Takes as input the sample label.")
     parser.add_option("--settings", dest="settings", nargs=1,
                       default=None,
                       help="Settings filename.")
@@ -58,6 +70,11 @@ def main():
     if options.run:
         run_pipeline(settings_filename,
                      output_dir)
+
+    if options.run_on_sample is not None:
+        sample_label = options.run_on_sample
+        run_on_sample(sample_label, settings_filename,
+                      output_dir)
     
 
 if __name__ == '__main__':

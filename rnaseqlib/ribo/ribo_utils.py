@@ -58,7 +58,9 @@ def trim_polyA_ends(fastq_filename,
                 continue
             # Get sequence stripped of contiguous strech of polyAs
             stripped_seq = rstrip_stretch(seq, "A")
-            new_rec = (header, stripped_seq, header2, qual)
+            # Strip the quality scores to match trimmed sequence
+            new_qual = [0:len(stripped_seq)]
+            new_rec = (header, stripped_seq, header2, new_qual)
             # Write the record with trimmed sequence back out to file
             fastq_utils.write_fastq(output_file, new_rec)
     t2 = time.time()

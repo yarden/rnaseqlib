@@ -1,3 +1,6 @@
+import rnaseqlib
+import rnaseqlib.utils as utils
+
 import os, os.path, subprocess, sys, time, getpass
 from optparse import OptionParser
 
@@ -15,6 +18,7 @@ def waitUntilDone(jobID, sleep=20):
     
 def launchJob(cmd, job_name,
               scriptOptions,
+              output_dir,
               verbose=False,
               test=False,
               queue_type="normal"):
@@ -36,7 +40,7 @@ def launchJob(cmd, job_name,
     scriptOptions.setdefault("jobname", job_name)
     # remove queue name option
     #scriptOptions.setdefault("queue", queue_type)
-    scriptOptions.setdefault("outdir", "")
+    scriptOptions.setdefault("outdir", output_dir)
 
     scriptOptions["command"] = " ".join(cmd)
 
@@ -50,6 +54,7 @@ def launchJob(cmd, job_name,
 
     script_outdir = os.path.join(scriptOptions["outdir"],
                                  "cluster_scripts")
+    utils.make_dir(script_outdir)
     scriptOptions["outf"] = os.path.abspath(os.path.join(script_outdir,
                                                          outscriptName+".out"))
     print "Dumping script to: %s" %(scriptOptions["outf"])
