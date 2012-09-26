@@ -74,3 +74,11 @@ class Cluster:
             Mybsub.waitUntilDone(job_id)
         else:
             raise Exception, "Not implemented yet."
+        
+
+    def wait_on_jobs(self, job_ids):
+        num_jobs = len(job_ids)
+        print "Starting to wait on a collection of %d jobs" \
+            %(num_jobs)
+        for job_id in job_ids:
+            self.wait_on_job(job_id)

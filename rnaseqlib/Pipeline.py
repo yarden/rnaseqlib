@@ -258,7 +258,8 @@ class Pipeline:
             sys.exit(1)
         else:
             print "Running on %d samples" %(num_samples)
-        # For each sample
+        # Job IDs for each sample
+        samples_job_ids = []
         for sample in self.samples:
             print "Processing %s" %(sample)
             job_name = "pipeline_run_%s" %(sample.label)
@@ -268,7 +269,11 @@ class Pipeline:
                   self.settings_filename,
                   self.output_dir)
             print "Executing: %s" %(sample_cmd)
-            self.my_cluster.launch_and_wait(sample_cmd, job_name)
+            job_id = self.my_cluster.launch_job(sample_cmd, job_name)
+            samples_job_ids.append(job_id)
+        # Wait until all jobs completed 
+        self.my_cluster.wait_on_jobs(samples_job_ids)
+        # Then continue to process...
 
 
     def run_on_sample(self, label):
