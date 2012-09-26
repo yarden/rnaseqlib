@@ -325,6 +325,12 @@ class Pipeline:
             print "Error: unsupported mapper %s" %(mapper)
             sys.exit(1)
         return sample
+
+
+    def convert_to_bam():
+        """
+        Convert the reads to BAM. Only applies to 
+        """
     
 
     def run_qc(self, sample):
