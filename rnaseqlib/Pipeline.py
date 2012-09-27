@@ -304,8 +304,8 @@ class Pipeline:
             print "Mapping sample: %s" %(sample)
             bowtie_path = self.settings_info["mapping"]["bowtie_path"]
             index_filename = self.settings_info["mapping"]["bowtie_index"]
-            output_filename = "%s.bowtie" %(os.path.join(self.pipeline_outdirs["mapping"],
-                                                         sample.label))
+            output_filename = "%s" %(os.path.join(self.pipeline_outdirs["mapping"],
+                                                  sample.label))
             bowtie_options = self.settings_info["mapping"]["bowtie_options"]
             # Number of mismatches to use in mapping
             # Optional bowtie arguments
@@ -317,6 +317,7 @@ class Pipeline:
                                                          bowtie_options=bowtie_options)
             # Record the bowtie output filename for this sample
             sample.bowtie_filename = bowtie_output_filename
+            sample.bam_filename = sample.bowtie_filename
             self.my_cluster.launch_and_wait(mapping_cmd, job_name,
                                             unless_exists=output_filename)
         elif mapper == "tophat":
@@ -324,8 +325,34 @@ class Pipeline:
         else:
             print "Error: unsupported mapper %s" %(mapper)
             sys.exit(1)
+        # Sort and index the resulting BAM
+        sample = self.sort_and_index_bam(sample)
         return sample
 
+
+    def sort_and_index_bam(self, sample):
+        """
+        Sort and index the BAM for the sample.
+
+        Once completed, delete the unsorted file.
+        """
+        bam_filename = sample.bam_filename
+        sorted_bam_filename = "%s.sorted.bam" %(sample.bam_filename.replace(".bam",
+                                                                            ""))
+        sort_cmd = "samtools sort %s %s" %(bam_filename,
+                                           sorted_bam_filename)
+        job_name = "sorted_bam_%s" %(sample.label)
+        self.my_cluster.launch_and_wait(sort_cmd, job_name,
+                                        unless_exists=sorted_bam_filename)
+        index_cmd = "samtools index %s" %(sorted_bam_filename)
+        self.my_cluster.launch_and_wait(index_cmd, job_name)
+        # Cleanup: delete the unsorted BAM file
+        # and reassign the sorted bam as the sample's BAM filename
+        print "Removing unsorted BAM: %s" %(bam_filename)
+        os.remove(bam_filename)
+        sample.bam_filename = sorted_bam_filename
+        return sample
+        
 
     def convert_to_bam():
         """

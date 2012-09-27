@@ -24,6 +24,7 @@ def run_pipeline(settings_filename,
     # Summarize the results
     #rna_pipeline.summarize_run()
 
+    
 def run_on_sample(sample_label,
                   settings_filename,
                   output_dir):
@@ -33,6 +34,18 @@ def run_on_sample(sample_label,
     pipeline = rna_pipeline.Pipeline(settings_filename,
                                      output_dir)
     pipeline.run_on_sample(sample_label)
+
+
+def initialize_pipeline(genome,
+                        settings_filename,
+                        output_dir):
+    """
+    Initialize the pipeline.
+    """
+    print "Initializing the pipeline for genome %s" %(genome)
+    output_dir = os.path.join(output_dir, genome)
+    
+    pass
 
 
 def main():
@@ -46,9 +59,9 @@ def main():
     parser.add_option("--settings", dest="settings", nargs=1,
                       default=None,
                       help="Settings filename.")
-#    parser.add_option("--summarize-run", dest="summarize_run", nargs=1,
-#                      default=None,
-#                      help="Summarize the run.")
+    parser.add_option("--initialize", dest="initialize", nargs=1, default=None,
+                      help="Initialize the pipeline. Takes as input a genome, "
+                      "e.g. mm9 or hg18")
     parser.add_option("--output-dir", dest="output_dir", nargs=1,
                       default=None,
                       help="Output directory.")
@@ -75,6 +88,11 @@ def main():
         sample_label = options.run_on_sample
         run_on_sample(sample_label, settings_filename,
                       output_dir)
+
+    if options.initialize is not None:
+        genome = options.initialize
+        initialize_pipeline(genome, settings_filename,
+                            output_dir)
     
 
 if __name__ == '__main__':
