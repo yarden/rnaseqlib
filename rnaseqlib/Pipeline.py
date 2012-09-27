@@ -300,8 +300,9 @@ class Pipeline:
         mapper = self.settings_info["mapping"]["mapper"]
         mapping_cmd = None
         job_name = "%s_%s" %(sample.label, mapper)
+        print "Mapping sample: %s" %(sample)
+        print "  - mapper: %s" %(mapper)
         if mapper == "bowtie":
-            print "Mapping sample: %s" %(sample)
             bowtie_path = self.settings_info["mapping"]["bowtie_path"]
             index_filename = self.settings_info["mapping"]["bowtie_index"]
             output_filename = "%s" %(os.path.join(self.pipeline_outdirs["mapping"],
@@ -321,7 +322,20 @@ class Pipeline:
             self.my_cluster.launch_and_wait(mapping_cmd, job_name,
                                             unless_exists=output_filename)
         elif mapper == "tophat":
-            raise Exception, "Not implemented yet."
+            tophat_path = self.settings_info["mapping"]["tophat_path"]
+            sample_mapping_outdir = os.path.join(self.pipeline_outdirs["mapping"],
+                                                 sample.label)
+            utils.make_dir(sample_mapping_outdir)
+            tophat_cmd, tophat_outfilename = \
+                mapper_wrappers.get_tophat_mapping_cmd(tophat_path,
+                                                       sample.reads_filename,
+                                                       sample_mapping_outdir,
+                                                       self.settings_info)
+            print "Executing: %s" %(tophat_cmd)
+            # Check that Tophat file does not exist
+            self.my_cluster.launch_and_wait(tophat_cmd, job_name,
+                                            unless_exists=tophat_outfilename)
+            sample.bam_filename = tophat_outfilename
         else:
             print "Error: unsupported mapper %s" %(mapper)
             sys.exit(1)
@@ -352,18 +366,15 @@ class Pipeline:
         os.remove(bam_filename)
         sample.bam_filename = sorted_bam_filename
         return sample
-        
-
-    def convert_to_bam():
-        """
-        Convert the reads to BAM. Only applies to 
-        """
     
 
     def run_qc(self, sample):
         """
-        Run QC.
+        Run QC for this sample.
         """
+        # Compute fraction of mappings to various regions
+        qc_outdir = self.pipeline_outdirs["qc"]
+        
         return sample
 
     
