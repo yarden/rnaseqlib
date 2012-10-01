@@ -32,7 +32,8 @@ def rstrip_stretch(s, letter):
 def trim_polyA_ends(fastq_filename,
                     output_dir,
                     compressed=False,
-                    min_polyA_len=3):
+                    min_polyA_len=3,
+                    min_read_len=22):
     """
     Trim polyA ends from reads.
     """
@@ -58,6 +59,10 @@ def trim_polyA_ends(fastq_filename,
                 continue
             # Get sequence stripped of contiguous strech of polyAs
             stripped_seq = rstrip_stretch(seq, "A")
+            if len(stripped_seq) < min_read_len:
+                # Skip altogether reads that are shorter than
+                # the required length after trimming
+                continue
             # Strip the quality scores to match trimmed sequence
             new_qual = qual[0:len(stripped_seq)]
             new_rec = (header, stripped_seq, header2, new_qual)

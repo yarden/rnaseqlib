@@ -325,6 +325,7 @@ class Pipeline:
             tophat_path = self.settings_info["mapping"]["tophat_path"]
             sample_mapping_outdir = os.path.join(self.pipeline_outdirs["mapping"],
                                                  sample.label)
+            print "Creating: %s" %(sample_mapping_outdir)
             utils.make_dir(sample_mapping_outdir)
             tophat_cmd, tophat_outfilename = \
                 mapper_wrappers.get_tophat_mapping_cmd(tophat_path,
@@ -340,7 +341,7 @@ class Pipeline:
             print "Error: unsupported mapper %s" %(mapper)
             sys.exit(1)
         # Sort and index the resulting BAM
-        sample = self.sort_and_index_bam(sample)
+#        sample = self.sort_and_index_bam(sample)
         return sample
 
 
@@ -350,10 +351,10 @@ class Pipeline:
 
         Once completed, delete the unsorted file.
         """
-        bam_filename = sample.bam_filename
-        sorted_bam_filename = "%s.sorted.bam" %(sample.bam_filename.replace(".bam",
-                                                                            ""))
-        sort_cmd = "samtools sort %s %s" %(bam_filename,
+        raise Exception, "Not called"
+        bam_filename = sample.bam_filename.split(".bam")[0]
+        sorted_bam_filename = "%s.sorted.bam" %(bam_filename)
+        sort_cmd = "samtools sort %s %s" %(sample.bam_filename,
                                            sorted_bam_filename)
         job_name = "sorted_bam_%s" %(sample.label)
         self.my_cluster.launch_and_wait(sort_cmd, job_name,
