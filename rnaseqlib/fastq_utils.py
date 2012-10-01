@@ -34,6 +34,7 @@ def read_fastq(fastqfile):
     "parse a fastq-formatted file, yielding a (header, sequence, header2, quality) tuple"
     fastqiter = (l.strip('\n') for l in fastqfile)  # strip trailing newlines
     fastqiter = ifilter(lambda l: l, fastqiter)  # skip blank lines
+    line_num = 0
     while True:
         fqlines = list(islice(fastqiter, 4))
         if len(fqlines) == 4:
@@ -41,11 +42,14 @@ def read_fastq(fastqfile):
             if header1.startswith('@') and header2.startswith('+'):
                 yield header1[1:], seq, header2, qual
             else:
-                raise ValueError("Invalid header lines: %s and %s" % (header1, header2))
+                print "header1: ", header1, " header2: ", header2
+                raise ValueError("Invalid header lines: %s and %s (line %d)" \
+                                 % (header1, header2, line_num))
         elif len(fqlines) == 0:
             raise StopIteration
         else:
             raise EOFError("Failed to parse four lines from fastq file!")
+        line_num += 1
 
 def write_fastq(fastq_file, fastq_rec):
     header, seq, header2, quality = fastq_rec
