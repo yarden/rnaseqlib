@@ -28,11 +28,12 @@ class QualityControl:
         as a function of the position of the read.
         """
         print "Computing sequence cycle profile for: %s" %(sample)
-        fastq_in = read_open_fastq(sample.reads_filename)
+        fastq_file = read_open_fastq(sample.reads_filename)
+        fastq_entries = read_fastq(fastq_file)
         # Mapping from position in read to number of Ns
         num_n_bases = defaultdict(int)
         # Mapping from position in read to total number of
         # reads in that position
         num_reads = defaultdict(int)
-        for entry in fastq_in:
+        for entry in fastq_entries:
             
