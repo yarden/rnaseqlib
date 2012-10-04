@@ -7,9 +7,25 @@ import misopy.gff_utils as gff_utils
 import misopy.Gene as gene_utils
 
 ##
-## UCSC AltEvents: ftp://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/knownAlt.txt.gz
-## Ensembl events:  Biomart API
+## Human:
+## Refseq: 
+##    ftp://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/refGene.txt.gz 
+## UCSC AltEvents: 
+##    ftp://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/knownAlt.txt.gz
+##    ftp://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/knownGene.txt.gz
+## Ensembl events: ftp://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/ensGene.txt.gz 
 ## Swiss Institute of Bioinformatics events: 
+##    ftp://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/sibGene.txt.gz 
+##    ftp://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/sibTxGraph.txt.gz 
+##
+## Mouse:
+## Refseq: 
+##    ftp://hgdownload.cse.ucsc.edu/goldenPath/mm9/database/refGene.txt.gz 
+## UCSC AltEvents: ftp://hgdownload.cse.ucsc.edu/goldenPath/mm9/database/knownAlt.txt.gz
+## Ensembl events: ftp://hgdownload.cse.ucsc.edu/goldenPath/mm9/database/ensGene.txt.gz 
+## Swiss Institute of Bioinformatics events: 
+##    ftp://hgdownload.cse.ucsc.edu/goldenPath/mm9/database/sibGene.txt.gz 
+##    ftp://hgdownload.cse.ucsc.edu/goldenPath/mm9/database/sibTxGraph.txt.gz 
 ##
 
 
@@ -21,6 +37,96 @@ def define_events(event_type):
     related gene annotations/domain in attributes field.
     """
     pass
+
+
+# Build a transcript graph using refGene and ensGene. 
+# Columns for refGene and ensGene are: bin, name, chrom, strand, 
+# txStart, txEnd, cdsStart, cdsEnd, exonCount, exonStarts, exonEnds, 
+# score, name2, cdsStartStat, cdsEndStat, exonFrames
+# 
+def defineAltFromTable(table_f):
+
+    # First, iterate through table and associate exons with transcripts
+    # and transcripts with genes.
+    geneToTx = {}
+    txToExons = {}
+    geneToExons = {}
+    for line in open(table_f):
+        vals = line.strip().split("\t")
+        bin_, name_, chrom_, strand_, txStart_, txEnd_, cdsStart_,\
+            cdsEnd_, exonCount_, exonStarts_, exonEnds_, score_,\
+            name2_, cdsStartStat_, cdsEndStat_, exonFrames = vals
+
+        # May need to check if name2 is not defined
+        if name2 not in geneToTx:
+            geneToTx[name2] = []
+        exonStarts = map(int, exonStarts_.split(",")[:-1])
+        exonStarts = map(str, [s + 1 for s in exonStarts])
+        exonEnds = exonEnds_.split(",")[:-1]
+        for i in range(len(exonStarts)):
+            exon = ":".join([chrom_, exonStarts[i], exonEnds[i], strand_])
+            try:
+                txToExons[name2_].append(exon)
+            except:
+                txToExons[name2_] = [exon]
+            if name2_ not in geneToExons:
+                geneToExons[name2_] = {}
+            try:
+                geneToExons[name2_][exon] += 1
+            except:
+                geneToExons[name2_][exon] = 1
+
+    # Now iterate through each gene and identify exons that are not in all
+    # transcripts for the gene.
+    for gene in geneToTx:
+        txs = geneToTx[gene] 
+        exons = geneToExons[gene]
+        altexons = [exon for exon in geneToExon[gene] \
+            if geneToExon[gene][exon] < len(txs)]
+    
+    # Get flanking exons for each event and define event type.
+    # TODO 
+    
+
+# Get constitutive regions which flank alternative events for the
+# knownAlt table.  Find the transcripts that contain the 
+# altevents exons, and then get constitutive exons.
+def defineConstitutiveForAltEvents(altevents_f, kg_f):
+
+    exonToTx = {}
+    txToExons = {}
+    for line in open(kg_f):
+        vals = line.strip().split("\t")
+        name_, chrom_, strand_, txStart_, txEnd_, cdsStart_, cdsEnd_,\
+            exonCount_, exonStarts_, exonEnds_, proteinID_, alignID_ = vals
+        exonStarts = map(int, exonStarts_.split(",")[:-1])
+        exonStarts = map(str, [s + 1 for s in exonStarts])
+        exonEnds = exonEnds_.split(",")[:-1]
+        exons = []
+        for i in range(len(exonStarts)):
+            exon = ":".join([chrom_, exonStarts[i], exonEnds[i], strand_])
+            try:
+                exonToTx[exon].append(name_)
+            except:
+                exonToTx[exon] = [name_]
+            exons.append(exon)
+        txToExons[name_] = exons
+
+    for line in open(altevents_f):
+        vals = line.strip().split("\t")
+        bin_, chrom_, start_, end_, type_, score_, strand_ = vals
+        start = str(int(start_) + 1)
+        exon = ":".join([chrom_, start, end_, strand_])
+        if exon in exonToTx:
+            txs = exonToTx[exon]
+        else:
+            print "Missing transcripts for", exon        
+        
+
+
+# Parse sibAlt events.
+
+
 
 def define_se():
     """
