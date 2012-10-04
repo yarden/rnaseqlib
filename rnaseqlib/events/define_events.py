@@ -6,6 +6,13 @@ import misopy
 import misopy.gff_utils as gff_utils
 import misopy.Gene as gene_utils
 
+##
+## UCSC AltEvents: ftp://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/knownAlt.txt.gz
+## Ensembl events:  Biomart API
+## Swiss Institute of Bioinformatics events: 
+##
+
+
 def define_events(event_type):
     """
     Define alternative splicing events.
