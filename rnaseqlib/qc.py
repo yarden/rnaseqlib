@@ -12,18 +12,21 @@ from scipy import *
 import rnaseqlib
 from rnaseqlib.QualityControl import QualityControl
 
-def compute_qc_metrics(bam_filename, output_dir, settings):
+def compute_qc_metrics(settings_filename, output_dir, settings):
     """
     Compute QC metrics.
     """
-    pass
+    pipeline = Pipeline(settings_filename, output_dir)
+    # Compute the QC metrics for each sample
+    qc_obj = QualityControl()
+
 
 def get_cycle_profile(fastq_filename):
     qc_obj = QualityControl(None)
     percent_n = qc_obj.get_seq_cycle_profile(fastq_filename,
                                              first_n_seqs=1000000)
     print "Percent n for %s" %(fastq_filename)
-    print "==> ", percent_n
+
     
 
 def main():
