@@ -2,9 +2,9 @@
 ## Main script for defining AS events from a series of databases
 ##
 
-import misopy
-import misopy.gff_utils as gff_utils
-import misopy.Gene as gene_utils
+#import misopy
+#import misopy.gff_utils as gff_utils
+#import misopy.Gene as gene_utils
 
 ##
 ## Human:
@@ -58,17 +58,19 @@ def defineAltFromTable(table_f):
             name2_, cdsStartStat_, cdsEndStat_, exonFrames = vals
 
         # May need to check if name2 is not defined
-        if name2 not in geneToTx:
-            geneToTx[name2] = []
+        try:
+            geneToTx[name2_].append(name_)
+        except:
+            geneToTx[name2_] = [name_]
         exonStarts = map(int, exonStarts_.split(",")[:-1])
         exonStarts = map(str, [s + 1 for s in exonStarts])
         exonEnds = exonEnds_.split(",")[:-1]
         for i in range(len(exonStarts)):
             exon = ":".join([chrom_, exonStarts[i], exonEnds[i], strand_])
             try:
-                txToExons[name2_].append(exon)
+                txToExons[name_].append(exon)
             except:
-                txToExons[name2_] = [exon]
+                txToExons[name_] = [exon]
             if name2_ not in geneToExons:
                 geneToExons[name2_] = {}
             try:
@@ -76,14 +78,20 @@ def defineAltFromTable(table_f):
             except:
                 geneToExons[name2_][exon] = 1
 
+    print len(geneToTx), 'genes'
+    print len(txToExons), 'transcripts'
+
     # Now iterate through each gene and identify exons that are not in all
     # transcripts for the gene.
+    nAltExons = 0
     for gene in geneToTx:
         txs = geneToTx[gene] 
         exons = geneToExons[gene]
-        altexons = [exon for exon in geneToExon[gene] \
-            if geneToExon[gene][exon] < len(txs)]
-    
+        altexons = [exon for exon in geneToExons[gene] \
+            if geneToExons[gene][exon] < len(txs)]
+        nAltExons += len(altexons) 
+   
+    print nAltExons 
     # Get flanking exons for each event and define event type.
     # TODO 
     
@@ -112,6 +120,8 @@ def defineConstitutiveForAltEvents(altevents_f, kg_f):
             exons.append(exon)
         txToExons[name_] = exons
 
+    nAltEvents = 0
+    missing = 0
     for line in open(altevents_f):
         vals = line.strip().split("\t")
         bin_, chrom_, start_, end_, type_, score_, strand_ = vals
@@ -119,10 +129,13 @@ def defineConstitutiveForAltEvents(altevents_f, kg_f):
         exon = ":".join([chrom_, start, end_, strand_])
         if exon in exonToTx:
             txs = exonToTx[exon]
+            nAltEvents += 1
         else:
             print "Missing transcripts for", exon        
-        
-
+            missing += 1
+       
+    print nAltEvents, 'alternative events found'
+    print missing, 'missing'
 
 # Parse sibAlt events.
 
