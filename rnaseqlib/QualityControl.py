@@ -5,22 +5,56 @@ import time
 import rnaseqlib
 import rnaseqlib.fastq_utils as fastq_utils
 
+import pysam
+
 from collections import defaultdict
 
 
 class QualityControl:
     """ 
     Quality control object. Defined for every
-    RNA-Seq library.
+    pipeline.
     """
     def __init__(self, settings_info):
         self.settings_info = settings_info
+        # QC output dir
+        self.qc_outdir = self.pipeline_outdirs["qc"]
+        # Number of ribosomal reads per sample
+        self.num_ribo = defaultdict(int)
+        # Number of mitochondrial reads per sample
+        self.num_mito = defaultdict(int)
+        # Number of intronic reads per sample
+        self.num_intronic = defaultdict(int)
+        # Number of intergenic reads per sample
+        self.num_intergenic = defaultdict(int)
 
-    def get_exon_intergenic_ratio(self):
+    def get_exon_intergenic_ratio(self, sample):
         pass
 
-    def get_exon_intron_ratio(self):
+    def get_exon_intron_ratio(self, sample):
         pass
+
+    def get_num_ribo(self, sample,
+                     chr_ribo="chrRibo"):
+        """
+        Compute the number of ribosomal mapping reads per
+        sample.
+
+        - chr_ribo denotes the name of the ribosome containing
+          chromosome.
+        """
+        # Call bedtools to intersect
+        bamfile = pysam.Samfile(bam_filename, 'rb')
+        # Retrieve all reads on the ribo chromosome
+        ribo_reads = bamfile.fetch(reference=chr_ribo,
+                                   start=None,
+                                   end=None)
+        num_ribo = 0
+        # Count reads (fetch returns an iterator)
+        for r in ribo_reads:
+            num_ribo += 1
+        return num_ribo
+        
 
     def get_seq_cycle_profile(self, fastq_filename,
                               first_n_seqs=None):#sample):
@@ -28,8 +62,6 @@ class QualityControl:
         Compute the average 'N' bases (unable to sequence)
         as a function of the position of the read.
         """
-#        print "Computing sequence cycle profile for: %s" %(sample)
-#        fastq_file = read_open_fastq(sample.reads_filename)
         fastq_file = fastq_utils.read_open_fastq(fastq_filename)
         fastq_entries = fastq_utils.read_fastq(fastq_file)
         # Mapping from position in read to number of Ns

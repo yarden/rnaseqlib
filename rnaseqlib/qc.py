@@ -18,7 +18,7 @@ def compute_qc_metrics(settings_filename, output_dir, settings):
     """
     pipeline = Pipeline(settings_filename, output_dir)
     # Compute the QC metrics for each sample
-    qc_obj = QualityControl()
+    qc_obj = QualityControl(pipeline.settings_info)
 
 
 def get_cycle_profile(fastq_filename):

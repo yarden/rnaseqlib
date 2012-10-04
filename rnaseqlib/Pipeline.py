@@ -81,6 +81,10 @@ class Pipeline:
         # Pipeline output subdirectories
         self.pipeline_outdirs = {}
         self.init_outdirs()
+        # Create a QualityControl object for the pipeline
+        qc_outdir = self.pipeline_outdirs["qc"]
+        self.qc_obj = qc.QualityControl(self.settings_info,
+                                        qc_outdir)
         
 
     def init_outdirs(self):
@@ -374,8 +378,6 @@ class Pipeline:
         Run QC for this sample.
         """
         # Compute fraction of mappings to various regions
-        qc_outdir = self.pipeline_outdirs["qc"]
-        
         return sample
 
     
