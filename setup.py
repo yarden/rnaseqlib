@@ -16,9 +16,9 @@ for scheme in INSTALL_SCHEMES.values():
         
 setup(name = 'rnaseqlib',
       version = '0.1',
-      description = 'RNA-Seq pipeline',
+      description = 'RNA-Seq analysis pipeline',
 #      license = 'MIT License',
-      author = 'Yarden Katz,Eric T. Wang,Burge Lab',
+      author = 'Yarden Katz,Eric T. Wang,Noah Spies',
 #      scripts = [],
 #      data_files = [],
       # Required modules
@@ -27,7 +27,8 @@ setup(name = 'rnaseqlib',
           "matplotlib",
           "numpy >= 1.5.0",
           "scipy >= 0.9.0",
-          "pysam >= 0.6.0"
+          "pysam >= 0.6.0",
+          "pandas"
           ],
       platforms = 'ALL',
       keywords = ['bioinformatics', 'sequence analysis',

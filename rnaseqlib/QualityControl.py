@@ -9,33 +9,48 @@ import pysam
 
 from collections import defaultdict
 
-
 class QualityControl:
     """ 
-    Quality control object. Defined for every
-    pipeline.
+    Quality control object. Defined for
+    RNA-Seq sample.
     """
-    def __init__(self, settings_info):
+    def __init__(self, sample, pipeline):
+        # Pipeline instance that the sample is attached to
+        self.pipeline = pipeline
+        self.sample = sample
         self.settings_info = settings_info
+        # QC results
+        self.qc_results = {}
         # QC output dir
         self.qc_outdir = self.pipeline_outdirs["qc"]
         # Number of ribosomal reads per sample
-        self.num_ribo = defaultdict(int)
+        self.num_ribo = None
         # Number of mitochondrial reads per sample
-        self.num_mito = defaultdict(int)
+        self.num_mito = None
         # Number of intronic reads per sample
-        self.num_intronic = defaultdict(int)
+        self.num_intronic = None
         # Number of intergenic reads per sample
-        self.num_intergenic = defaultdict(int)
+        self.num_intergenic = None
+        # Number of reads per sample
+        self.num_mapped_reads = None
 
-    def get_exon_intergenic_ratio(self, sample):
+    def get_num_mapped_reads(self):
+        """
+        Get number of mapped reads, not counting duplicates, i.e.
+        reads that have alignments in the BAM file.
+        """
+        return 0
+    
+
+    def get_exon_intergenic_ratio(self):
         pass
+    
 
-    def get_exon_intron_ratio(self, sample):
+    def get_exon_intron_ratio(self):
         pass
+    
 
-    def get_num_ribo(self, sample,
-                     chr_ribo="chrRibo"):
+    def get_num_ribo(self, chr_ribo="chrRibo"):
         """
         Compute the number of ribosomal mapping reads per
         sample.
@@ -43,8 +58,7 @@ class QualityControl:
         - chr_ribo denotes the name of the ribosome containing
           chromosome.
         """
-        # Call bedtools to intersect
-        bamfile = pysam.Samfile(bam_filename, 'rb')
+        bamfile = pysam.Samfile(self.sample.bam_filename, "rb")
         # Retrieve all reads on the ribo chromosome
         ribo_reads = bamfile.fetch(reference=chr_ribo,
                                    start=None,
@@ -54,6 +68,37 @@ class QualityControl:
         for r in ribo_reads:
             num_ribo += 1
         return num_ribo
+        
+
+    def get_qc(sample):
+        """
+        Compile all the QC results for sample.
+        """
+        self.qc_results = {}
+        return
+    
+        
+    def output_qc(self, sample):
+        """
+        Output QC metrics for sample.
+        """
+        sample_outdir = os.path.join(self.qc_outdir,
+                                     sample.label)
+        utils.make_dir(sample_outdir)
+        qc_filename = os.path.join(sample_outdir,
+                                   "%s.qc.txt" %(sample.label))
+        if os.path.isfile(qc_filename):
+            print "SKIPPING %s, since %s already exists..." %(sample.label,
+                                                              qc_filename)
+            return None
+        # Header for QC output file for sample
+        qc_headers = ["num_mapped", "num_ribo"]
+        qc_entry = {"num_mapped": self.get_num_mapped(sample),
+                    "num_ribo": self.get_num_ribo(sample)}
+        qc_df = pandas.DataFrame([qc_entry])
+        # Write QC information as csv
+        qc_df.to_csv(qc_filename, cols=qc_headers, sep="\t")
+        
         
 
     def get_seq_cycle_profile(self, fastq_filename,

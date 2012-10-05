@@ -81,10 +81,19 @@ class Pipeline:
         # Pipeline output subdirectories
         self.pipeline_outdirs = {}
         self.init_outdirs()
-        # Create a QualityControl object for the pipeline
-        qc_outdir = self.pipeline_outdirs["qc"]
-        self.qc_obj = qc.QualityControl(self.settings_info,
-                                        qc_outdir)
+        self.init_qc()
+        self.qc_objects = []
+
+    def init_qc(self):
+        """
+        Make a QC object for each sample in pipeline.
+        """
+        # Create a QualityControl object for each sample in pipeline
+        if len(self.samples) == 0:
+            print "WARNING: No samples to create QC objects for."
+            return
+        for sample in self.samples:
+            self.qc_objects.append(qc.QualityControl(sample, self))
         
 
     def init_outdirs(self):
