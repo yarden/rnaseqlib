@@ -7,6 +7,7 @@ import rnaseqlib
 import rnaseqlib.utils as utils
 import rnaseqlib.mapping.mapper_wrappers as mapper_wrappers
 import rnaseqlib.ribo.ribo_utils as ribo_utils
+import rnaseqlib.QualityControl as qc
 
 # Import all paths
 from rnaseqlib.paths import *
@@ -80,9 +81,11 @@ class Pipeline:
         self.load_pipeline_samples()
         # Pipeline output subdirectories
         self.pipeline_outdirs = {}
+        # QC objects for each sample in pipeline
+        self.qc_objects = {}
         self.init_outdirs()
         self.init_qc()
-        self.qc_objects = []
+        
 
     def init_qc(self):
         """
@@ -93,7 +96,7 @@ class Pipeline:
             print "WARNING: No samples to create QC objects for."
             return
         for sample in self.samples:
-            self.qc_objects.append(qc.QualityControl(sample, self))
+            self.qc_objects[sample.label] = qc.QualityControl(sample, self)
         
 
     def init_outdirs(self):
@@ -386,8 +389,10 @@ class Pipeline:
         """
         Run QC for this sample.
         """
-        # Compute fraction of mappings to various regions
-        return sample
+        print "Running QC on sample: %s" %(sample.label)
+        # Retrieve QC object for sample
+        qc_obj = self.qc_objects[sample.label]
+        qc_obj.output_qc()
 
     
     def run_analysis(self, sample):

@@ -4,7 +4,9 @@ import time
 
 import rnaseqlib
 import rnaseqlib.fastq_utils as fastq_utils
+import rnaseqlib.utils as utils
 
+import pandas
 import pysam
 
 from collections import defaultdict
@@ -18,11 +20,11 @@ class QualityControl:
         # Pipeline instance that the sample is attached to
         self.pipeline = pipeline
         self.sample = sample
-        self.settings_info = settings_info
+        self.settings_info = pipeline.settings_info
         # QC results
         self.qc_results = {}
         # QC output dir
-        self.qc_outdir = self.pipeline_outdirs["qc"]
+        self.qc_outdir = self.pipeline.pipeline_outdirs["qc"]
         # Number of ribosomal reads per sample
         self.num_ribo = None
         # Number of mitochondrial reads per sample
@@ -34,7 +36,7 @@ class QualityControl:
         # Number of reads per sample
         self.num_mapped_reads = None
 
-    def get_num_mapped_reads(self):
+    def get_num_mapped(self):
         """
         Get number of mapped reads, not counting duplicates, i.e.
         reads that have alignments in the BAM file.
@@ -78,27 +80,29 @@ class QualityControl:
         return
     
         
-    def output_qc(self, sample):
+    def output_qc(self):
         """
         Output QC metrics for sample.
         """
         sample_outdir = os.path.join(self.qc_outdir,
-                                     sample.label)
+                                     self.sample.label)
         utils.make_dir(sample_outdir)
         qc_filename = os.path.join(sample_outdir,
-                                   "%s.qc.txt" %(sample.label))
+                                   "%s.qc.txt" %(self.sample.label))
         if os.path.isfile(qc_filename):
-            print "SKIPPING %s, since %s already exists..." %(sample.label,
+            print "SKIPPING %s, since %s already exists..." %(self.sample.label,
                                                               qc_filename)
             return None
         # Header for QC output file for sample
         qc_headers = ["num_mapped", "num_ribo"]
-        qc_entry = {"num_mapped": self.get_num_mapped(sample),
-                    "num_ribo": self.get_num_ribo(sample)}
+        qc_entry = {"num_mapped": self.get_num_mapped(),
+                    "num_ribo": self.get_num_ribo()}
         qc_df = pandas.DataFrame([qc_entry])
         # Write QC information as csv
-        qc_df.to_csv(qc_filename, cols=qc_headers, sep="\t")
-        
+        qc_df.to_csv(qc_filename,
+                     cols=qc_headers,
+                     sep="\t",
+                     index=False)
         
 
     def get_seq_cycle_profile(self, fastq_filename,
