@@ -25,6 +25,10 @@ class QualityControl:
         self.qc_results = {}
         # QC output dir
         self.qc_outdir = self.pipeline.pipeline_outdirs["qc"]
+        # Number of reads (in fastq file)        
+        self.num_reads = None
+        # Number of mapped reads
+        self.num_mapped = None
         # Number of ribosomal reads per sample
         self.num_ribo = None
         # Number of mitochondrial reads per sample
@@ -33,15 +37,32 @@ class QualityControl:
         self.num_intronic = None
         # Number of intergenic reads per sample
         self.num_intergenic = None
-        # Number of reads per sample
-        self.num_mapped_reads = None
+
+
+    def get_num_reads(self):
+        """
+        Return number of reads in FASTQ file.
+        """
+        fastq_entries = fastq_utils.get_fastq_entries(self.sample.reads_filename)
+        num_reads = 0
+        for entry in fastq_entries:
+            num_reads += 1
+        self.num_reads = num_reads
+        return self.num_reads
+    
 
     def get_num_mapped(self):
         """
         Get number of mapped reads, not counting duplicates, i.e.
         reads that have alignments in the BAM file.
         """
-        return 0
+        bam_read_ids = {}
+        bamfile = pysam.Samfile(self.sample.bam_filename, "rb")
+        for read in bamfile:
+            # Do not count duplicates twice
+            bam_read_ids[read.qname] = 1
+        self.num_mapped = len(bam_read_ids.keys())
+        return self.num_mapped
     
 
     def get_exon_intergenic_ratio(self):
@@ -79,6 +100,15 @@ class QualityControl:
         self.qc_results = {}
         return
     
+
+    def compute_qc(self):
+        """
+        Compute all QC metrics for sample.
+        """
+        self.num_reads = self.get_num_reads()
+        self.num_mapped = self.get_num_mapped()
+        self.num_ribo = self.get_num_ribo()
+        
         
     def output_qc(self):
         """
@@ -94,9 +124,10 @@ class QualityControl:
                                                               qc_filename)
             return None
         # Header for QC output file for sample
-        qc_headers = ["num_mapped", "num_ribo"]
-        qc_entry = {"num_mapped": self.get_num_mapped(),
-                    "num_ribo": self.get_num_ribo()}
+        qc_headers = ["num_reads", "num_mapped", "num_ribo"]
+        qc_entry = {"num_reads": self.num_reads,
+                    "num_mapped": self.num_mapped,
+                    "num_ribo": self.num_ribo}
         qc_df = pandas.DataFrame([qc_entry])
         # Write QC information as csv
         qc_df.to_csv(qc_filename,

@@ -357,7 +357,7 @@ class Pipeline:
             print "Error: unsupported mapper %s" %(mapper)
             sys.exit(1)
         # Sort and index the resulting BAM
-#        sample = self.sort_and_index_bam(sample)
+        sample = self.sort_and_index_bam(sample)
         return sample
 
 
@@ -367,9 +367,10 @@ class Pipeline:
 
         Once completed, delete the unsorted file.
         """
-        raise Exception, "Not called"
-        bam_filename = sample.bam_filename.split(".bam")[0]
-        sorted_bam_filename = "%s.sorted.bam" %(bam_filename)
+        bam_basename = os.path.basename(sample.bam_filename).split(".bam")[0]
+        sorted_bam_filename = "%s.sorted.bam" %(bam_basename)
+        print "Sorting %s as %s" %(sample.bam_filename,
+                                   sorted_bam_filename)
         sort_cmd = "samtools sort %s %s" %(sample.bam_filename,
                                            sorted_bam_filename)
         job_name = "sorted_bam_%s" %(sample.label)
@@ -392,6 +393,9 @@ class Pipeline:
         print "Running QC on sample: %s" %(sample.label)
         # Retrieve QC object for sample
         qc_obj = self.qc_objects[sample.label]
+        # Run QC metrics
+        qc_obj.compute_qc()
+        # Output QC to file
         qc_obj.output_qc()
 
     

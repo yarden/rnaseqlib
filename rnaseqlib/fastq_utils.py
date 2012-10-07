@@ -20,6 +20,11 @@ def read_open_fastq(fastq_filename):
         fastq_file = open(fastq_filename, "r")
     return fastq_file
 
+def get_fastq_entries(fastq_filename):
+    fastq_handle = read_open_fastq(fastq_filename)
+    fastq_entries = read_fastq(fastq_handle)
+    return fastq_entries
+
     
 def write_open_fastq(fastq_filename):
     fastq_file = None

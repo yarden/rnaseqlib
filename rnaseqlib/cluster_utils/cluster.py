@@ -72,6 +72,8 @@ class Cluster:
         if self.cluster_type == "bsub":
             print "Waiting on %s.." %(job_id)
             Mybsub.waitUntilDone(job_id)
+            print "  - Completed"
+            return True
         else:
             raise Exception, "Not implemented yet."
         
@@ -80,5 +82,9 @@ class Cluster:
         num_jobs = len(job_ids)
         print "Starting to wait on a collection of %d jobs" \
             %(num_jobs)
+        jobs_completed = {}
         for job_id in job_ids:
-            self.wait_on_job(job_id)
+            if job_id in jobs_completed: continue
+            if self.wait_on_job(job_id):
+                jobs_completed[job_id] = True
+        print "All jobs completed."
