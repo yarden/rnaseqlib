@@ -368,7 +368,8 @@ class Pipeline:
         Once completed, delete the unsorted file.
         """
         bam_basename = os.path.basename(sample.bam_filename).split(".bam")[0]
-        sorted_bam_filename = "%s.sorted.bam" %(bam_basename)
+        sorted_bam_filename = os.path.join(os.path.dirname(sample.bam_filename),
+                                           "%s.sorted" %(bam_basename))
         print "Sorting %s as %s" %(sample.bam_filename,
                                    sorted_bam_filename)
         sort_cmd = "samtools sort %s %s" %(sample.bam_filename,
@@ -380,8 +381,8 @@ class Pipeline:
         self.my_cluster.launch_and_wait(index_cmd, job_name)
         # Cleanup: delete the unsorted BAM file
         # and reassign the sorted bam as the sample's BAM filename
-        print "Removing unsorted BAM: %s" %(bam_filename)
-        os.remove(bam_filename)
+        print "Removing unsorted BAM: %s" %(sample.bam_filename)
+        os.remove(sample.bam_filename)
         sample.bam_filename = sorted_bam_filename
         return sample
     
