@@ -377,13 +377,13 @@ class Pipeline:
         job_name = "sorted_bam_%s" %(sample.label)
         self.my_cluster.launch_and_wait(sort_cmd, job_name,
                                         unless_exists=sorted_bam_filename)
-        index_cmd = "samtools index %s" %(sorted_bam_filename)
-        self.my_cluster.launch_and_wait(index_cmd, job_name)
-        # Cleanup: delete the unsorted BAM file
-        # and reassign the sorted bam as the sample's BAM filename
-        print "Removing unsorted BAM: %s" %(sample.bam_filename)
-        os.remove(sample.bam_filename)
-        sample.bam_filename = sorted_bam_filename
+        # Cleanup: empty the unsorted BAM
+        sample.bam_filename = "%s.bam" %(sorted_bam_filename)
+        index_cmd = "samtools index %s" %(sample.bam_filename)
+        index_filename = "%s.bai" %(sample.bam_filename)
+        print "Indexing %s" %(sample.bam_filename)
+        self.my_cluster.launch_and_wait(index_cmd, job_name,
+                                        unless_exists=index_filename)
         return sample
     
 
