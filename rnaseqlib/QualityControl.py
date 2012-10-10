@@ -22,14 +22,18 @@ class QualityControl:
         self.pipeline = pipeline
         self.sample = sample
         self.settings_info = pipeline.settings_info
-        # QC filename for sample
-        self.qc_filename = None
         # QC header: order of QC fields to be outputted
         self.qc_header = []
         # QC results
         self.qc_results = {}
         # QC output dir
         self.qc_outdir = self.pipeline.pipeline_outdirs["qc"]
+        # QC filename for this sample
+        self.sample_outdir = os.path.join(self.qc_outdir,
+                                          self.sample.label)
+        utils.make_dir(self.sample_outdir)
+        self.qc_filename = os.path.join(self.sample_outdir,
+                                        "%s.qc.txt" %(self.sample.label))
         # Number of reads (in fastq file)        
         self.num_reads = None
         # Number of mapped reads
@@ -42,6 +46,7 @@ class QualityControl:
         self.num_intronic = None
         # Number of intergenic reads per sample
         self.num_intergenic = None
+        
 
 
     def get_num_reads(self):
@@ -125,14 +130,9 @@ class QualityControl:
         """
         Output QC metrics for sample.
         """
-        sample_outdir = os.path.join(self.qc_outdir,
-                                     self.sample.label)
-        utils.make_dir(sample_outdir)
-        self.qc_filename = os.path.join(sample_outdir,
-                                        "%s.qc.txt" %(self.sample.label))
         if os.path.isfile(self.qc_filename):
             print "SKIPPING %s, since %s already exists..." %(self.sample.label,
-                                                              qc_filename)
+                                                              self.qc_filename)
             return None
         # Header for QC output file for sample
         qc_headers = ["num_reads", "num_mapped", "num_ribo"]
