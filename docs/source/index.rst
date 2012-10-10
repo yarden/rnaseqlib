@@ -19,15 +19,11 @@
 Features
 ========
 
-* Plots RNA-Seq read densities along exons and junctions, as well as
-  visualizes the structure of the gene's isoforms
-* Plots of MISO estimates (including full distribution and/or
-  confidence intervals) for the events in question, showing the
-  estimates for multiple samples in parallel
-* Plots insert length distributions for paired-end RNA-Seq samples
-* Allows visualization of multiple samples on the same figure
-* Generates publication-quality figures in a variety of flexible
-  formats (including PDF and PNG)
+* Pipeline for analyzing RNA-Seq data:
+  - Maps reads to genome and splice junctions
+  - Computes basic quality control statistics
+  - Outputs RPKM values for genes
+* Includes support for Ribosome Footprinting data (Ribo-Seq) and CLIP (CLIP-Seq)
 
 
 Updates
@@ -41,7 +37,13 @@ Updates
 Installation
 ============
 
-``easy_install rnaseqlib``
+To install: ::
+
+  easy_install rnaseqlib
+
+For local installation, use: ::
+
+  easy_install --user -U rnaseqlib
 
 
 Testing ``rnaseqlib``
