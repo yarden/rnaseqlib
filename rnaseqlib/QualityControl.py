@@ -2,6 +2,8 @@ import os
 import sys
 import time
 
+import csv
+
 import rnaseqlib
 import rnaseqlib.fastq_utils as fastq_utils
 import rnaseqlib.utils as utils
@@ -23,7 +25,9 @@ class QualityControl:
         self.sample = sample
         self.settings_info = pipeline.settings_info
         # QC header: order of QC fields to be outputted
-        self.qc_header = []
+        self.qc_header = ["num_reads", 
+                          "num_mapped",
+                          "num_ribo"]
         # QC results
         self.qc_results = {}
         # QC output dir
@@ -34,20 +38,24 @@ class QualityControl:
         utils.make_dir(self.sample_outdir)
         self.qc_filename = os.path.join(self.sample_outdir,
                                         "%s.qc.txt" %(self.sample.label))
-        # Number of reads (in fastq file)        
-        self.num_reads = None
-        # Number of mapped reads
-        self.num_mapped = None
-        # Number of ribosomal reads per sample
-        self.num_ribo = None
-        # Number of mitochondrial reads per sample
-        self.num_mito = None
-        # Number of intronic reads per sample
-        self.num_intronic = None
-        # Number of intergenic reads per sample
-        self.num_intergenic = None
-        
+        self.qc_loaded = False
+        # Load QC information if file corresponding to sample already exists
+        self.load_qc_from_file()
 
+
+    def load_qc_from_file(self):
+        """
+        Load QC data from file if already present.
+        """
+        if os.path.isfile(self.qc_filename):
+            qc_in = csv.DictReader(open(self.qc_filename, "r"),
+                                   delimiter="\t")
+            # Load existing header
+            self.qc_header = qc_in.fieldnames
+            # Load QC field values
+            self.qc_results = qc_in.next()
+            self.qc_loaded = True
+            
 
     def get_num_reads(self):
         """
@@ -57,8 +65,7 @@ class QualityControl:
         num_reads = 0
         for entry in fastq_entries:
             num_reads += 1
-        self.num_reads = num_reads
-        return self.num_reads
+        return num_reads
     
 
     def get_num_mapped(self):
@@ -71,8 +78,8 @@ class QualityControl:
         for read in bamfile:
             # Do not count duplicates twice
             bam_read_ids[read.qname] = 1
-        self.num_mapped = len(bam_read_ids.keys())
-        return self.num_mapped
+        num_mapped = len(bam_read_ids.keys())
+        return num_mapped
     
 
     def get_exon_intergenic_ratio(self):
@@ -111,18 +118,14 @@ class QualityControl:
         """
         Compute all QC metrics for sample.
         """
-        self.num_reads = self.get_num_reads()
-        self.num_mapped = self.get_num_mapped()
-        self.num_ribo = self.get_num_ribo()
-        ##
-        ## Header that specifies order of QC fields to be outputted
-        ##
-        self.qc_header = ["num_reads", 
-                          "num_mapped",
-                          "num_ribo"]
+        num_reads = self.get_num_reads()
+        num_mapped = self.get_num_mapped()
+        num_ribo = self.get_num_ribo()
         self.qc_results["num_reads"] = self.num_reads
         self.qc_results["num_mapped"] = self.num_mapped
         self.qc_results["num_ribo"] = self.num_ribo
+        # Set that QC results were loaded
+        self.qc_loaded = True
         return self.qc_results
         
         
@@ -135,14 +138,13 @@ class QualityControl:
                                                               self.qc_filename)
             return None
         # Header for QC output file for sample
-        qc_headers = ["num_reads", "num_mapped", "num_ribo"]
         qc_entry = {"num_reads": self.num_reads,
                     "num_mapped": self.num_mapped,
                     "num_ribo": self.num_ribo}
         qc_df = pandas.DataFrame([qc_entry])
         # Write QC information as csv
         qc_df.to_csv(self.qc_filename,
-                     cols=qc_headers,
+                     cols=self.qc_header,
                      sep="\t",
                      index=False)
         
@@ -189,9 +191,13 @@ class QCStats:
     """
     Represntation of QC stats for a set of samples.
     """
-    def __init__(self, samples):
+    def __init__(self, samples, qc_header, qc_objects,
+                 sample_header="sample"):
         self.samples = samples
-        self.qc_stats = []
+        self.sample_header = sample_header
+        self.qc_objects = qc_objects
+        self.qc_stats = None
+        self.qc_header = qc_header
 
 
     def output_qc(self, output_filename):
@@ -203,29 +209,31 @@ class QCStats:
         self.to_csv(output_filename)
 
 
-    def compile_qc(self, samples,
-                   sample_header="sample"):
+    def compile_qc(self):
         """
         Combined the QC output of a given set of samples
         into one object.
         """
-        if len(samples) == 0:
+        if len(self.samples) == 0:
             print "Error: No samples given to compile QC from!"
             sys.exit(1)
-        # Fetch QC header of first sample. Add to its
-        # beginning a field for the sample name
-        qc_header = [sample_header] + samples[0].qc_header
-        for sample in samples:
+        qc_entries = []
+        for sample in self.samples:
+            # Copy sample's QC results
+            sample_qc_results = self.qc_objects[sample.label].qc_results
+            qc_entry = sample_qc_results.copy()
             # Record sample name
-            qc_entry[sample_header] = sample.label
-            # Copy its QC results
-            qc_entry = sample.qc_results.copy()
-            self.qc_stats.append(qc_entry)
-        self.qc_stats = pandas.DataFrame(qc_stats)
+            qc_entry[self.sample_header] = sample.label
+            qc_entries.append(qc_entry)
+        self.qc_stats = pandas.DataFrame(qc_entries)
         return self.qc_stats
     
 
     def to_csv(self, output_filename):
+        # Fetch QC header of first sample. Add to its
+        # beginning a field for the sample name
+        output_header = [self.sample_header] + self.qc_header
         self.qc_stats.to_csv(output_filename,
                              sep="\t",
-                             index=False)
+                             index=False,
+                             cols=output_header)

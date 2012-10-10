@@ -49,8 +49,11 @@ class Cluster:
         if unless_exists flag is given, do not execute command
         if the given filename path exists.
         
-        Wrapper to Mysge/Mypbm/Mybsub
+        Wrapper to Mysge/Mypbm/Mybsub.
         """
+        ##
+        ## TODO: add wrapper for Python multiprocess for local running
+        ##
         job_id = None
         script_options = {}
         if (unless_exists is not None) and \

@@ -84,6 +84,8 @@ class Pipeline:
         # QC objects for each sample in pipeline
         self.qc_objects = {}
         self.init_outdirs()
+        # QC header: order of QC fields to be outputted
+        self.qc_header = []
         self.init_qc()
         
 
@@ -95,8 +97,18 @@ class Pipeline:
         if len(self.samples) == 0:
             print "WARNING: No samples to create QC objects for."
             return
+        self.load_qc()
+        
+
+    def load_qc(self):
+        """
+        Load QC information from samples.
+        """
         for sample in self.samples:
-            self.qc_objects[sample.label] = qc.QualityControl(sample, self)
+            self.qc_objects[sample.label] = qc.QualityControl(sample,
+                                                              self)
+        # Retrieve QC header: get the header from first sample
+        self.qc_header = self.qc_objects[self.samples[0].label].qc_header
         
 
     def init_outdirs(self):
@@ -289,7 +301,8 @@ class Pipeline:
             samples_job_ids.append(job_id)
         # Wait until all jobs completed 
         self.my_cluster.wait_on_jobs(samples_job_ids)
-        # Then continue to process...
+        # Compile all the QC results
+        self.compile_qc_output()
 
 
     def run_on_sample(self, label):
@@ -394,25 +407,32 @@ class Pipeline:
         print "Running QC on sample: %s" %(sample.label)
         # Retrieve QC object for sample
         qc_obj = self.qc_objects[sample.label]
-        # Do not compute QC if QC filename already exists
-        if os.path.isfile(qc_obj.qc_filename):
-            print "  - QC output for sample exists, skipping..."
-            return None
-        # Run QC metrics
-        qc_obj.compute_qc()
-        # Output QC to file
-        qc_obj.output_qc()
+        if qc_obj.qc_loaded:
+            # Don't load QC information if it already exists
+            print "  - QC objects already loaded from file."
+        else:
+            # Run QC metrics
+            qc_obj.compute_qc()
+            # Output QC to file
+            qc_obj.output_qc()
         
 
     def compile_qc_output(self):
         """
         Compile QC output for all samples.
         """
+        print "Compiling QC output for all samples..."
+        # Load QC information from existing files
+        self.load_qc()
         # Get a compiled object representing the QC
         # for all samples in the pipeline
-        qc_stats = qc.QCStats(self.samples)
+        qc_stats = qc.QCStats(self.samples,
+                              self.qc_header,
+                              self.qc_objects)
+        qc_stats.compile_qc()
         qc_output_filename = os.path.join(self.pipeline_outdirs["qc"],
                                           "qc_stats.txt")
+        print "  - Outputting QC to: %s" %(qc_output_filename)
         qc_stats.to_csv(qc_output_filename)
 
     
