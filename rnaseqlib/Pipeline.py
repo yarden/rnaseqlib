@@ -375,10 +375,10 @@ class Pipeline:
         sort_cmd = "samtools sort %s %s" %(sample.bam_filename,
                                            sorted_bam_filename)
         job_name = "sorted_bam_%s" %(sample.label)
+        expected_bam_filename = "%s.bam" %(sorted_bam_filename)
         self.my_cluster.launch_and_wait(sort_cmd, job_name,
-                                        unless_exists=sorted_bam_filename)
-        # Cleanup: empty the unsorted BAM
-        sample.bam_filename = "%s.bam" %(sorted_bam_filename)
+                                        unless_exists=expected_bam_filename)
+        sample.bam_filename = expected_bam_filename
         index_cmd = "samtools index %s" %(sample.bam_filename)
         index_filename = "%s.bai" %(sample.bam_filename)
         print "Indexing %s" %(sample.bam_filename)
@@ -394,10 +394,26 @@ class Pipeline:
         print "Running QC on sample: %s" %(sample.label)
         # Retrieve QC object for sample
         qc_obj = self.qc_objects[sample.label]
+        # Do not compute QC if QC filename already exists
+        if os.path.isfile(qc_obj.qc_filename):
+            print "  - QC output for sample exists, skipping..."
+            return None
         # Run QC metrics
         qc_obj.compute_qc()
         # Output QC to file
         qc_obj.output_qc()
+        
+
+    def compile_qc_output(self):
+        """
+        Compile QC output for all samples.
+        """
+        # Get a compiled object representing the QC
+        # for all samples in the pipeline
+        qc_stats = qc.QCStats(self.samples)
+        qc_output_filename = os.path.join(self.pipeline_outdirs["qc"],
+                                          "qc_stats.txt")
+        qc_stats.to_csv(qc_output_filename)
 
     
     def run_analysis(self, sample):

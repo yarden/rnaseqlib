@@ -11,6 +11,7 @@ import pysam
 
 from collections import defaultdict
 
+
 class QualityControl:
     """ 
     Quality control object. Defined for
@@ -21,6 +22,10 @@ class QualityControl:
         self.pipeline = pipeline
         self.sample = sample
         self.settings_info = pipeline.settings_info
+        # QC filename for sample
+        self.qc_filename = None
+        # QC header: order of QC fields to be outputted
+        self.qc_header = []
         # QC results
         self.qc_results = {}
         # QC output dir
@@ -91,15 +96,11 @@ class QualityControl:
         for r in ribo_reads:
             num_ribo += 1
         return num_ribo
-        
 
-    def get_qc(sample):
-        """
-        Compile all the QC results for sample.
-        """
-        self.qc_results = {}
-        return
-    
+
+    def get_qc(self):
+        return self.qc_results
+        
 
     def compute_qc(self):
         """
@@ -108,6 +109,16 @@ class QualityControl:
         self.num_reads = self.get_num_reads()
         self.num_mapped = self.get_num_mapped()
         self.num_ribo = self.get_num_ribo()
+        ##
+        ## Header that specifies order of QC fields to be outputted
+        ##
+        self.qc_header = ["num_reads", 
+                          "num_mapped",
+                          "num_ribo"]
+        self.qc_results["num_reads"] = self.num_reads
+        self.qc_results["num_mapped"] = self.num_mapped
+        self.qc_results["num_ribo"] = self.num_ribo
+        return self.qc_results
         
         
     def output_qc(self):
@@ -117,9 +128,9 @@ class QualityControl:
         sample_outdir = os.path.join(self.qc_outdir,
                                      self.sample.label)
         utils.make_dir(sample_outdir)
-        qc_filename = os.path.join(sample_outdir,
-                                   "%s.qc.txt" %(self.sample.label))
-        if os.path.isfile(qc_filename):
+        self.qc_filename = os.path.join(sample_outdir,
+                                        "%s.qc.txt" %(self.sample.label))
+        if os.path.isfile(self.qc_filename):
             print "SKIPPING %s, since %s already exists..." %(self.sample.label,
                                                               qc_filename)
             return None
@@ -130,7 +141,7 @@ class QualityControl:
                     "num_ribo": self.num_ribo}
         qc_df = pandas.DataFrame([qc_entry])
         # Write QC information as csv
-        qc_df.to_csv(qc_filename,
+        qc_df.to_csv(self.qc_filename,
                      cols=qc_headers,
                      sep="\t",
                      index=False)
@@ -172,3 +183,49 @@ class QualityControl:
             curr_percent_n = float(num_n_bases[base_pos]) / num_reads[base_pos]
             percent_n.append(curr_percent_n)
         return percent_n
+
+        
+class QCStats:
+    """
+    Represntation of QC stats for a set of samples.
+    """
+    def __init__(self, samples):
+        self.samples = samples
+        self.qc_stats = []
+
+
+    def output_qc(self, output_filename):
+        """
+        Output QC to file.
+        """
+        print "Outputting QC information for all samples..."
+        self.compile_qc(self.samples)
+        self.to_csv(output_filename)
+
+
+    def compile_qc(self, samples,
+                   sample_header="sample"):
+        """
+        Combined the QC output of a given set of samples
+        into one object.
+        """
+        if len(samples) == 0:
+            print "Error: No samples given to compile QC from!"
+            sys.exit(1)
+        # Fetch QC header of first sample. Add to its
+        # beginning a field for the sample name
+        qc_header = [sample_header] + samples[0].qc_header
+        for sample in samples:
+            # Record sample name
+            qc_entry[sample_header] = sample.label
+            # Copy its QC results
+            qc_entry = sample.qc_results.copy()
+            self.qc_stats.append(qc_entry)
+        self.qc_stats = pandas.DataFrame(qc_stats)
+        return self.qc_stats
+    
+
+    def to_csv(self, output_filename):
+        self.qc_stats.to_csv(output_filename,
+                             sep="\t",
+                             index=False)
