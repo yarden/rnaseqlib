@@ -129,43 +129,14 @@ Configuration
 
 The above settings file specifies where the BAM files for each sample are (and their corresponding MISO output files) and also controls several useful plotting parameters. The parameters are:
 
- * ``bam_prefix``: directory where BAM files for the samples to plot are. These BAM files should be coordinate-sorted and indexed.
- * ``miso_prefix``: directory where MISO output directories are for the events to be plotted. For example, if plotting a skipped exon event for which the MISO output lives in ``/data/miso_output/SE/``, then ``miso_prefix`` should be set to ``/data/miso_output/SE``. 
- * ``bam_files``: list of BAM files for RNA-Seq samples in the order in which you'd like them to be plotted. Each value in the list should be a filename that resides in the directory specified by ``bam_prefix``.
- * ``miso_files``: list of MISO output directories for each sample. Should follow same order of samples as ``bam_files``. Each value in the list should be a MISO output directory that resides in the directory specified by ``miso_prefix``.
-
-  .. note::
-     ``sashimi_plot`` will look recursively in paths of ``miso_files`` to find the MISO output file (ending in ``.miso``) associated with the event that is being plotted. For example, if we have these settings: ::
-
-         miso_prefix = /miso/output/
-         miso_files = ['control']
-
-     If our event is on a chromosome called ``chr7`` in the annotation, then the program will check every subdirectory of ``/miso/output/control`` for a directory called ``chr7``, and look for a file that has the form ``event_name.miso`` in that directory. If it cannot find such a directory in the first-level subdirectories, it will recurse into the subdirectories until it can find the file or until there are no more subdirectories to search.
-
-* ``fig_width``: output figure's width (in inches.)
- * ``fig_height``: output figure's height (in inches.)
- * ``exon_scale`` / ``intron_scale``: factor by which to scale down exons and introns, respectively.
- * ``logged``: whether to log the RNA-Seq read densities (set to ``False`` for linear scaling)
- * ``ymax``: maximum value of y-axis for RNA-Seq read densities. If not given, then the highest y-axis value across all samples will be set for each, resulting in comparable y-scaling.
- * ``show_posteriors``: plot MISO posterior distributions if ``True``, do not if ``False``
- * ``bar_posteriors``: plot MISO posterior distributions not as histograms, but as a horizontal bar that simply shows the mean and confidence intervals of the distribution in each sample.
- * ``colors``: Colors to use for each sample. Colors should be listed in same order as ``bam_files`` and ``miso_files`` lists.
- * ``coverages``: Number of mapping reads in each sample, for use when when computing normalized (i.e. RPKM) RNA-Seq read densities. Should be listed in same order as ``bam_files`` and ``miso_files``. These numbers correspond to the "per million" denominators used for calculating RPKM.
-
-**Additional parameters (all optional):**
-
- * ``sample_labels``: a list of string labels for each sample. By default, ``sashimi_plot`` will use the BAM filename from ``bam_files`` as the label for the sample. This option provides alternative labels. Note that ``sample_labels`` must have the same number of entries as ``bam_files``.
- * ``reverse_minus``: specifies whether minus strand (``-``) event isoforms are to be plotted in same direction as plus strand events. By default, set to ``False``, meaning minus strand events will be plotted in direction opposite to plus strand events.
- * ``nxticks``: number of x-axis ticks to plot
- * ``nyticks``: number of y-axis ticks to plot
-
 .. note::
-  For junction visualization, ``sashimi_plot`` currently uses only reads that cross *a single* junction. If a read crosses multiple exon-exon junctions, it is currently skipped, although MISO will use such a read in isoform estimation if it consistent with the given isoform annotation. Also, ``sashimi_plot`` currently ignores reads containing insertions or deletions and does not visualize sequence mismatches.
+  Some note here
+
  
 Command-line options
 --------------------
 
-``sashimi_plot/plot.py`` takes the following arguments: ::
+``run_pipeline.py`` takes the following arguments: ::
 
   --plot-posterior
                         Plot the posterior distribution. Takes as input a raw
