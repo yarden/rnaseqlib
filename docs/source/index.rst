@@ -6,16 +6,12 @@
    contain the root `toctree` directive.
 
 
-.. image:: images/sashimi-plot.png
-  :scale: 45%
-  :align: right
-  :alt: rnaseqlib: a lightweight RNA-Seq analysis pipeline
 
 .. contents::
 
 
-What is rnaseqlib?
-==================
+``rnaseqlib``
+=============
 
 ``rnaseqlib`` is a simple, lightweight pipeline for RNA-Seq analysis. 
 
