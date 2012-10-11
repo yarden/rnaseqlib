@@ -13,10 +13,10 @@ class Cluster:
     Cluster submission.
     """
     def __init__(self,
-                 settings_info,
+                 cluster_type,
                  output_dir,
                  supported_types=["bsub", "qsub"]):
-        self.cluster_type = settings_info["mapping"]["cluster_type"]
+        self.cluster_type = cluster_type
         self.output_dir = output_dir
         if self.cluster_type not in supported_types:
             print "Error: unsupported cluster type %s" %(self.cluster_type)

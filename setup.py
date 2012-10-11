@@ -1,5 +1,4 @@
 from distutils.core import setup, Extension
-import distutils.ccompiler
 import glob
 import os
 import sys

@@ -176,7 +176,7 @@ class Pipeline:
         Load cluster submission object for the particular
         pipeline settings we were given.
         """
-        self.my_cluster = cluster.Cluster(self.settings_info,
+        self.my_cluster = cluster.Cluster(self.settings_info["mapping"]["cluster_type"],
                                           self.output_dir)
         
 
