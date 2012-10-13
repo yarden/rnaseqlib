@@ -1,7 +1,6 @@
 ##
-## Main driver for running pipeline
+## Main driver for running RNA-Seq pipeline
 ##
-
 import os
 import sys
 import time
@@ -14,15 +13,13 @@ import Pipeline as rna_pipeline
 def run_pipeline(settings_filename,
                  output_dir):
     """
-    Run pipeline given settings file.
+    Run pipeline on all samples given settings file.
     """
     # Create pipeline instance
     pipeline = rna_pipeline.Pipeline(settings_filename,
                                      output_dir)
     # Run pipeline
     pipeline.run()
-    # Summarize the results
-    #rna_pipeline.summarize_run()
 
     
 def run_on_sample(sample_label,
@@ -37,15 +34,17 @@ def run_on_sample(sample_label,
 
 
 def initialize_pipeline(genome,
-                        settings_filename,
                         output_dir):
     """
     Initialize the pipeline.
     """
-    print "Initializing the pipeline for genome %s" %(genome)
     output_dir = os.path.join(output_dir, genome)
+    print "Initializing the pipeline for genome %s" %(genome)
+    print "  - Output dir: %s" %(output_dir)
+    utils.make_dir(output_dir)
+    # Download all the necessary sequence files
     
-    pass
+    
 
 
 def main():

@@ -8,7 +8,7 @@ import time
 import rnaseqlib
 import rnaseqlib.utils as utils
 
-UCSC_TABLES_URL = "http://hgdownload.cse.ucsc.edu/goldenPath"
+from rnaseqlib.genome_urls import *
 
 def get_ucsc_knowngenes(genome):
     return "%s/database/%s" %(UCSC_TABLES_URL,

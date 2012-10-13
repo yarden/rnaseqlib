@@ -38,6 +38,11 @@ class Sample:
         self.sample_type = None
         if self.settings_info is not None:
             self.sample_type = self.settings_info["pipeline"]["data_type"]
+        # Top-level output dirs
+        self.toplevel_dirs = ["rawdata",
+                              "mapping",
+                              "qc",
+                              "analysis"]
 
     def __str__(self):
         return "Sample(%s, %s, %s)" %(self.label,
@@ -123,13 +128,9 @@ class Pipeline:
           - qc: quality control output
           - analysis: analysis output
         """
-        toplevel_dirs = ["rawdata",
-                         "mapping",
-                         "qc",
-                         "analysis"]
         print "Initializing the pipeline output directories."
         utils.make_dir(self.output_dir)
-        for dirname in toplevel_dirs:
+        for dirname in self.toplevel_dirs:
             dirpath = os.path.join(self.output_dir, dirname)
             print " - Creating: %s" %(dirpath)
             utils.make_dir(dirpath)

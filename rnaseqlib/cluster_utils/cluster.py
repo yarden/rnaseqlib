@@ -5,8 +5,8 @@ import os
 import sys
 import time
 
-import rnaseqlib.cluster_utils as cluster_utils
-from cluster_utils import Mybsub, Mypbm, Mysge
+import rnaseqlib
+from rnaseqlib.cluster_utils import Mybsub, Mypbm, Mysge
 
 class Cluster:
     """
