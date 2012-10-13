@@ -116,5 +116,5 @@ def download_misc_seqs(genome, output_dir):
         rec = fasta_in[0]
         curr_label, fasta_seq = rec.header, rec.seq
         # Output it with the required label
-        new_rec = (seq_label, fasta_seq)
+        new_rec = (">%s" %(seq_label), fasta_seq)
         fasta_utils.write_fasta(fasta_out, [new_rec])
