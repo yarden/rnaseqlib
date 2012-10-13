@@ -13,16 +13,34 @@ from rnaseqlib.init.genome_urls import *
 
 import rnaseqlib.init.download_utils as download_utils
 
+# Labels of UCSC tables to download
+UCSC_TABLE_LABELS = ["knownGene.txt.gz",
+                     "kgXref.txt.gz",
+                     "knownToEnsembl.txt.gz",
+                     "knownAlt.txt.gz",
+                     "knownIsoforms.txt.gz"]
+
 
 def get_ucsc_database(genome):
     return "%s/%s/database" %(UCSC_GOLDENPATH,
                               genome)
 
 
-def get_ucsc_knowngene_url(genome):
+def get_ucsc_tables_urls(genome):
+    """
+    Return a list of all UCSC tables URLs to download
+    for a particular genome.  Format:
+
+    [[table1_label, table1_url],
+     [table2_label, table2_url],
+     ...]
+    """
     ucsc_database = get_ucsc_database(genome)
-    ucsc_knowngene_url = "%s/knownGene.txt.gz" %(ucsc_database)
-    return ucsc_knowngene_url
+    table_labels = []
+    for table_label in UCSC_TABLE_LABELS:
+        table_url = "%s/%s" %(ucsc_database, table_label)
+        table_labels.append([table_label, table_url])
+    return table_labels
     
 
 def download_ucsc_tables(genome,
@@ -34,11 +52,15 @@ def download_ucsc_tables(genome,
     utils.make_dir(tables_outdir)
     print "Download UCSC tables..."
     print "  - Output dir: %s" %(tables_outdir)
-    knowngenes_url = get_ucsc_knowngene_url(genome)
-    # Download ucsc knowngenes
-    knowngene_filename = download_utils.download_url(knowngenes_url, tables_outdir)
-    # Uncompress it
-    utils.gunzip_file(knowngene_filename, tables_outdir)
+    ucsc_tables = get_ucsc_tables_urls(genome)
+    for table_label, table_url in ucsc_tables:
+        print "Downloading %s" %(table_label)
+        # Download table
+        table_filename = download_utils.download_url(table_url,
+                                                     tables_outdir)
+        # Uncompress table
+        utils.gunzip_file(table_filename, tables_outdir)
+    
     
 
 def convert_knowngenes_to_gtf():
