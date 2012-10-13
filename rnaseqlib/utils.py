@@ -16,11 +16,30 @@ def make_dir(dirpath):
         pass
 
     
-def gunzip_file(filename, output_dir):
-    print "Unzipping: %s into directory" %(filename,
-                                           output_dir)
+def gunzip_file(filename, output_dir,
+                ext=".txt",
+                force=True):
+    """
+    Unzip the file into the given output directory.
+
+    If file ends with .gz, strip the .gz. Otherwise,
+    add a .txt at the end.
+    """
+    print "Unzipping: %s into directory %s" %(filename,
+                                              output_dir)
+    if filename.endswith(".gz"):
+        unzipped_filename = filename[0:-3]
+    else:
+        unzipped_filename = "%s.%s" %(filename,
+                                      ext)
+    print "  - Unzipped filename: %s" %(unzipped_filename)
     os.chdir(output_dir)
-    os.system("gunzip %s" %(filename))
+    gunzip = "gunzip "
+    if force:
+        gunzip += "--force"
+    os.system("%s %s > %s" %(gunzip,
+                             filename,
+                             unzipped_filename))
     
     
 def pathify(filename):

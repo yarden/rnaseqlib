@@ -18,6 +18,7 @@ def get_ucsc_database(genome):
     return "%s/%s/database" %(UCSC_GOLDENPATH,
                               genome)
 
+
 def get_ucsc_knowngene_url(genome):
     ucsc_database = get_ucsc_database(genome)
     ucsc_knowngene_url = "%s/knownGene.txt.gz" %(ucsc_database)
@@ -34,7 +35,10 @@ def download_ucsc_tables(genome,
     print "Download UCSC tables..."
     print "  - Output dir: %s" %(tables_outdir)
     knowngenes_url = get_ucsc_knowngene_url(genome)
-    download_utils.download_url(knowngenes_url, tables_outdir)
+    # Download ucsc knowngenes
+    knowngene_filename = download_utils.download_url(knowngenes_url, tables_outdir)
+    # Uncompress it
+    utils.gunzip_file(knowngene_filename, tables_outdir)
     
 
 def convert_knowngenes_to_gtf():
