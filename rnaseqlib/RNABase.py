@@ -31,6 +31,9 @@ class RNABase:
         # Download genome sequence files
         download_seqs.download_genome_seq(self.genome,
                                           self.output_dir)
+        # Download misc sequences
+        download_seqs.download_misc_seqs(self.genome,
+                                         self.output_dir)
         
 
     def download_tables(self):

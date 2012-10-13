@@ -78,6 +78,7 @@ def download_genome_seq(genome,
     os.system(uncompress_cmd)
     t2 = time.time()
     print "Uncompressing took %.2f minutes" %((t2 - t1)/60.)
+    
 
 def download_misc_seqs(genome, output_dir):
     """
@@ -85,6 +86,19 @@ def download_misc_seqs(genome, output_dir):
     """
     # Mapping from sequence label (e.g. rRNA)
     # to accession numbers
-    download_rRNA_seqs(genome, output_dir)
-    download_mitoRNA_seqs(genome, output_dir)
-    download_snRNA_seqs(genome, output_dir)
+    if genome.startswith("hg"):
+        organism = "human"
+    elif genome.startswith("mm"):
+        organism = "mouse":
+    else:
+        print "Error: Unsupported genome."
+        sys.exit(1)
+    # Fetch the accession numbers for the organism's
+    # misc sequences and download them
+    misc_seqs = NCBI_MISC_SEQS[organism]
+    ncbi_outdir = os.path.join(ncbi_outdir)
+    for seq_label, access_id in misc_seqs.iteritems():
+        print "Downloading: %s (NCBI: %s)" %(seq_label,
+                                             access_id)
+        download_ncbi_fasta(access_id, ncbi_outdir)
+        
