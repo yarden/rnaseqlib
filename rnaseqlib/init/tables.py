@@ -62,10 +62,11 @@ def download_ucsc_tables(genome,
         utils.gunzip_file(table_filename, tables_outdir)
         
 
-def process_ucsc_tables(tables_outdir):
+def process_ucsc_tables(genome, output_dir):
     """
     Process UCSC tables and reformat them as needed.
     """
+    tables_outdir = os.path.join(output_dir, "ucsc")
     # Convert the UCSC knownGene format to GTF
     convert_knowngene_to_gtf(tables_outdir)
         
@@ -75,19 +76,22 @@ def convert_knowngene_to_gtf(tables_outdir):
     Convert UCSC to knowngenes from genePred
     format to GTF.
     """
-    # UCSC utilities genePredToGtf 
-    genePredToGtf = "genePredToGtf"
-    if which(geneToPred) is None:
-        print "Error: need genePredToGtf from UCSC utilities " \
-              "to be on path."
-        sys.exit(1)
     knowngene_filename = os.path.join(tables_outdir,
                                       "knownGene.txt")
+    knowngene_gtf_filename = os.path.join(tables_outdir,
+                                          "knownGene.gtf")
+    print "Converting knownGene format to GTF..."
     if not os.path.isfile(knowngene_filename):
         print "Error: Cannot find %s" %(knowngene_filename)
         sys.exit(1)
-    convert_cmd = "%s "
-
+    if os.path.isfile(knowngene_gtf_filename):
+        print "  - GTF exists, skipping conversion.."
+        return knowngene_gtf_filename
+    convert_cmd = "cat %s | cut -f1-10 | genePredToGtf file stdin %s" \
+        %(knowngene_filename,
+          knowngene_gtf_filename)
+    os.system(convert_cmd)
+    return knowngene_gtf_filename
     
 
 # import os

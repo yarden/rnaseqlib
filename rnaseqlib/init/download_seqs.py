@@ -24,6 +24,26 @@ from rnaseqlib.init.genome_urls import *
 import rnaseqlib.init.download_utils as download_utils
 
 
+##
+## Mapping from various sequence types to
+## organisms.
+##
+NCBI_MISC_SEQS = {"human": {"chrRibo": "U13369.1",
+                            "chrMito": None},
+                  "mouse": {"chrRibo": "BK000964.1",
+                            "chrMito": None}}
+
+def download_ncbi_fasta(access_id, label, output_dir):
+    """
+    Download NCBI FASTA file by accession number and
+    label them as label.fasta in the given output directory.
+    """
+    ncbi_url = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=%s&rettype=fasta&retmode=text" \
+        %(access_id)
+    url_filename = download_utils.download_url(ncbi_url, output_dir)
+    
+
+
 def download_genome_seq(genome,
                         output_dir):
     """
@@ -58,5 +78,12 @@ def download_genome_seq(genome,
     t2 = time.time()
     print "Uncompressing took %.2f minutes" %((t2 - t1)/60.)
 
-
-
+def download_misc_seqs(genome, output_dir):
+    """
+    Download assorted sequences related to genome.
+    """
+    # Mapping from sequence label (e.g. rRNA)
+    # to accession numbers
+    download_rRNA_seqs(genome, output_dir)
+    download_mitoRNA_seqs(genome, output_dir)
+    download_snRNA_seqs(genome, output_dir)
