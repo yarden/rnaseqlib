@@ -19,6 +19,7 @@ import time
 import rnaseqlib
 import rnaseqlib.utils as utils
 import rnaseqlib.cluster_utils.cluster as cluster
+import rnaseqlib.fasta_utils as fasta_utils
 
 from rnaseqlib.init.genome_urls import *
 import rnaseqlib.init.download_utils as download_utils
@@ -41,7 +42,9 @@ def download_ncbi_fasta(access_id, output_dir):
     ncbi_url = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=%s&rettype=fasta&retmode=text" \
         %(access_id)
     url_filename = download_utils.download_url(ncbi_url,
-                                               output_dir)
+                                               output_dir,
+                                               basename="%s.fa" %(access_id),
+                                               binary=False)
     return url_filename
     
 
@@ -86,18 +89,22 @@ def download_misc_seqs(genome, output_dir):
     """
     # Mapping from sequence label (e.g. rRNA)
     # to accession numbers
+    organism = None
     if genome.startswith("hg"):
         organism = "human"
     elif genome.startswith("mm"):
-        organism = "mouse":
+        organism = "mouse"
     else:
         print "Error: Unsupported genome."
         sys.exit(1)
     # Fetch the accession numbers for the organism's
     # misc sequences and download them
     misc_seqs = NCBI_MISC_SEQS[organism]
-    ncbi_outdir = os.path.join(ncbi_outdir)
+    ncbi_outdir = os.path.join(output_dir, "ncbi")
+    utils.make_dir(ncbi_outdir)
     for seq_label, access_id in misc_seqs.iteritems():
+        if access_id is None:
+            continue
         print "Downloading: %s (NCBI: %s)" %(seq_label,
                                              access_id)
         url_filename = download_ncbi_fasta(access_id, ncbi_outdir)
@@ -106,8 +113,8 @@ def download_misc_seqs(genome, output_dir):
         fasta_out = open(output_filename, "w")
         print "  - Writing to: %s" %(output_filename)
         # Fetch first FASTA record
-        rec = fasta_in.next()
-        curr_label, fasta_seq = rec
+        rec = fasta_in[0]
+        curr_label, fasta_seq = rec.header, rec.seq
         # Output it with the required label
         new_rec = (seq_label, fasta_seq)
-        fasta_utils.write_fasta(rec, [new_rec])
+        fasta_utils.write_fasta(fasta_out, [new_rec])
