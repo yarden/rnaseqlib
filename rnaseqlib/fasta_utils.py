@@ -59,3 +59,10 @@ def fasta_read(input):
         seq = "".join(seq_items)
         results.append(fasta_sequence(header,seq))
     return results
+    
+
+def write_fasta(fasta_out, fasta_recs):
+    for rec in fasta_recs:
+        header, seq = rec
+        fasta_out.write("%s\n" %(header))
+        fasta_out.write("%s\n" %(seq))

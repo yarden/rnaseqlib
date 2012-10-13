@@ -17,10 +17,12 @@ class RNABase:
     Collection of initialization files needed to run
     the pipeline on a given genome.
     """
-    def __init__(self, genome, output_dir):
+    def __init__(self, genome, output_dir,
+                 with_index=True):
         self.genome = genome
         self.output_dir = os.path.join(output_dir,
                                        genome)
+        self.with_index = with_index
         
 
     def download_seqs(self):
@@ -53,6 +55,9 @@ class RNABase:
         Build relevant genome indices for use with
         Bowtie/Tophat.
         """
+        if not self.with_index:
+            print "Not building indices."
+            return
         print "Building indices.."
         pass
 
