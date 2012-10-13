@@ -25,24 +25,25 @@ import rnaseqlib.init.download_utils as download_utils
 
 
 ##
-## Mapping from various sequence types to
-## organisms.
+## Mapping from organisms to misc. sequence NCBI
+## accession IDs.
 ##
 NCBI_MISC_SEQS = {"human": {"chrRibo": "U13369.1",
                             "chrMito": None},
                   "mouse": {"chrRibo": "BK000964.1",
                             "chrMito": None}}
 
-def download_ncbi_fasta(access_id, label, output_dir):
+def download_ncbi_fasta(access_id, output_dir):
     """
     Download NCBI FASTA file by accession number and
-    label them as label.fasta in the given output directory.
+    label them as access.fasta in the given output directory.
     """
     ncbi_url = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=%s&rettype=fasta&retmode=text" \
         %(access_id)
-    url_filename = download_utils.download_url(ncbi_url, output_dir)
+    url_filename = download_utils.download_url(ncbi_url,
+                                               output_dir)
+    return url_filename
     
-
 
 def download_genome_seq(genome,
                         output_dir):
