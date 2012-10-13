@@ -18,7 +18,8 @@ def make_dir(dirpath):
     
 def gunzip_file(filename, output_dir,
                 ext=".txt",
-                force=True):
+                force=True,
+                unless_exists=True):
     """
     Unzip the file into the given output directory.
 
@@ -33,6 +34,9 @@ def gunzip_file(filename, output_dir,
         unzipped_filename = "%s.%s" %(filename,
                                       ext)
     print "  - Unzipped filename: %s" %(unzipped_filename)
+    if unless_exists and os.path.isfile(unzipped_filename):
+        print "  - File exists, skipping.."
+        return unzipped_filename
     os.chdir(output_dir)
     gunzip = "gunzip "
     if force:
@@ -40,6 +44,7 @@ def gunzip_file(filename, output_dir,
     os.system("%s %s > %s" %(gunzip,
                              filename,
                              unzipped_filename))
+    return unzipped_filename
     
     
 def pathify(filename):
@@ -50,6 +55,26 @@ from urlparse import urlsplit
 
 def url2name(url):
     return basename(urlsplit(url)[2])
+
+
+def which(program):
+    """
+    Check if program exists on path.
+    """
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
+    return None
+
 
 # def download_url(url, localFileName = None):
 #     localName = url2name(url)
