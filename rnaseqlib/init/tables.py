@@ -14,6 +14,7 @@ def get_ucsc_knowngenes(genome):
     return "%s/database/%s" %(UCSC_TABLES_URL,
                               genome)
 
+
 def download_ucsc_tables(genome,
                          settings_info):
     """
@@ -21,6 +22,7 @@ def download_ucsc_tables(genome,
     """
     knowngenes_url = get_ucsc_knowngenes(genome)
     utils.download_url(knowngenes_url)
+    
 
 def convert_knowngenes_to_gtf():
     """
