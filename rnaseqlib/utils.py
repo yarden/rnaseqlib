@@ -2,6 +2,8 @@
 ## Utilities
 ##
 import os
+import sys
+import time
 
 def make_dir(dirpath):
     if os.path.isfile(dirpath):
@@ -12,6 +14,14 @@ def make_dir(dirpath):
         os.makedirs(dirpath)
     except OSError:
         pass
+
+    
+def gunzip_file(filename, output_dir):
+    print "Unzipping: %s into directory" %(filename,
+                                           output_dir)
+    os.chdir(output_dir)
+    os.system("gunzip %s" %(filename))
+    
     
 def pathify(filename):
     return os.path.abspath(os.path.expanduser(filename))

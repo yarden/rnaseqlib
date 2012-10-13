@@ -7,21 +7,34 @@ import time
 
 import rnaseqlib
 import rnaseqlib.utils as utils
+import rnaseqlib.init as init
 
-from rnaseqlib.genome_urls import *
+from rnaseqlib.init.genome_urls import *
 
-def get_ucsc_knowngenes(genome):
-    return "%s/database/%s" %(UCSC_TABLES_URL,
+import rnaseqlib.init.download_utils as download_utils
+
+
+def get_ucsc_database(genome):
+    return "%s/%s/database" %(UCSC_GOLDENPATH,
                               genome)
 
+def get_ucsc_knowngene_url(genome):
+    ucsc_database = get_ucsc_database(genome)
+    ucsc_knowngene_url = "%s/knownGene.txt.gz" %(ucsc_database)
+    return ucsc_knowngene_url
+    
 
 def download_ucsc_tables(genome,
-                         settings_info):
+                         output_dir):
     """
     Download all relevant UCSC tables for a given genome.
     """
-    knowngenes_url = get_ucsc_knowngenes(genome)
-    utils.download_url(knowngenes_url)
+    tables_outdir = os.path.join(output_dir, "ucsc")
+    utils.make_dir(tables_outdir)
+    print "Download UCSC tables..."
+    print "  - Output dir: %s" %(tables_outdir)
+    knowngenes_url = get_ucsc_knowngene_url(genome)
+    download_utils.download_url(knowngenes_url, tables_outdir)
     
 
 def convert_knowngenes_to_gtf():
