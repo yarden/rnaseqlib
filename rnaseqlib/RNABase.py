@@ -9,7 +9,7 @@ import glob
 
 import rnaseqlib
 import rnaseqlib.init as init
-import rnaseqlib.init as init
+import rnaseqlib.utils as utils
 from rnaseqlib.init import download_seqs, tables
 
 
@@ -24,6 +24,7 @@ class RNABase:
         self.output_dir = os.path.join(output_dir,
                                        genome)
         self.with_index = with_index
+        self.indices_dir = None
         
 
     def download_seqs(self):
@@ -62,10 +63,36 @@ class RNABase:
         print "Building indices.."
         fasta_files = self.get_bowtie_index_fasta_files()
         num_files = len(fasta_files)
+        if num_files == 0:
+            print "WARNING: No FASTA files to build index from."
+            return
+        self.indices_dir = os.path.join(self.output_dir, "indices")
+        utils.make_dir(self.indices_dir)
+        ##
+        ## Check if the Bowtie index is already present, if so skip
+        ##
+        # Check for Bowtie 1 indices
+        print self.indices_dir
+        indices = glob.glob(os.path.join(self.indices_dir,
+                                         "%s*.ebwt" %(self.genome)))
+        # Check for Bowtie 2 indices
+        indices += glob.glob(os.path.join(self.indices_dir,
+                                          "%s*.bt2"))
+        if len(indices) >= 1:
+            print "Found Bowtie index files in %s. Skipping index build.."
+                %(self.indices_dir)
+            return
         print "Building Bowtie index from %d files" %(num_files)
         fasta_str = ",".join(fasta_files)
-        print fasta_str
-        bowtie_build_cmd = "bowtie-build %s %s"
+        # Change to indices directory
+        os.chdir(self.indices_dir)
+        # Use the genome as basename for the bowtie index
+        bowtie_build_cmd = "bowtie-build %s %s" %(fasta_str,
+                                                  self.genome)
+        t1 = time.time()
+        os.system(bowtie_build_cmd)
+        t2 = time.time()
+        print "Bowtie build took %.2f minutes" %((t2 - t1) / 60.)
 
 
     def get_bowtie_index_fasta_files(self):
