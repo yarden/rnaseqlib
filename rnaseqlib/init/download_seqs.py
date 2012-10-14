@@ -116,11 +116,14 @@ def download_misc_seqs(genome, output_dir):
     for seq_label, access_id in misc_seqs.iteritems():
         if access_id is None:
             continue
+        output_filename = os.path.join(misc_outdir, "%s.fa" %(seq_label))
+        if os.path.isfile(output_filename):
+            print "%s exists. Skipping download.." %(seq_label)
+            continue
         print "Downloading: %s (NCBI: %s)" %(seq_label,
                                              access_id)
         url_filename = download_ncbi_fasta(access_id, ncbi_outdir)
         fasta_in = fasta_utils.fasta_read(url_filename)
-        output_filename = os.path.join(misc_outdir, "%s.fa" %(seq_label))
         fasta_out = open(output_filename, "w")
         print "  - Writing to: %s" %(output_filename)
         # Fetch first FASTA record

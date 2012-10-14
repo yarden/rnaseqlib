@@ -18,8 +18,10 @@ setup(name = 'rnaseqlib',
       description = 'RNA-Seq analysis pipeline',
 #      license = 'MIT License',
       author = 'Yarden Katz,Eric T. Wang,Noah Spies',
-#      scripts = [],
 #      data_files = [],
+      # distutils always uses forward slashes
+      scripts = ['scripts/rna_pipeline.py',
+                 'scripts/gtf2gff3.pl'],
       # Required modules
       install_requires = [
 #          "matplotlib >= 1.1.0",

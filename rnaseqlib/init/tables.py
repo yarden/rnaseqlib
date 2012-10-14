@@ -55,9 +55,16 @@ def download_ucsc_tables(genome,
     ucsc_tables = get_ucsc_tables_urls(genome)
     for table_label, table_url in ucsc_tables:
         print "Downloading %s" %(table_label)
+        # If the table exists in uncompressed form, don't download it
+        table_filename = os.path.join(tables_outdir, table_label)
+        unzipped_table_fname = table_filename[0:-3]
+        if os.path.isfile(unzipped_table_fname):
+            print "Got %s already. Skipping download.." \
+                %(unzipped_table_fname)
+            continue
         # Download table
-        table_filename = download_utils.download_url(table_url,
-                                                     tables_outdir)
+        download_utils.download_url(table_url,
+                                    tables_outdir)
         # Uncompress table
         utils.gunzip_file(table_filename, tables_outdir)
         
@@ -67,10 +74,10 @@ def process_ucsc_tables(genome, output_dir):
     Process UCSC tables and reformat them as needed.
     """
     tables_outdir = os.path.join(output_dir, "ucsc")
-    # Convert the UCSC knownGene format to GTF
+    # Convert the UCSC knownGene format to GTF/GFF
     convert_knowngene_to_gtf(tables_outdir)
-        
-
+    
+    
 def convert_knowngene_to_gtf(tables_outdir):
     """
     Convert UCSC to knowngenes from genePred
@@ -80,18 +87,24 @@ def convert_knowngene_to_gtf(tables_outdir):
                                       "knownGene.txt")
     knowngene_gtf_filename = os.path.join(tables_outdir,
                                           "knownGene.gtf")
+    knowngene_gff_filename = os.path.join(tables_outdir,
+                                          "knownGene.gff")
     print "Converting knownGene format to GTF..."
     if not os.path.isfile(knowngene_filename):
         print "Error: Cannot find %s" %(knowngene_filename)
         sys.exit(1)
-    if os.path.isfile(knowngene_gtf_filename):
-        print "  - GTF exists, skipping conversion.."
-        return knowngene_gtf_filename
-    convert_cmd = "cat %s | cut -f1-10 | genePredToGtf file stdin %s" \
+    convert_cmd = "cat %s | cut -f1-10 | genePredToGtf file std %s -source=knownGene" \
         %(knowngene_filename,
           knowngene_gtf_filename)
-    os.system(convert_cmd)
-    return knowngene_gtf_filename
+    if not os.path.isfile(knowngene_gtf_filename):
+        os.system(convert_cmd)
+    gtf2gff_cmd = "gtf2gff3.pl"
+    convert_gff_cmd = "%s %s > %s" %(gtf2gff_cmd,
+                                     knowngene_gtf_filename,
+                                     knowngene_gff_filename)
+    if not os.path.isfile(knowngene_gff_filename):
+        os.system(convert_gff_cmd)
+    return knowngene_gtf_filename, knowngene_gff_filename
     
 
 # import os
