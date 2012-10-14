@@ -93,7 +93,7 @@ def convert_knowngene_to_gtf(tables_outdir):
     if not os.path.isfile(knowngene_filename):
         print "Error: Cannot find %s" %(knowngene_filename)
         sys.exit(1)
-    convert_cmd = "cat %s | cut -f1-10 | genePredToGtf file std %s -source=knownGene" \
+    convert_cmd = "cat %s | cut -f1-10 | genePredToGtf file stdin %s -source=knownGene" \
         %(knowngene_filename,
           knowngene_gtf_filename)
     if not os.path.isfile(knowngene_gtf_filename):
