@@ -1,13 +1,31 @@
-Overview of RNA-Seq pipeline
-=====
+Overview of RNA-Seq pipeline modules
+====================================
 
-Three step pipeline:
+init/:
+  Initialization of pipeline, downloading and post-processing of relevant files
 
-1. Map data (parallelized per sample)
-2. Perform QC
-3. Compute gene expression values/other statistics
+genes/:
+   Utilities related to genes, representation of gene tables
 
-A complete pipeline does 1, 2, 3 sequentially for each sample.
+events/:
+   Alternative splicing events related code
 
+settings/:
+   Settings parsing code
+
+cluster_utils/:
+   Code related to running jobs on cluster
+
+mapping/:
+   Mapping utilities
+
+clip/:
+   CLIP-Seq related
+
+ribo/:
+   Ribo-Seq related
+
+selex/:
+   Selex related
 
 
