@@ -79,7 +79,7 @@ class RNABase:
         indices += glob.glob(os.path.join(self.indices_dir,
                                           "%s*.bt2"))
         if len(indices) >= 1:
-            print "Found Bowtie index files in %s. Skipping index build.."
+            print "Found Bowtie index files in %s. Skipping index build.." \
                 %(self.indices_dir)
             return
         print "Building Bowtie index from %d files" %(num_files)
