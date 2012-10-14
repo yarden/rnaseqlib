@@ -5,6 +5,7 @@
 import os
 import sys
 import time
+import glob
 
 import rnaseqlib
 import rnaseqlib.init as init
@@ -59,7 +60,33 @@ class RNABase:
             print "Not building indices."
             return
         print "Building indices.."
-        pass
+        fasta_files = self.get_bowtie_index_fasta_files()
+        num_files = len(fasta_files)
+        print "Building Bowtie index from %d files" %(num_files)
+        fasta_str = ",".join(fasta_files)
+        print fasta_str
+        bowtie_build_cmd = "bowtie-build %s %s"
+
+
+    def get_bowtie_index_fasta_files(self):
+        """
+        Return a list of genome FASTA files
+        to be included in the bowtie index.
+        """
+        genome_dir = os.path.join(self.output_dir, "genome")
+        misc_dir = os.path.join(self.output_dir, "misc")
+        if not os.path.isdir(genome_dir):
+            print "Error: Cannot find genome directory %s" \
+                %(genome_dir)
+            sys.exit(1)
+        # Get the genome sequence FASTA filenames
+        genome_fasta_files = map(lambda f: os.path.join(genome_dir, f),
+                                 glob.glob(os.path.join(genome_dir, "*.fa")))
+        # Get the misc. sequence FASTA filenames
+        misc_fasta_files = map(lambda f: os.path.join(misc_dir, f),
+                               glob.glob(os.path.join(misc_dir, "*.fa")))
+        fasta_files = genome_fasta_files + misc_fasta_files
+        return fasta_files
 
 
     def initialize(self):
@@ -70,5 +97,6 @@ class RNABase:
         print "Initializing RNA base..."
         self.download_seqs()
         self.download_tables()
+        self.build_indices()
         
         

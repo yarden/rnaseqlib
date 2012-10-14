@@ -15,6 +15,7 @@
 import os
 import sys
 import time
+import glob
 
 import rnaseqlib
 import rnaseqlib.utils as utils
@@ -57,21 +58,30 @@ def download_genome_seq(genome,
     print "  - Output dir: %s" %(output_dir)
     output_dir = os.path.join(output_dir, "genome")
     if os.path.isdir(output_dir):
-        print "Directory %s exists; skipping downloading of genome." \
-            %(output_dir)
-        return None
+        dir_files = os.listdir(output_dir)
+        if len(dir_files) >= 1:
+            print "Directory %s exists and contains files; skipping download of genome..." \
+                %(output_dir)
+            return None
     utils.make_dir(output_dir)
     # Change to output directory
     os.chdir(output_dir)
     ##
     ## Download the genome sequence files
     ##
-    genome_url = "%s/%s/chromosomes/" %(UCSC_GOLDENPATH,
+    genome_url = "%s/%s/chromosomes/" %(UCSC_GOLDENPATH_FTP,
                                         genome)
     # Fetch all chromosome sequence files
-    print "Downloading genome files from: %s" %(genome_url)
-    download_utils.wget(download_cmd)
-    print "Downloading took %.2f minutes" %((t2 - t1)/60.)
+    #download_utils.wget(os.path.join(genome_url, "*"))
+
+    # Download only chrom1
+    download_utils.wget(os.path.join(genome_url, "chr13_random.fa.gz"))
+    
+    # Remove random chromosome contigs
+    for fname in glob.glob(os.path.join(output_dir, "*.fa.gz")):
+        if "_" in fname:
+            print "Deleting: %s" %(fname)
+            os.remove(fname)
     ##
     ## Uncompress the files
     ##
@@ -101,7 +111,9 @@ def download_misc_seqs(genome, output_dir):
     # misc sequences and download them
     misc_seqs = NCBI_MISC_SEQS[organism]
     ncbi_outdir = os.path.join(output_dir, "ncbi")
+    misc_outdir = os.path.join(output_dir, "misc")
     utils.make_dir(ncbi_outdir)
+    utils.make_dir(misc_outdir)
     for seq_label, access_id in misc_seqs.iteritems():
         if access_id is None:
             continue
@@ -109,7 +121,7 @@ def download_misc_seqs(genome, output_dir):
                                              access_id)
         url_filename = download_ncbi_fasta(access_id, ncbi_outdir)
         fasta_in = fasta_utils.fasta_read(url_filename)
-        output_filename = os.path.join(ncbi_outdir, "%s.fa" %(seq_label))
+        output_filename = os.path.join(misc_outdir, "%s.fa" %(seq_label))
         fasta_out = open(output_filename, "w")
         print "  - Writing to: %s" %(output_filename)
         # Fetch first FASTA record
