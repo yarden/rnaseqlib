@@ -9,7 +9,10 @@ use Pod::Usage;
 use Net::FTP;
 use Bio::SeqFeature::Lite;
 use FindBin qw($Bin);
-use lib "$Bin/../lib";
+#use lib "$Bin/../lib";
+# Load the biotoolbox libraries
+# from a different location
+use lib "$Bin/biotblib";
 use tim_data_helper qw(
 	format_with_commas
 );
