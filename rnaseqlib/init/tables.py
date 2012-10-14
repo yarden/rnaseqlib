@@ -18,8 +18,11 @@ UCSC_TABLE_LABELS = ["knownGene.txt.gz",
                      "kgXref.txt.gz",
                      "knownToEnsembl.txt.gz",
                      "knownAlt.txt.gz",
-                     "knownIsoforms.txt.gz"]
-
+                     "knownIsoforms.txt.gz",
+                     # Ensembl-tables
+                     "ensGene.txt.gz",
+                     "ensemblToGeneName.txt.gz",
+                     "ensGtp.txt.gz"]
 
 def get_ucsc_database(genome):
     return "%s/%s/database" %(UCSC_GOLDENPATH,
