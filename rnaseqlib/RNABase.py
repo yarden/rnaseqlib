@@ -10,7 +10,8 @@ import glob
 import rnaseqlib
 import rnaseqlib.init as init
 import rnaseqlib.utils as utils
-from rnaseqlib.init import download_seqs, tables
+import rnaseqlib.tables as tables
+from rnaseqlib.init import download_seqs
 
 
 class RNABase:
