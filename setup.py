@@ -29,7 +29,8 @@ setup(name = 'rnaseqlib',
           "numpy >= 1.5.0",
           "scipy >= 0.9.0",
           "pysam >= 0.6.0",
-          "pandas"
+          "misopy >= 0.4.7",
+          "pandas >= 0.8.1"
           ],
       platforms = 'ALL',
       keywords = ['bioinformatics', 'sequence analysis',

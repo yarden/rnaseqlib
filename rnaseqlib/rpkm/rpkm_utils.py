@@ -33,7 +33,6 @@ def rpkm_from_gff_aligned_bam(bam_filename,
 
     loaded_gff = False
     ref_gff_recs = None
-
     last_chrom = None
 
     # Map of gff region to read counts
