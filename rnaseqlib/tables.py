@@ -5,18 +5,182 @@ import os
 import sys
 import time
 
+import pandas
+
 import rnaseqlib
 import rnaseqlib.utils as utils
 import rnaseqlib.init as init
+import rnaseqlib.genes.exons as exons
 from rnaseqlib.paths import *
 
 from rnaseqlib.init.genome_urls import *
 
 import rnaseqlib.init.download_utils as download_utils
 
-import misopy
-import misopy.gff_utils as gff_utils
-import misopy.exon_utils as exon_utils
+class GeneTable:
+    """
+    Parse gene table.
+    """
+    def __init__(self, table_dir, source):
+        self.table_dir = table_dir
+        self.source = source
+        self.delimiter = "\t"
+        self.table = None
+        # Table indexed by gene
+        self.table_by_gene = None
+        # Load tables
+        self.load_tables()
+        
+
+    def load_tables(self):
+        """
+        Load table.
+        """
+        if self.source == "ensGene":
+            self.load_ensGene_table()
+        elif self.source == "ucsc":
+            self.load_ucsc_table()
+
+            
+    def load_ensGene_table(self):
+        """
+        Load ensGene table. Expects an 'ensGene.txt' and
+        the related 'ensemblToGeneName.txt' file.
+
+        ensGene.txt format:
+        
+          `bin` smallint(5) unsigned NOT NULL,
+          `name` varchar(255) NOT NULL,
+          `chrom` varchar(255) NOT NULL,
+          `strand` char(1) NOT NULL,
+          `txStart` int(10) unsigned NOT NULL,
+          `txEnd` int(10) unsigned NOT NULL,
+          `cdsStart` int(10) unsigned NOT NULL,
+          `cdsEnd` int(10) unsigned NOT NULL,
+          `exonCount` int(10) unsigned NOT NULL,
+          `exonStarts` longblob NOT NULL,
+          `exonEnds` longblob NOT NULL,
+          `score` int(11) default NULL,
+          `name2` varchar(255) NOT NULL,
+          `cdsStartStat` enum('none','unk','incmpl','cmpl') NOT NULL,
+          `cdsEndStat` enum('none','unk','incmpl','cmpl') NOT NULL,
+          `exonFrames` longblob NOT NULL,
+
+        ensemblToGeneName.txt format:
+
+          `name` varchar(255) NOT NULL,
+          `value` varchar(255) NOT NULL,        
+        """
+        self.ensGene_header = ["bin",
+                               "name",
+                               "chrom",
+                               "strand",
+                               "txStart",
+                               "txEnd",
+                               "cdsStart",
+                               "cdsEnd",
+                               "exonCount",
+                               "exonStarts",
+                               "exonEnds",
+                               "score",
+                               "name2",
+                               "cdsStartStat",
+                               "cdsEndStat",
+                               "exonFrames"]
+        self.ensemblToGeneName_header = ["name",
+                                         "value"]
+        ensGene_filename = os.path.join(self.table_dir,
+                                        "ensGene.txt")
+        if not os.path.isfile(ensGene_filename):
+            print "Error: Cannot find ensGene table %s" \
+                %(ensGene_filename)
+            sys.exit(1)
+        ensGene_name_filename = os.path.join(self.table_dir,
+                                             "ensemblToGeneName.txt")
+        if not os.path.isfile(ensGene_name_filename):
+            print "Error: Cannot find ensemblToGeneName table %s" \
+                %(ensGene_name_filename)
+            sys.exit(1)
+        # Load the main ensGene table
+        main_table = pandas.read_table(ensGene_filename,
+                                       sep=self.delimiter,
+                                       names=self.ensGene_header)
+        # Load ensemblToGeneName table and add this info to
+        # main table
+        ensGene_to_name = pandas.read_table(ensGene_name_filename,
+                                            sep=self.delimiter,
+                                            names=self.ensemblToGeneName_header)
+        print ensGene_to_name
+        self.table = pandas.merge(main_table, ensGene_to_name)
+        print "=--->",self.table
+        # Load table by gene
+        print self.table.set_index("name2"), "**"
+        self.table_by_gene = self.table.set_index("name2")
+        print "--->",self.table_by_gene
+        
+
+    def get_const_exons(self, base_diff=5):
+        if self.source == "ensGene":
+            self.get_ensGene_const_exons(base_diff)
+        else:
+            raise Exception, "Not implemented."
+
+
+    def parse_string_int_list(self, int_list_as_str,
+                              delim=","):
+        str_list = int_list_as_str.split(delim)
+        if int_list_as_str.endswith(delim):
+            # Strip off last element if list ends
+            # in the delimiter we split in
+            str_list = str_list[0:-1]
+        ints = array(map(int, str_list))
+        return ints
+
+
+    def exon_coords_from_trans(self, trans):
+        """
+        Parse exons from ensGene transcript.
+        """
+        exon_starts = self.parse_string_int_list(trans["exonStarts"].values[0])
+        exon_ends = self.parse_string_int_list(trans["exonEnds"].values[0])
+        return exon_starts, exon_ends 
+        
+
+    def get_ensGene_const_exons(self, base_diff):
+        """
+        Load constitutive exons from ensGene table.
+        """
+        const_exons = []
+        print self.table_by_gene, " <<"
+        for gene in self.table_by_gene.index:
+            print "gene: ", gene
+            # Get transcripts for the current gene
+            transcripts = self.table_by_gene.ix[gene]
+            first_transcript = transcripts.ix[0]
+            rest_transcripts = transcripts.ix[1:]
+            # Get the exon coordinates in the first transcript
+            first_starts, first_ends = self.exon_coords_from_trans(first_transcript)
+            # For each exon in the first transcript, see if it
+            # is constitutive wrt to other transcripts
+            for exon_start, exon_end in zip(first_starts, first_ends):
+                print "Checking if: ", exon_start, exon_end
+            # for trans in rest_transcripts:
+            #     # Compute difference with other exons
+            #     curr_starts, curr_ends = self.exon_coords_from_trans(trans)
+            #     start_diffs = abs(exon_start - curr_starts)
+            #     end_diffs = abs(exon_end - curr_ends)
+            #     if start_diffs 
+        const_exons = pandas.DataFrame(const_exons)
+        return const_exons
+        
+
+    def load_ucsc_table(self):
+        pass
+        
+
+#import misopy
+#import misopy.gff_utils as gff_utils
+#import misopy.exon_utils as exon_utils
 
 # Labels of UCSC tables to download
 UCSC_TABLE_LABELS = ["knownGene.txt.gz",
@@ -88,8 +252,14 @@ def process_ucsc_tables(genome, output_dir):
     convert_knowngene_to_gtf(tables_outdir)
     # Convert the various Ensembl tables to GFF3 format
     convert_tables_to_gff(tables_outdir)
+    
+    ##
+    ## Load tables into gene table object
+    ##
+    ensGene_table = GeneTable(tables_outdir, "ensGene")
+    ensGene_table.get_const_exons()
     # Compute constitutive exons and output them as files
-    output_const_exons(tables_outdir)
+    #output_const_exons(tables_outdir)
 
     
 def output_const_exons(tables_dir,
@@ -113,9 +283,13 @@ def output_const_exons(tables_dir,
         if os.path.isfile(exons_output_filename):
             print "  - File %s exists, skipping.." %(exons_output_filename)
         # Output constitutive exons
-        exon_utils.get_const_exons_by_gene(gff_filename,
-                                           const_exons_outdir,
-                                           output_filename=exons_output_filename)
+        ##
+        ## TODO: Re-write this.  Write code from scratch to get
+        ## 'approximately' constitutive exons in a faster way
+        ## in 'genes/exons.py'. Map transcripts to exons
+        ## then compute overlap
+        ## 
+        tables.get_const_exons(gff_filename, exons_output_filename)
         # cds_output_filename = os.path.join(tables_dir,
         #                                    "%s.cds_exons.gff3" %(table))
         # if os.path.isfile(cds_output_filename):
