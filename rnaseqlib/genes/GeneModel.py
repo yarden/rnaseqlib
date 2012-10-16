@@ -22,15 +22,18 @@ class Gene:
         # exons are constitutive
         if num_trans == 1:
             return self.transcripts[0].parts
-        first_trans_exons = self.transcripts[0]
+        first_trans_exons = self.transcripts[0].parts
         for exon in first_trans_exons:
             # Compare the first exon of the transcript
             # to all other transcripts' exons
             const_exon = True
             for curr_trans in self.transcripts[1:]:
                 start_end_diffs = [(abs(exon.start - curr_exon.start),
-                                    abs(exon.end - curr_exon.end))\
+                                    abs(exon.end - curr_exon.end)) \
                                     for curr_exon in curr_trans.parts]
+                print "start end diffs: "
+                print start_end_diffs
+                raise Exception
                 # If all of the current exon start/end diffs
                 # are greater than 'base_diff', then the exon is
                 # not considered constitutive
@@ -38,6 +41,12 @@ class Gene:
                 # if all(start_end_diffs, axis=1) > base_diff
                 # ...
                 const_exon = False
+
+
+    def __repr__(self):
+        return "GeneModel(%s, %s, %s)" %(self.label,
+                                         self.chrom,
+                                         self.strand)
                 
 
 
