@@ -14,15 +14,13 @@ class Gene:
         self.strand = strand
         
 
-    def get_const_exons(self):
+    def get_const_exons(self, base_diff=6):
         """
         Get constitutive exons.
         """
         pass
 
-    
 
-    
 
 class Transcript:
     """
