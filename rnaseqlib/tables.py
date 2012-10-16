@@ -17,6 +17,9 @@ from rnaseqlib.init.genome_urls import *
 
 import rnaseqlib.init.download_utils as download_utils
 
+import numpy
+from numpy import *
+
 class GeneTable:
     """
     Parse gene table.
@@ -26,6 +29,8 @@ class GeneTable:
         self.source = source
         self.delimiter = "\t"
         self.table = None
+        self.genes = None
+        self.genes_list = []
         # Table indexed by gene
         self.table_by_gene = None
         # Load tables
@@ -110,13 +115,47 @@ class GeneTable:
         ensGene_to_name = pandas.read_table(ensGene_name_filename,
                                             sep=self.delimiter,
                                             names=self.ensemblToGeneName_header)
-        print ensGene_to_name
         self.table = pandas.merge(main_table, ensGene_to_name)
-        print "=--->",self.table
         # Load table by gene
-        print self.table.set_index("name2"), "**"
-        self.table_by_gene = self.table.set_index("name2")
-        print "--->",self.table_by_gene
+        self.table_by_gene = self.table.set_index("name2")#self.table#self.load_by_genes()
+        # Get a genes list
+        self.genes_list = self.load_ensGene_list()
+        self.genes = self.load_by_genes()
+
+
+    def load_by_genes(self):
+        """
+        Load table into gene structures.
+        """
+        if self.source == "ensGene":
+            self.load_ensGene_by_genes()
+        else:
+            raise Exception, "Not implemented."
+
+
+    def load_ensGene_by_genes(self):
+        """
+        Load ensGene table as genes.
+        """
+        num_genes = len(self.genes_list)
+        print "Loading %d genes.." %(num_genes)
+        for gene in self.genes_list:
+            
+            # ...
+            pass
+
+    
+    def load_ensGene_list(self):
+        """
+        Get (a non-redundant) list of genes present in the ensGene
+        table.
+        """
+        seen_genes = {}
+        for gene in self.table_by_gene.index:
+            if gene not in seen_genes:
+                self.genes_list.append(gene)
+                seen_genes[gene] = True
+        return self.genes_list
         
 
     def get_const_exons(self, base_diff=5):
@@ -133,17 +172,25 @@ class GeneTable:
             # Strip off last element if list ends
             # in the delimiter we split in
             str_list = str_list[0:-1]
-        ints = array(map(int, str_list))
+        ints = map(int, str_list)
         return ints
 
 
-    def exon_coords_from_trans(self, trans):
+    def exon_coords_from_transcripts(self, transcripts):
         """
         Parse exons from ensGene transcript.
         """
-        exon_starts = self.parse_string_int_list(trans["exonStarts"].values[0])
-        exon_ends = self.parse_string_int_list(trans["exonEnds"].values[0])
-        return exon_starts, exon_ends 
+#        exon_starts = self.parse_string_int_list(transcripts["exonStarts"].values)
+#        exon_ends = self.parse_string_int_list(transcripts["exonEnds"].values)
+        if type(transcripts["exonStarts"]) == str:
+            exon_starts_vals = [transcripts["exonStarts"]]
+            exon_ends_vals = [transcripts["exonEnds"]]
+        else:
+            exon_starts_vals = transcripts["exonStarts"].values
+            exon_ends_vals = transcripts["exonEnds"].values
+        exon_starts = map(self.parse_string_int_list, exon_starts_vals)
+        exon_ends = map(self.parse_string_int_list, exon_ends_vals)
+        return exon_starts, exon_ends
         
 
     def get_ensGene_const_exons(self, base_diff):
@@ -151,11 +198,16 @@ class GeneTable:
         Load constitutive exons from ensGene table.
         """
         const_exons = []
-        print self.table_by_gene, " <<"
         for gene in self.table_by_gene.index:
-            print "gene: ", gene
+            if gene != "ENSMUSG00000025902": continue
             # Get transcripts for the current gene
-            transcripts = self.table_by_gene.ix[gene]
+            transcripts = self.table[self.table["name2"] == gene]
+            print "TRANSCRIPTS: "
+            print transcripts
+            exon_starts, exon_ends = self.exon_coords_from_transcripts(transcripts)
+            print exon_starts
+            print exon_ends
+            raise Exception
             first_transcript = transcripts.ix[0]
             rest_transcripts = transcripts.ix[1:]
             # Get the exon coordinates in the first transcript
