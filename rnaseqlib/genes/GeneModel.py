@@ -1,5 +1,3 @@
-
-
 ##
 ## Gene Model
 ##
@@ -24,7 +22,7 @@ class Gene:
 
 class Transcript:
     """
-    Transcript class.
+    Transcript of a gene.
     """
     def __init__(self, parts, gene):
         self.gene = gene
@@ -33,7 +31,7 @@ class Transcript:
 
 class Part:
     """
-    Transcript part.
+    Part of a transcript.
     """
     def __init__(self, start, end, chrom, strand):
         self.start = start
