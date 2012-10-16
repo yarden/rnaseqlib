@@ -11,11 +11,13 @@ import rnaseqlib
 import rnaseqlib.utils as utils
 import rnaseqlib.init as init
 import rnaseqlib.genes.exons as exons
+import rnaseqlib.genes.GeneModel as GeneModel
+
 from rnaseqlib.paths import *
-
 from rnaseqlib.init.genome_urls import *
-
 import rnaseqlib.init.download_utils as download_utils
+
+from collections import defaultdict
 
 import numpy
 from numpy import *
@@ -29,7 +31,7 @@ class GeneTable:
         self.source = source
         self.delimiter = "\t"
         self.table = None
-        self.genes = None
+        self.genes = []
         self.genes_list = []
         # Table indexed by gene
         self.table_by_gene = None
@@ -109,7 +111,11 @@ class GeneTable:
         # Load the main ensGene table
         main_table = pandas.read_table(ensGene_filename,
                                        sep=self.delimiter,
-                                       names=self.ensGene_header)
+                                       names=self.ensGene_header,
+                                       converters={"exonStarts":
+                                                   self.parse_string_int_list,
+                                                   "exonEnds":
+                                                   self.parse_string_int_list})
         # Load ensemblToGeneName table and add this info to
         # main table
         ensGene_to_name = pandas.read_table(ensGene_name_filename,
@@ -134,15 +140,85 @@ class GeneTable:
 
 
     def load_ensGene_by_genes(self):
+        import csv
+        ensGene_filename = os.path.join(self.table_dir,
+                                        "ensGene.txt")
+        t1 = time.time()
+        table_in = csv.DictReader(open(ensGene_filename),
+                                  delimiter="\t",
+                                  fieldnames=self.ensGene_header)
+        self.genes_table = defaultdict(list)
+        for gene in table_in:
+            self.genes_table[gene["name2"]].append(gene)
+        # Convert genes into gene models
+        for gene_id, gene_entries in self.genes_table.iteritems():
+            gene = self.ensGene_entries_to_gene(gene_id, gene_entries)
+            self.genes.append(gene)
+        t2 = time.time()
+        print "Loading took %.2f secs" %(t2 - t1)
+#        raise Exception
+
+
+    def ensGene_entries_to_gene(self, gene_id, gene_entries):
+        """
+        Convert a set of ensGene entries related to a gene
+        into a GeneModel. 'gene' is the gene ID and 'gene_entries'
+        is a list of DictReader entries.
+        """
+        all_transcripts = []
+        for entry in gene_entries:
+            chrom = entry["chrom"]
+            strand = entry["strand"]
+            exon_starts = self.parse_string_int_list(entry["exonStarts"])
+            exon_ends = self.parse_string_int_list(entry["exonEnds"])
+            exon_coords = zip(*[exon_starts, exon_ends])
+            parts = [GeneModel.Part(exon[0], exon[1], chrom, strand) \
+                     for exon in exon_coords]
+            transcript_id = entry["name"]
+            transcript = GeneModel.Transcript(parts, chrom, strand,
+                                              label=transcript_id)
+            all_transcripts.append(transcript)
+        gene_model = GeneModel.Gene(all_transcripts, chrom, strand,
+                                    label=gene_id)
+        return gene_model
+
+
+
+    def load_ensGene_by_genes_pandas(self):
         """
         Load ensGene table as genes.
         """
         num_genes = len(self.genes_list)
         print "Loading %d genes.." %(num_genes)
+        t1 = time.time()
         for gene in self.genes_list:
-            
-            # ...
+#            if gene != "ENSMUSG00000025902": continue
+            # Get all transcripts related to gene
+#            transcripts = self.table[self.table["name2"] == gene]
+            transcripts = self.table_by_gene.ix["ENSMUSG00000025902"]
             pass
+            # Index by transcripts
+#            transcripts = transcripts.set_index("name")
+#            exon_starts = transcripts["exonStarts"]
+            # for trans_name in transcripts.index:
+            #     curr_trans = transcripts.ix[trans_name]
+            #     # Get chrom and strand
+            #     chrom = curr_trans["chrom"]
+            #     strand = curr_trans["strand"]
+            #     exon_starts = curr_trans["exonStarts"]
+            #     exon_ends = curr_trans["exonEnds"]
+            #     exon_coords = zip(*[exon_starts, exon_ends])
+            #     parts = [GeneModel.Part(exon[0], exon[1],
+            #                             chrom, strand) \
+            #              for exon in exon_coords]
+            #     transcript = GeneModel.Transcript(parts, chrom, strand,
+            #                                       label=trans_name)
+            #     all_transcripts.append(transcript)
+            #self.genes.append(transcripts)
+        t2 = time.time()
+        print "Loading took: %.2f secs" %(t2 - t1)
+        raise Exception
+            
 
     
     def load_ensGene_list(self):
@@ -158,11 +234,10 @@ class GeneTable:
         return self.genes_list
         
 
-    def get_const_exons(self, base_diff=5):
-        if self.source == "ensGene":
-            self.get_ensGene_const_exons(base_diff)
-        else:
-            raise Exception, "Not implemented."
+    def get_const_exons(self, base_diff=6):
+        for gene in self.genes:
+            const_exons = gene.get_const_exons(base_diff=base_diff)
+            
 
 
     def parse_string_int_list(self, int_list_as_str,
@@ -172,7 +247,7 @@ class GeneTable:
             # Strip off last element if list ends
             # in the delimiter we split in
             str_list = str_list[0:-1]
-        ints = map(int, str_list)
+        ints = tuple(map(int, str_list))
         return ints
 
 
@@ -191,39 +266,6 @@ class GeneTable:
         exon_starts = map(self.parse_string_int_list, exon_starts_vals)
         exon_ends = map(self.parse_string_int_list, exon_ends_vals)
         return exon_starts, exon_ends
-        
-
-    def get_ensGene_const_exons(self, base_diff):
-        """
-        Load constitutive exons from ensGene table.
-        """
-        const_exons = []
-        for gene in self.table_by_gene.index:
-            if gene != "ENSMUSG00000025902": continue
-            # Get transcripts for the current gene
-            transcripts = self.table[self.table["name2"] == gene]
-            print "TRANSCRIPTS: "
-            print transcripts
-            exon_starts, exon_ends = self.exon_coords_from_transcripts(transcripts)
-            print exon_starts
-            print exon_ends
-            raise Exception
-            first_transcript = transcripts.ix[0]
-            rest_transcripts = transcripts.ix[1:]
-            # Get the exon coordinates in the first transcript
-            first_starts, first_ends = self.exon_coords_from_trans(first_transcript)
-            # For each exon in the first transcript, see if it
-            # is constitutive wrt to other transcripts
-            for exon_start, exon_end in zip(first_starts, first_ends):
-                print "Checking if: ", exon_start, exon_end
-            # for trans in rest_transcripts:
-            #     # Compute difference with other exons
-            #     curr_starts, curr_ends = self.exon_coords_from_trans(trans)
-            #     start_diffs = abs(exon_start - curr_starts)
-            #     end_diffs = abs(exon_end - curr_ends)
-            #     if start_diffs 
-        const_exons = pandas.DataFrame(const_exons)
-        return const_exons
         
 
     def load_ucsc_table(self):
