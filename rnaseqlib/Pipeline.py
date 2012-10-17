@@ -38,11 +38,6 @@ class Sample:
         self.sample_type = None
         if self.settings_info is not None:
             self.sample_type = self.settings_info["pipeline"]["data_type"]
-        # Top-level output dirs
-        self.toplevel_dirs = ["rawdata",
-                              "mapping",
-                              "qc",
-                              "analysis"]
 
     def __str__(self):
         return "Sample(%s, %s, %s)" %(self.label,
@@ -88,6 +83,11 @@ class Pipeline:
         self.pipeline_outdirs = {}
         # QC objects for each sample in pipeline
         self.qc_objects = {}
+        # Top-level output dirs
+        self.toplevel_dirs = ["rawdata",
+                              "mapping",
+                              "qc",
+                              "analysis"]
         self.init_outdirs()
         # QC header: order of QC fields to be outputted
         self.qc_header = []
@@ -212,7 +212,7 @@ class Pipeline:
         # Get the absolute path names, with the prefix input directory,
         # for each sequence file
         sequence_filenames = []
-        input_dir = os.path.abspath(self.settings_info["data"]["indir"])
+        input_dir = utils.pathify(self.settings_info["data"]["indir"])
         for seq_entry in seq_files:
             if len(seq_entry) != 2:
                 print "Error: Must provide a sequence filename and a " \

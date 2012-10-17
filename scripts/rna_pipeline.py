@@ -110,10 +110,10 @@ def main():
 
     if options.run:
         if options.settings == None:
-            settings_filename = utils.pathify(options.settings)
             # Running of pipeline requires settings filename
             print "Error: need --settings"
             sys.exit(1)
+        settings_filename = utils.pathify(options.settings)
         run_pipeline(settings_filename,
                      output_dir)
 

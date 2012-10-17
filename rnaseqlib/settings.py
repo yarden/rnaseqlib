@@ -2,25 +2,16 @@ import ConfigParser
 from collections import defaultdict
 import json
 
-# def tryEval(s):
-#   try:
-#     return eval(s, {}, {})
-#   except:
-#     return s
-
-# def evalDict(d):
-#     for k, v in d.iteritems():
-# 	d[k] = tryEval(v)
-#     return d
+import default_settings
 
 def load_settings(config_filename,
                   # Float parameters
                   FLOAT_PARAMS=[],
                   # Integer parameters
-                  INT_PARAMS=["num_processors"],
+                  INT_PARAMS=["num_processors",
+                              "paired_end_frag"],
                   # Boolean parameters
-                  BOOL_PARAMS=["paired",
-                               "compressed"],
+                  BOOL_PARAMS=["paired"],
                   # Parameters to be interpreted as Python lists or
                   # data structures,
                   STR_PARAMS=["indir",
@@ -33,6 +24,7 @@ def load_settings(config_filename,
     print "Loading settings from: %s" %(config_filename)
     parsed_settings = config.read(config_filename)
     settings_info = defaultdict(dict)
+    settings_info = default_settings.set_default_values(settings_info)
     for section in config.sections():
         for option in config.options(section):
             if option in FLOAT_PARAMS:

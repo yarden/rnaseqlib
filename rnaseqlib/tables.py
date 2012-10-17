@@ -189,7 +189,7 @@ class GeneTable:
             
 
     def get_ensGene_by_genes(self):
-        print "Loading Ensembl table into genes.."
+        print "Loading Ensembl table into genes..."
         # Main ensGene table
         ensGene_filename = os.path.join(self.table_dir,
                                         "ensGene.txt")
@@ -202,7 +202,7 @@ class GeneTable:
         # Group items by their gene id ("name2" column)
         for gene_id, gene_entries in itertools.groupby(main_table,
                                                        key=operator.itemgetter("name2")):
-            gene_symbol = None
+            gene_symbol = self.na_val
             all_transcripts = []
             for entry in gene_entries:
                 chrom = entry["chrom"]
@@ -320,11 +320,9 @@ class GeneTable:
             transcript = GeneModel.Transcript(parts, chrom, strand,
                                               label=transcript_id)
             all_transcripts.append(transcript)
-#        gene_model = None
         gene_model = GeneModel.Gene(all_transcripts, chrom, strand,
                                     label=gene_id,
                                     gene_symbol=gene_symbol)
-        
         return gene_model
 
 
@@ -337,7 +335,7 @@ class GeneTable:
         print "Loading %d genes.." %(num_genes)
         t1 = time.time()
         for gene in self.genes_list:
-#            if gene != "ENSMUSG00000025902": continue
+#            if gene != "ENSMUSG00000025902" : continue
             # Get all transcripts related to gene
 #            transcripts = self.table[self.table["name2"] == gene]
             transcripts = self.table_by_gene.ix["ENSMUSG00000025902"]

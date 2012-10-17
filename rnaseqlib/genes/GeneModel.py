@@ -74,7 +74,7 @@ class Gene:
                 status = all(start_end_diffs <= base_diff, axis=1)
                 if all(status == False):
                     const_exon = False
-                    # Determined exon is not constitutive, so skip to next exon                    
+                    # Determined exon is not constitutive, so skip to next exon
                     break
             if const_exon:
                 self.const_exons.append(exon)

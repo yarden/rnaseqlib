@@ -72,10 +72,10 @@ def download_genome_seq(genome,
     genome_url = "%s/%s/chromosomes/" %(UCSC_GOLDENPATH_FTP,
                                         genome)
     # Fetch all chromosome sequence files
-    #download_utils.wget(os.path.join(genome_url, "*"))
+    download_utils.wget(os.path.join(genome_url, "*"))
     # Download only chrom17 / chr13 random
-    download_utils.wget(os.path.join(genome_url, "chr17.fa.gz"))    
-    download_utils.wget(os.path.join(genome_url, "chr13_random.fa.gz"))
+    #download_utils.wget(os.path.join(genome_url, "chr17.fa.gz"))    
+    #download_utils.wget(os.path.join(genome_url, "chr13_random.fa.gz"))
     # Remove random chromosome contigs
     for fname in glob.glob(os.path.join(output_dir, "*.fa.gz")):
         if "_" in fname:
