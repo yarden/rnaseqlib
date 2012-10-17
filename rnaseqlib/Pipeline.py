@@ -25,15 +25,21 @@ class Sample:
     def __init__(self, label, samples):
         self.label = label
         self.samples = samples
-        self.grouped = False
+        self.paired = False
+        self.sample_type = None
         # Record if a sample is grouped
         if len(self.samples) > 1:
-            self.grouped = True
+            self.paired = True
+        # Sample type comes from samples info
+        self.sample_type = self.samples[0].sample_type
+        
+            
 
     def __repr__(self):
         samples_str = ",".join([s.label for s in self.samples])
         return "Sample(%s, samples=%s)" \
             %(self.label, samples_str)
+    
 
     def __str__(self):
         return self.__repr__()
@@ -63,6 +69,7 @@ class SampleInfo:
         self.sample_type = None
         if self.settings_info is not None:
             self.sample_type = self.settings_info["pipeline"]["data_type"]
+            
 
     def __str__(self):
         return "SampleInfo(%s, %s, %s)" %(self.label,
@@ -212,7 +219,6 @@ class Pipeline:
         sample_to_group = {}
         group_to_samples = defaultdict(list)
         # Map sample to its group
-        print sample_groups
         for group, samples in sample_groups:
             group = str(group)
             samples = map(str, samples)
@@ -340,20 +346,21 @@ class Pipeline:
                 return sample
         return None
             
-    def run_on_groups(self):
-        groups_job_ids = []
-        for group in self.group:
-            print "Processing group %s" %(group)
+            
+    def run_on_samples(self):
+        samples_job_ids = []
+        for samples in self.samples:
+            print "Processing sample %s" %(sample)
             job_name = "pipeline_run_%s" %(sample.label)
-            sample_cmd = "python %s --run-on-group %s --settings %s --output-dir %s" \
+            sample_cmd = "python %s --run-on-sample %s --settings %s --output-dir %s" \
                 %(PIPELINE_RUN_SCRIPT,
-                  group.label,
+                  sample.label,
                   self.settings_filename,
                   self.output_dir)
-            print "Executing: %s" %(group_cmd)
-            job_id = self.my_cluster.launch_job(group_cmd, job_name)
-            groups_job_ids.append(job_id)
-        return groups_job_ids
+            print "Executing: %s" %(sample_cmd)
+            job_id = self.my_cluster.launch_job(sample_cmd, job_name)
+            samples_job_ids.append(job_id)
+        return samples_job_ids
         
             
         
@@ -370,29 +377,11 @@ class Pipeline:
         else:
             print "Running on %d samples" %(num_samples)
         # Job IDs for each sample
-        samples_job_ids = []
-        ##
-        ## For paired samples, run pipeline on groups
-        ##
-        if self.is_paired_end:
-            job_ids = self.run_on_groups()
-        else:
-            ##
-            ## For un-paired samples (single-end), run pipeline on individual
-            ## samples
-            ##
-            job_ids = self.run_on_samples()
+        job_ids = self.run_on_samples()
         # Wait until all jobs completed 
         self.my_cluster.wait_on_jobs(job_ids)
         # Compile all the QC results
         self.compile_qc_output()
-
-
-    def run_on_group():
-        """
-        Run on group.
-        """
-        pass
 
 
     def run_on_sample(self, label):

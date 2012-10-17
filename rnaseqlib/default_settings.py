@@ -22,15 +22,13 @@ def set_default_rnaseq_settings(settings_info):
     """
     Default settings that are RNA-Seq specific.
     """
-    if (settings_info["mapping"]["paired"]) and \
-       "paired_end_frag":
-        # If paired-end, choose a default paired-end fragment length
-        # if there isn't one already
-        paired_end_frag = 300
+    if settings_info["mapping"]["paired"]:
+        # Compute mate inner dist based on read length
+        mate_inner_dist = paired_end_frag - (2 * settings_info["mapping"]["readlen"])
         settings_info = set_settings_value(settings_info,
                                            "mapping",
-                                           "paired_end_frag",
-                                           paired_end_frag)
+                                           "mate_inner_dist",
+                                           mate_inner_dist)
     return settings_info
 
 
@@ -54,6 +52,12 @@ def section_error(section):
     sys.exit(1)
 
 
+def param_error(param):
+    print "Error in settings: cannot find parameter %s." \
+        %(param)
+    sys.exit(1)
+
+
 def check_settings(settings_info):
     """
     Error-check the settings.
@@ -63,7 +67,18 @@ def check_settings(settings_info):
     for section in required_sections:
         if section not in settings_info:
             section_error(section)
-
+    # Check that the major parameters are in place
+    mapping_params = ["readlen"]
+    for param in mapping_params:
+        if param not in settings_info["mapping"]:
+            param_error(param)
+    # Check that paired-end specific parameters are correct
+    if "paired" in settings_info["mapping"]:
+        if "paired_end_frag" not in settings_info["mapping"]:
+            print "Error: Need \'paired_end_frag\' to be set for paired " \
+                  "samples. Is your data paired-end?"
+            sys.exit(1)
+            
 
 def set_default_settings(settings_info):
     """

@@ -9,12 +9,12 @@ import rnaseqlib
 import rnaseqlib.settings
 
 def get_tophat_mapping_cmd(tophat_path,
-                           input_filename,
+                           sample,
                            output_dir,
                            settings_info,
                            num_processors=4):
     """
-    Get tophat args for mapping.
+    Get tophat args for mapping for a sample.
     """
     tophat_path = settings_info["mapping"]["tophat_path"]
     index_filename = settings_info["mapping"]["tophat_index"]
@@ -28,9 +28,15 @@ def get_tophat_mapping_cmd(tophat_path,
                    tophat_options)
     if tophat_gtf is not None:
         mapper_cmd += " --GTF %s" %(tophat_gtf)
-    mapper_cmd += " --output-dir %s %s %s" %(output_dir,
-                                             index_filename,
-                                             input_filename)
+    # If paired-end, get a pair of files for the sample
+    if sample.paired:
+        input_files = " ".join([sample.samples[0].reads_filename,
+                                sample.samples[1].reads_filename])
+        mapper_cmd += " --output-dir %s %s %s" %(output_dir,
+                                                 index_filename,
+                                                 input_files)
+    else:
+        input_files = sample.samples[0].reads_filename
     tophat_outfilename = os.path.join(output_dir,
                                       "accepted_hits.bam")
     return mapper_cmd, tophat_outfilename
