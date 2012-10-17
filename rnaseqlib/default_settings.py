@@ -27,7 +27,8 @@ def set_default_rnaseq_settings(settings_info):
         # If paired-end, choose a default paired-end fragment length
         # if there isn't one already
         paired_end_frag = 300
-        settings_info = set_settings_value(settings_info, "mapping",
+        settings_info = set_settings_value(settings_info,
+                                           "mapping",
                                            "paired_end_frag",
                                            paired_end_frag)
     return settings_info

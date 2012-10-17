@@ -3,6 +3,8 @@ import sys
 import time
 import settings
 
+from collections import defaultdict
+
 import rnaseqlib
 import rnaseqlib.utils as utils
 import rnaseqlib.mapping.mapper_wrappers as mapper_wrappers
@@ -16,7 +18,31 @@ import cluster_utils.cluster as cluster
 
 class Sample:
     """
-    Sample to run on.
+    A sample to run on. For paired-end, represents a
+    pair of samples. For single end, represents a
+    single sample.
+    """
+    def __init__(self, label, samples):
+        self.label = label
+        self.samples = samples
+        self.grouped = False
+        # Record if a sample is grouped
+        if len(self.samples) > 1:
+            self.grouped = True
+
+    def __repr__(self):
+        samples_str = ",".join([s.label for s in self.samples])
+        return "Sample(%s, samples=%s)" \
+            %(self.label, samples_str)
+
+    def __str__(self):
+        return self.__repr__()
+        
+
+class SampleInfo:
+    """
+    Representation a of a set of files related to a single
+    sample.
     """
     def __init__(self, label, seq_filename,
                  settings_info=None):
@@ -34,15 +60,14 @@ class Sample:
         # BAM filename
         self.bam_filename = None
         self.settings_info = settings_info
-        self.group = None
         self.sample_type = None
         if self.settings_info is not None:
             self.sample_type = self.settings_info["pipeline"]["data_type"]
 
     def __str__(self):
-        return "Sample(%s, %s, %s)" %(self.label,
-                                      self.sample_type,
-                                      self.seq_filename)
+        return "SampleInfo(%s, %s, %s)" %(self.label,
+                                          self.sample_type,
+                                          self.seq_filename)
 
 
 class Pipeline:
@@ -167,9 +192,39 @@ class Pipeline:
         self.load_sequence_files()
         # Load the directory where pipeline output should go
         self.output_dir = utils.pathify(self.settings_info["data"]["outdir"])
-        # Compile flags
         print "Loaded pipeline settings (source: %s)." \
             %(self.settings_filename)
+        # Loading group information if there is any
+        self.load_groups()
+        
+
+    def load_groups(self):
+        """
+        If paired-end, set sample groups.
+        """
+        if not self.settings_info["mapping"]["paired"]:
+            return
+        if "sample_groups" not in self.settings_info["data"]:
+            print "Error: In paired-end mode, but cannot find \'sample_groups\' "\
+                  "parameter. Please set \'sample_groups\'."
+            sys.exit(1)
+        sample_groups = self.settings_info["data"]["sample_groups"]
+        sample_to_group = {}
+        group_to_samples = defaultdict(list)
+        # Map sample to its group
+        print sample_groups
+        for group, samples in sample_groups:
+            group = str(group)
+            samples = map(str, samples)
+            for curr_sample in samples:
+                sample_to_group[curr_sample] = group
+                group_to_samples[group].append(curr_sample)
+        self.sample_to_group = sample_to_group
+        self.group_to_samples = group_to_samples
+        # Tell each sample what group it is in
+        for sample_obj in self.samples:
+            sample_obj.group = self.sample_to_group[sample_obj.label]
+        
 
 
     def load_cluster(self):
@@ -180,25 +235,6 @@ class Pipeline:
         self.my_cluster = cluster.Cluster(self.settings_info["mapping"]["cluster_type"],
                                           self.output_dir)
         
-
-    def load_groups(self, settings):
-        """
-        If paired-end, set sample groups.
-        """
-        if (settings == None) or \
-            ("sample_groups" not in settings["data"]["sample_groups"]):
-            return
-        sample_groups = settings["data"]["sample_groups"]
-        sample_to_group = {}
-        group_to_samples = defaultdict(list)
-        # Map sample to its group
-        for sample, group in sample_groups:
-            sample_to_group[sample] = group
-            # Map each group to its samples
-            group_to_samples[group].append(sample)
-        self.sample_to_group = sample_to_group
-        self.group_to_samples = group_to_samples
-
 
     def load_sequence_files(self):
         """
@@ -226,6 +262,25 @@ class Pipeline:
             sequence_filenames.append([seq_fname, seq_label])
         self.sequence_filenames = sequence_filenames
         return sequence_filenames
+
+
+    def get_samples_info(self):
+        """
+        Load information related to each sample.
+        """
+        # Mapping from label to samples info
+        all_samples_info = []
+        for seq_entry in self.sequence_filenames:
+            seq_filename, sample_label = seq_entry
+            # Ensure file exists
+            if not os.path.isfile(seq_filename):
+                print "Error: %s does not exist!" %(seq_filename)
+                sys.exit(1)
+            sample_info = SampleInfo(sample_label,
+                                seq_filename,
+                                settings_info=self.settings_info)
+            all_samples_info.append(sample_info)
+        return all_samples_info
     
         
     def load_pipeline_samples(self):
@@ -234,18 +289,29 @@ class Pipeline:
         """
         print "Loading pipeline samples..."
         samples = []
-        num_seq_files = len(self.sequence_filenames)
-        print "  - Total of %d sequence files." %(num_seq_files)
-        for seq_entry in self.sequence_filenames:
-            seq_filename, sample_label = seq_entry
-            # Ensure file exists
-            if not os.path.isfile(seq_filename):
-                print "Error: %s does not exist!" %(seq_filename)
-                sys.exit(1)
-            sample = Sample(sample_label,
-                            seq_filename,
-                            settings_info=self.settings_info)
-            samples.append(sample)
+        # Get samples information
+        all_samples_info = self.get_samples_info()
+        # Mapping from labels to sample info
+        samples_info_by_label = dict([(s.label, s) for s in all_samples_info])
+        # If paired-end, also load sample groups information
+        if self.is_paired_end:
+            self.load_groups()
+            for group_label, samples_in_group in self.group_to_samples.iteritems():
+                # Get all the samples in the group
+                group_samples = [samples_info_by_label[label] \
+                                 for label in samples_in_group]
+                # Create a sample consisting of all the samples info
+                # objects in this group
+                sample = Sample(group_label, group_samples)
+                samples.append(sample)
+        else:
+            # If single-end, then each sample consists of just one
+            # sample info object
+            for sample_info in samples_info:
+                sample = Sample(sample_info.label, [sample_info])
+                samples.append(sample)
+        print "LOADED SAMPLES: "
+        print samples
         self.samples = samples
 
 
@@ -274,36 +340,59 @@ class Pipeline:
                 return sample
         return None
             
+    def run_on_groups(self):
+        groups_job_ids = []
+        for group in self.group:
+            print "Processing group %s" %(group)
+            job_name = "pipeline_run_%s" %(sample.label)
+            sample_cmd = "python %s --run-on-group %s --settings %s --output-dir %s" \
+                %(PIPELINE_RUN_SCRIPT,
+                  group.label,
+                  self.settings_filename,
+                  self.output_dir)
+            print "Executing: %s" %(group_cmd)
+            job_id = self.my_cluster.launch_job(group_cmd, job_name)
+            groups_job_ids.append(job_id)
+        return groups_job_ids
+        
+            
         
     def run(self, label=None):
         """
         Run pipeline. 
         """
-        samples_to_run = self.samples
+        groups_to_run = self.groups
         print "Running pipeline..."
-        num_samples = len(samples_to_run)
-        if num_samples == 0:
+        num_groups = len(groups_to_run)
+        if num_groups == 0:
             print "Error: No samples to run on."
             sys.exit(1)
         else:
             print "Running on %d samples" %(num_samples)
         # Job IDs for each sample
         samples_job_ids = []
-        for sample in self.samples:
-            print "Processing %s" %(sample)
-            job_name = "pipeline_run_%s" %(sample.label)
-            sample_cmd = "python %s --run-on-sample %s --settings %s --output-dir %s" \
-                %(PIPELINE_RUN_SCRIPT,
-                  sample.label,
-                  self.settings_filename,
-                  self.output_dir)
-            print "Executing: %s" %(sample_cmd)
-            job_id = self.my_cluster.launch_job(sample_cmd, job_name)
-            samples_job_ids.append(job_id)
+        ##
+        ## For paired samples, run pipeline on groups
+        ##
+        if self.is_paired_end:
+            job_ids = self.run_on_groups()
+        else:
+            ##
+            ## For un-paired samples (single-end), run pipeline on individual
+            ## samples
+            ##
+            job_ids = self.run_on_samples()
         # Wait until all jobs completed 
-        self.my_cluster.wait_on_jobs(samples_job_ids)
+        self.my_cluster.wait_on_jobs(job_ids)
         # Compile all the QC results
         self.compile_qc_output()
+
+
+    def run_on_group():
+        """
+        Run on group.
+        """
+        pass
 
 
     def run_on_sample(self, label):
@@ -352,9 +441,6 @@ class Pipeline:
             self.my_cluster.launch_and_wait(mapping_cmd, job_name,
                                             unless_exists=output_filename)
         elif mapper == "tophat":
-            print "MAPPING WITH TOPHAT"
-            return sample
-        
             tophat_path = self.settings_info["mapping"]["tophat_path"]
             sample_mapping_outdir = os.path.join(self.pipeline_outdirs["mapping"],
                                                  sample.label)
@@ -362,13 +448,15 @@ class Pipeline:
             utils.make_dir(sample_mapping_outdir)
             tophat_cmd, tophat_outfilename = \
                 mapper_wrappers.get_tophat_mapping_cmd(tophat_path,
-                                                       sample.reads_filename,
+                                                       sample.label,
                                                        sample_mapping_outdir,
-                                                       self.settings_info)
+                                                       self.settings_info,
+                                                       self.samples)
             print "Executing: %s" %(tophat_cmd)
+            raise Exception, "Stop"
             # Check that Tophat file does not exist
-            self.my_cluster.launch_and_wait(tophat_cmd, job_name,
-                                            unless_exists=tophat_outfilename)
+            #self.my_cluster.launch_and_wait(tophat_cmd, job_name,
+            #                                unless_exists=tophat_outfilename)
             sample.bam_filename = tophat_outfilename
         else:
             print "Error: unsupported mapper %s" %(mapper)
