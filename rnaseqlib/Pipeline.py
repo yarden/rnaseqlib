@@ -349,7 +349,7 @@ class Pipeline:
             
     def run_on_samples(self):
         samples_job_ids = []
-        for samples in self.samples:
+        for sample in self.samples:
             print "Processing sample %s" %(sample)
             job_name = "pipeline_run_%s" %(sample.label)
             sample_cmd = "python %s --run-on-sample %s --settings %s --output-dir %s" \
@@ -368,10 +368,9 @@ class Pipeline:
         """
         Run pipeline. 
         """
-        groups_to_run = self.groups
         print "Running pipeline..."
-        num_groups = len(groups_to_run)
-        if num_groups == 0:
+        num_samples = len(self.samples)
+        if num_samples == 0:
             print "Error: No samples to run on."
             sys.exit(1)
         else:
@@ -441,10 +440,9 @@ class Pipeline:
                                                        sample_mapping_outdir,
                                                        self.settings_info)
             print "Executing: %s" %(tophat_cmd)
-            raise Exception, "Stop"
             # Check that Tophat file does not exist
-            #self.my_cluster.launch_and_wait(tophat_cmd, job_name,
-            #                                unless_exists=tophat_outfilename)
+            self.my_cluster.launch_and_wait(tophat_cmd, job_name,
+                                            unless_exists=tophat_outfilename)
             sample.bam_filename = tophat_outfilename
         else:
             print "Error: unsupported mapper %s" %(mapper)
