@@ -24,10 +24,14 @@ from rnaseqlib.paths import *
 from rnaseqlib.init.genome_urls import *
 import rnaseqlib.init.download_utils as download_utils
 
+import misopy
+import misopy.gff_utils as gff_utils
+
 from collections import defaultdict
 
 import numpy
 from numpy import *
+
 
 # Labels of UCSC tables to download
 UCSC_TABLE_LABELS = ["knownGene.txt.gz",
@@ -48,6 +52,7 @@ class GeneTable:
     """
     def __init__(self, table_dir, source):
         self.table_dir = table_dir
+        self.exons_dir = os.path.join(self.table_dir, "exons")
         self.source = source
         self.delimiter = "\t"
         self.table = None
@@ -68,6 +73,7 @@ class GeneTable:
         """
         Load table.
         """
+        utils.make_dir(self.exons_dir)
         if self.source == "ensGene":
             self.load_ensGene_table()
         elif self.source == "ucsc":
@@ -204,11 +210,17 @@ class GeneTable:
                 exon_starts = (int(start) for start in entry["exonStarts"].split(",")[0:-1])
                 exon_ends = (int(end) for end in entry["exonEnds"].split(",")[0:-1])
                 exon_coords = itertools.izip(exon_starts, exon_ends)
-                parts = [GeneModel.Part(exon[0], exon[1], chrom, strand) \
-                         for exon in exon_coords]
+                cds_start = int(entry["cdsStart"])
+                cds_end = int(entry["cdsEnd"])
                 transcript_id = entry["name"]
+                parts = [GeneModel.Part(exon[0], exon[1], chrom, strand,
+                                        parent=transcript_id) \
+                         for exon in exon_coords]
                 transcript = GeneModel.Transcript(parts, chrom, strand,
-                                                  label=transcript_id)
+                                                  label=transcript_id,
+                                                  cds_start=cds_start,
+                                                  cds_end=cds_end,
+                                                  parent=gene_id)
                 gene_symbol = self.trans_to_names[transcript_id]
                 all_transcripts.append(transcript)
             gene_model = GeneModel.Gene(all_transcripts, chrom, strand,
@@ -221,42 +233,46 @@ class GeneTable:
             
         
 
-    def load_ensGene_by_genes(self):
-        print "Loading Ensembl table into genes.."
-        # Main ensGene table
-        ensGene_filename = os.path.join(self.table_dir,
-                                        "ensGene.txt")
-        t1 = time.time()
-        main_table = csv.DictReader(open(ensGene_filename),
-                                    delimiter="\t",
-                                    fieldnames=self.ensGene_header)
-        self.load_ensGene_name_table()
-        # Convert genes into gene models
-        for gene_id, gene_entries in itertools.groupby(main_table,
-                                                       key=operator.itemgetter("name2")):
-            gene_symbol = None
-            all_transcripts = []
-            for entry in gene_entries:
-                chrom = entry["chrom"]
-                strand = entry["strand"]
-                exon_starts = (int(start) for start in entry["exonStarts"].split(",")[0:-1])
-                exon_ends = (int(end) for end in entry["exonEnds"].split(",")[0:-1])
-                exon_coords = itertools.izip(exon_starts, exon_ends)
-#                parts = [GeneModel.Part(exon[0], exon[1], chrom, strand) \
-#                         for exon in exon_coords]
-                parts = ((exon, chrom, strand) for exon in exon_coords)
-                transcript_id = entry["name"]
-                transcript = GeneModel.Transcript(parts, chrom, strand,
-                                                  label=transcript_id)
-                gene_symbol = self.trans_to_names[transcript_id]
-                all_transcripts.append(transcript)
-            gene_model = GeneModel.Gene(all_transcripts, chrom, strand,
-                                        label=gene_id,
-                                        gene_symbol=gene_symbol)
-            self.genes[gene_id] = gene_model
-        t2 = time.time()
-        print "Loading took %.2f secs" %(t2 - t1)
-        return self.genes
+#     def load_ensGene_by_genes(self):
+#         print "Loading Ensembl table into genes.."
+#         # Main ensGene table
+#         ensGene_filename = os.path.join(self.table_dir,
+#                                         "ensGene.txt")
+#         t1 = time.time()
+#         main_table = csv.DictReader(open(ensGene_filename),
+#                                     delimiter="\t",
+#                                     fieldnames=self.ensGene_header)
+#         self.load_ensGene_name_table()
+#         # Convert genes into gene models
+#         for gene_id, gene_entries in itertools.groupby(main_table,
+#                                                        key=operator.itemgetter("name2")):
+#             gene_symbol = None
+#             all_transcripts = []
+#             for entry in gene_entries:
+#                 chrom = entry["chrom"]
+#                 strand = entry["strand"]
+#                 exon_starts = (int(start) for start in entry["exonStarts"].split(",")[0:-1])
+#                 exon_ends = (int(end) for end in entry["exonEnds"].split(",")[0:-1])
+#                 exon_coords = itertools.izip(exon_starts, exon_ends)
+#                 cds_start = int(entry["cdsStart"])
+#                 cds_end = int(entry["cdsEnd"])
+# #                parts = [GeneModel.Part(exon[0], exon[1], chrom, strand) \
+# #                         for exon in exon_coords]
+#                 parts = ((exon, chrom, strand) for exon in exon_coords)
+#                 transcript_id = entry["name"]
+#                 transcript = GeneModel.Transcript(parts, chrom, strand,
+#                                                   label=transcript_id,
+#                                                   cds_start=cds_start,
+#                                                   cds_end=cds_end)
+#                 gene_symbol = self.trans_to_names[transcript_id]
+#                 all_transcripts.append(transcript)
+#             gene_model = GeneModel.Gene(all_transcripts, chrom, strand,
+#                                         label=gene_id,
+#                                         gene_symbol=gene_symbol)
+#             self.genes[gene_id] = gene_model
+#         t2 = time.time()
+#         print "Loading took %.2f secs" %(t2 - t1)
+#         return self.genes
 
 
     def load_ensGene_name_table(self, delimiter="\t"):
@@ -363,23 +379,44 @@ class GeneTable:
         return self.genes_list
         
 
-    def output_const_exons(self, base_diff=6):
+    def output_const_exons(self, 
+                           base_diff=6,
+                           cds_only=False):
         """
         Output constitutive exons for all genes.
+
+        Output as gff format.
         """
-        if self.source == "ensGene":
-            self.output_ensGene_const_exons(base_diff)
+        if cds_only:
+            exons_basename = "%s.const_exons.cds_only.gff" %(self.source)
         else:
-            raise Exception, "Not implemented."
-
-
-    def output_ensGene_const_exons(self, base_diff):
-        const_exons_header = ["name2",
-                              "name"]
+            exons_basename = "%s.const_exons.gff" %(self.source)
+        output_filename = os.path.join(self.exons_dir, exons_basename)
+        print "Outputting constitutive exons..."
+        print "  - Output file: %s" %(output_filename)
+        if os.path.isfile(output_filename):
+            print "%s exists. Skipping.." %(output_filename)
+            return
+        gff_out = gff_utils.Writer(open(output_filename, "w"))
+        rec_source = self.source
+        rec_type = "exon"
         for gene_id, gene in self.genes.iteritems():
             print "Getting const exons for: %s" %(gene_id)
-            const_exons = gene.compute_const_exons(base_diff=base_diff)
-            break
+            const_exons = gene.compute_const_exons(base_diff=base_diff,
+                                                   cds_only=cds_only)
+            rec_chrom = gene.chrom
+            for const_exon in const_exons:
+                attributes = {
+                    'ID': const_exon.label,
+                    'Parent': [const_exon.parent],
+                    'gene': [gene.label]
+                    }
+                rec_start, rec_end = const_exon.start, const_exon.end
+                gff_rec = gff_utils.GFF(rec_chrom, rec_source, rec_type,
+                                        rec_start, rec_end,
+                                        attributes=attributes)
+                gff_out.write(gff_rec)
+            
 
 
     def parse_string_int_list(self, int_list_as_str,
@@ -466,44 +503,8 @@ def process_ucsc_tables(genome, output_dir):
     ##
     ensGene_table = GeneTable(tables_outdir, "ensGene")
     ensGene_table.output_const_exons()
-    # Compute constitutive exons and output them as files
-    #output_const_exons(tables_outdir)
 
     
-def output_const_exons(tables_dir,
-                       tables_to_process=["knownGene",
-                                          "ensGene",
-                                          "refGene"]):
-    """
-    Output constitutive exons 
-    """
-    print "Getting constitutive exons for all tables.."
-    const_exons_outdir = os.path.join(tables_dir, "const_exons")
-    utils.make_dir(const_exons_outdir)
-    for table in tables_to_process:
-        print "Getting constitutive exons for: %s" %(table)
-        gff_filename = os.path.join(tables_dir, "%s.gff3" %(table))
-        if not os.path.isfile(gff_filename):
-            print "Error: Cannot find %s" %(gff_filename)
-            sys.exit(1)
-        exons_output_filename = os.path.join(tables_dir,
-                                             "%s.const_exons.gff3" %(table))
-        if os.path.isfile(exons_output_filename):
-            print "  - File %s exists, skipping.." %(exons_output_filename)
-        # Compute constitutive exons for all genes
-        tables.compute_const_exons(gff_filename, exons_output_filename)
-        # 
-        # cds_output_filename = os.path.join(tables_dir,
-        #                                    "%s.cds_exons.gff3" %(table))
-        # if os.path.isfile(cds_output_filename):
-        #     print "  - File %s exists, skipping.." %(cds_output_filename)
-        # # Output CDS constitutive exons
-        # get_const_exons_by_gene(output_filename,
-        #                         const_exons_outdir,
-        #                         cds_only=True,
-        #                         output_filename=cds_output_filename)
-        
-
 
 def convert_tables_to_gff(tables_outdir):
     """

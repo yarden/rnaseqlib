@@ -27,7 +27,7 @@ class Gene:
         self.const_exons = []
         
 
-    def compute_const_exons(self, base_diff=6):
+    def compute_const_exons(self, base_diff=6, cds_only=False):
         """
         Get constitutive exons.
         """
@@ -73,33 +73,42 @@ class Transcript:
     """
     Transcript of a gene.
     """
-    __slots__ = ['parts', 'chrom', 'strand', 'label']
+    __slots__ = ['parts', 'chrom', 'strand', 'label',
+                 'cdsStart', 'cdsEnd', 'parent']
     def __init__(self, parts, chrom, strand,
-                 label=None):
+                 label=None,
+                 cds_start=None,
+                 cds_end=None,
+                 parent=None):
         self.gene = None
         self.chrom = chrom
         self.strand = strand
         self.parts = parts
         self.label = None
+        self.cds_start = None
+        self.cds_end = None
+        self.parent = parent
 
     def __repr__(self):
         parts_str = ",".join(p.__str__() for p in self.parts)
-        return "Transcript(%s, %s, %s)" %(parts_str,
-                                          self.chrom,
-                                          self.strand)
+        return "Transcript(%s, %s, %s, parent=%s)" %(parts_str,
+                                                     self.chrom,
+                                                     self.strand,
+                                                     self.parent)
     
 class Part:
     """
     Part of a transcript.
     """
-    __slots__ = ['start', 'end', 'chrom', 'strand', 'label']
+    __slots__ = ['start', 'end', 'chrom', 'strand', 'label', 'parent']
     def __init__(self, start, end, chrom=None, strand=None,
-                 label=None):
+                 label=None, parent=None):
         self.start = start
         self.end = end
         self.chrom = chrom
         self.strand = strand
         self.label = label
+        self.parent = parent
         
 
     def __repr__(self):
