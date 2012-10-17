@@ -39,6 +39,8 @@ class QualityControl:
         self.qc_filename = os.path.join(self.sample_outdir,
                                         "%s.qc.txt" %(self.sample.label))
         self.qc_loaded = False
+        self.na_val = "NA"
+        self.qc_results = defaultdict(lambda: self.na_val)
         # Load QC information if file corresponding to sample already exists
         self.load_qc_from_file()
 
@@ -119,11 +121,17 @@ class QualityControl:
         Compute all QC metrics for sample.
         """
         num_reads = self.get_num_reads()
-        num_mapped = self.get_num_mapped()
-        num_ribo = self.get_num_ribo()
-        self.qc_results["num_reads"] = self.num_reads
-        self.qc_results["num_mapped"] = self.num_mapped
-        self.qc_results["num_ribo"] = self.num_ribo
+        self.qc_results["num_reads"] = num_reads
+        # BAM-related statistics
+        # First check that BAM file is present
+        if (self.sample.bam_filename is None) or \
+           (not os.path.isfile(self.sample.bam_filename)):
+            print "WARNING: Cannot find BAM filename for %s" %(self.sample.label)
+        else:
+            num_mapped = self.get_num_mapped()
+            num_ribo = self.get_num_ribo()
+            self.qc_results["num_mapped"] = num_mapped
+            self.qc_results["num_ribo"] = num_ribo
         # Set that QC results were loaded
         self.qc_loaded = True
         return self.qc_results
@@ -138,9 +146,9 @@ class QualityControl:
                                                               self.qc_filename)
             return None
         # Header for QC output file for sample
-        qc_entry = {"num_reads": self.num_reads,
-                    "num_mapped": self.num_mapped,
-                    "num_ribo": self.num_ribo}
+        qc_entry = {"num_reads": self.qc_results["num_reads"],
+                    "num_mapped": self.qc_results["num_mapped"],
+                    "num_ribo": self.qc_results["num_ribo"]}
         qc_df = pandas.DataFrame([qc_entry])
         # Write QC information as csv
         qc_df.to_csv(self.qc_filename,

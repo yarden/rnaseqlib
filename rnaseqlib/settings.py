@@ -24,7 +24,6 @@ def load_settings(config_filename,
     print "Loading settings from: %s" %(config_filename)
     parsed_settings = config.read(config_filename)
     settings_info = defaultdict(dict)
-    settings_info = default_settings.set_default_values(settings_info)
     for section in config.sections():
         for option in config.options(section):
             if option in FLOAT_PARAMS:
@@ -39,6 +38,10 @@ def load_settings(config_filename,
                 settings_info[section][option] = json.loads(config.get(section, option))
             else:
                 settings_info[section][option] = config.get(section, option)
+    # Error-check the existing settings
+    default_settings.check_settings(settings_info)
+    # Set default values for settings 
+    settings_info = default_settings.set_default_settings(settings_info)
     return settings_info, parsed_settings
 
         

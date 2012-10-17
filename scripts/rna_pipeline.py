@@ -108,6 +108,7 @@ def main():
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
 
+    settings_filename = None
     if options.run:
         if options.settings == None:
             # Running of pipeline requires settings filename
@@ -118,6 +119,11 @@ def main():
                      output_dir)
 
     if options.run_on_sample is not None:
+        if options.settings == None:
+            # Running of pipeline requires settings filename
+            print "Error: need --settings"
+            sys.exit(1)
+        settings_filename = utils.pathify(options.settings)
         sample_label = options.run_on_sample
         run_on_sample(sample_label, settings_filename,
                       output_dir)

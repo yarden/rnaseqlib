@@ -352,6 +352,9 @@ class Pipeline:
             self.my_cluster.launch_and_wait(mapping_cmd, job_name,
                                             unless_exists=output_filename)
         elif mapper == "tophat":
+            print "MAPPING WITH TOPHAT"
+            return sample
+        
             tophat_path = self.settings_info["mapping"]["tophat_path"]
             sample_mapping_outdir = os.path.join(self.pipeline_outdirs["mapping"],
                                                  sample.label)
