@@ -437,10 +437,9 @@ class Pipeline:
             utils.make_dir(sample_mapping_outdir)
             tophat_cmd, tophat_outfilename = \
                 mapper_wrappers.get_tophat_mapping_cmd(tophat_path,
-                                                       sample.label,
+                                                       sample,
                                                        sample_mapping_outdir,
-                                                       self.settings_info,
-                                                       self.samples)
+                                                       self.settings_info)
             print "Executing: %s" %(tophat_cmd)
             raise Exception, "Stop"
             # Check that Tophat file does not exist

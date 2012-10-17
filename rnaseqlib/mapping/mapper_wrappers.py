@@ -32,6 +32,7 @@ def get_tophat_mapping_cmd(tophat_path,
     if sample.paired:
         input_files = " ".join([sample.samples[0].reads_filename,
                                 sample.samples[1].reads_filename])
+        print "INPUT FILES: ", input_files
         mapper_cmd += " --output-dir %s %s %s" %(output_dir,
                                                  index_filename,
                                                  input_files)

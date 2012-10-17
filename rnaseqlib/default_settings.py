@@ -24,7 +24,8 @@ def set_default_rnaseq_settings(settings_info):
     """
     if settings_info["mapping"]["paired"]:
         # Compute mate inner dist based on read length
-        mate_inner_dist = paired_end_frag - (2 * settings_info["mapping"]["readlen"])
+        mate_inner_dist = \
+            settings_info["mapping"]["paired_end_frag"] - (2 * settings_info["mapping"]["readlen"])
         settings_info = set_settings_value(settings_info,
                                            "mapping",
                                            "mate_inner_dist",

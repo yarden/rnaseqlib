@@ -8,7 +8,9 @@ def load_settings(config_filename,
                   # Float parameters
                   FLOAT_PARAMS=[],
                   # Integer parameters
-                  INT_PARAMS=["num_processors",
+                  INT_PARAMS=["readlen",
+                              "overhanglen",
+                              "num_processors",
                               "paired_end_frag"],
                   # Boolean parameters
                   BOOL_PARAMS=["paired"],
