@@ -25,8 +25,6 @@ class Gene:
         self.label = label
         self.gene_symbol = gene_symbol
         self.const_exons = []
-        # Compute constitutive exons for a gene
-#        self.compute_const_exons()
         
 
     def compute_const_exons(self, base_diff=6):
@@ -53,12 +51,14 @@ class Gene:
                 # The exon is NOT considered constitutive if there are no exons
                 # in the transcripts whose start/end diff with the current exon
                 # is less than or equal to 'base_diff'
-                if all(all(start_end_diffs <= base_diff, axis=1) == False):
+                status = all(start_end_diffs <= base_diff, axis=1)
+                if all(status == False):
                     const_exon = False
                     # Determined exon is not constitutive, so skip to next exon                    
                     break
             # Exon is constitutive
-            self.const_exons.append(exon)
+            if const_exon:
+                self.const_exons.append(exon)
         return self.const_exons
         
 

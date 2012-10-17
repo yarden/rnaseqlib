@@ -204,8 +204,8 @@ class GeneTable:
                 exon_starts = (int(start) for start in entry["exonStarts"].split(",")[0:-1])
                 exon_ends = (int(end) for end in entry["exonEnds"].split(",")[0:-1])
                 exon_coords = itertools.izip(exon_starts, exon_ends)
-                parts = (GeneModel.Part(exon[0], exon[1], chrom, strand) \
-                         for exon in exon_coords)
+                parts = [GeneModel.Part(exon[0], exon[1], chrom, strand) \
+                         for exon in exon_coords]
                 transcript_id = entry["name"]
                 transcript = GeneModel.Transcript(parts, chrom, strand,
                                                   label=transcript_id)
@@ -373,11 +373,13 @@ class GeneTable:
             raise Exception, "Not implemented."
 
 
-    def output_ensGene_const_exons(base_diff):
+    def output_ensGene_const_exons(self, base_diff):
         const_exons_header = ["name2",
                               "name"]
-        for gene in self.genes:
+        for gene_id, gene in self.genes.iteritems():
+            print "Getting const exons for: %s" %(gene_id)
             const_exons = gene.compute_const_exons(base_diff=base_diff)
+            break
 
 
     def parse_string_int_list(self, int_list_as_str,
@@ -463,7 +465,7 @@ def process_ucsc_tables(genome, output_dir):
     ## Load tables into gene table object
     ##
     ensGene_table = GeneTable(tables_outdir, "ensGene")
-#    ensGene_table.get_const_exons()
+    ensGene_table.output_const_exons()
     # Compute constitutive exons and output them as files
     #output_const_exons(tables_outdir)
 
