@@ -14,6 +14,8 @@ class Gene:
     """
     Representation of a gene model.
     """
+    __slots__ = ['transcripts', 'chrom', 'strand', 'label', 'gene_symbol',
+                 'const_exons']
     def __init__(self, transcripts, chrom, strand,
                  label=None,
                  gene_symbol=None):
@@ -86,7 +88,6 @@ class Transcript:
                                           self.chrom,
                                           self.strand)
     
-Part2 = namedtuple("Part", "start end")# chrom strand")    
 class Part:
     """
     Part of a transcript.
