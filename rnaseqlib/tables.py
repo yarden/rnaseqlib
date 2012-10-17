@@ -391,23 +391,39 @@ class GeneTable:
             exons_basename = "%s.const_exons.cds_only.gff" %(self.source)
         else:
             exons_basename = "%s.const_exons.gff" %(self.source)
-        output_filename = os.path.join(self.exons_dir, exons_basename)
+        gff_output_filename = os.path.join(self.exons_dir, exons_basename)
         print "Outputting constitutive exons..."
-        print "  - Output file: %s" %(output_filename)
-        if os.path.isfile(output_filename):
-            print "%s exists. Skipping.." %(output_filename)
+        print "  - Output file: %s" %(gff_output_filename)
+        if os.path.isfile(gff_output_filename):
+            print "%s exists. Skipping.." %(gff_output_filename)
             return
-        gff_out = gff_utils.Writer(open(output_filename, "w"))
+        # Output a map from genes to constitutive exons
+        # for convenience
+        genes_to_exons_fname = os.path.join(self.exons_dir,
+                                            exons_basename.replace(".gff",
+                                                                   ".to_genes.txt"))
+        gff_out = gff_utils.Writer(open(gff_output_filename, "w"))
         rec_source = self.source
         rec_type = "exon"
+        genes_to_exons = []
+        genes_to_exons_header = ["gene_id", "exons"]
         for gene_id, gene in self.genes.iteritems():
-            print "Getting const exons for: %s" %(gene_id)
             const_exons = gene.compute_const_exons(base_diff=base_diff,
                                                    cds_only=cds_only)
             rec_chrom = gene.chrom
+            exon_labels = [e.label for e in const_exons]
+            if len(exon_labels) == 0:
+                # Record genes with no constitutive exons
+                # as missing values
+                exon_labels = self.na_val
+            else:
+                exon_labels = ",".join(exon_labels)
+            entry = {"gene_id": gene_id,
+                     "exons": exon_labels}
+            genes_to_exons.append(entry)
             for const_exon in const_exons:
                 attributes = {
-                    'ID': const_exon.label,
+                    'ID': ["exon.%s" %(const_exon.label)],
                     'Parent': [const_exon.parent],
                     'gene': [gene.label]
                     }
@@ -416,6 +432,11 @@ class GeneTable:
                                         rec_start, rec_end,
                                         attributes=attributes)
                 gff_out.write(gff_rec)
+        genes_to_exons = pandas.DataFrame(genes_to_exons)
+        genes_to_exons.to_csv(genes_to_exons_fname,
+                              cols=genes_to_exons_header,
+                              index=False,
+                              sep="\t")
             
 
 
