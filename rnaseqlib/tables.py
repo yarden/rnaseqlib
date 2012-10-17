@@ -207,9 +207,9 @@ class GeneTable:
             for entry in gene_entries:
                 chrom = entry["chrom"]
                 strand = entry["strand"]
-                exon_starts = (int(start) for start in entry["exonStarts"].split(",")[0:-1])
-                exon_ends = (int(end) for end in entry["exonEnds"].split(",")[0:-1])
-                exon_coords = itertools.izip(exon_starts, exon_ends)
+                exon_starts = (int(start) for start in entry["exonStarts"].rstrip(",").split(","))
+                exon_ends = (int(end) for end in entry["exonEnds"].rstrip(",").split(","))
+                exon_coords = zip(exon_starts, exon_ends)
                 cds_start = int(entry["cdsStart"])
                 cds_end = int(entry["cdsEnd"])
                 transcript_id = entry["name"]
@@ -394,6 +394,7 @@ class GeneTable:
         gff_output_filename = os.path.join(self.exons_dir, exons_basename)
         print "Outputting constitutive exons..."
         print "  - Output file: %s" %(gff_output_filename)
+        print "  - CDS only: %s" %(cds_only)
         if os.path.isfile(gff_output_filename):
             print "%s exists. Skipping.." %(gff_output_filename)
             return
@@ -520,10 +521,15 @@ def process_ucsc_tables(genome, output_dir):
     # Convert the various Ensembl tables to GFF3 format
     convert_tables_to_gff(tables_outdir)
     ##
-    ## Load tables into gene table object
+    ## Load tables into gene table object 
     ##
-    ensGene_table = GeneTable(tables_outdir, "ensGene")
-    ensGene_table.output_const_exons()
+    table_names = ["ensGene"]#, "refGene"]
+    for table_name in table_names:
+        table = GeneTable(tables_outdir, table_name)
+        # Output the table's constitutive exons
+        table.output_const_exons()
+        # Output the table's CDS-only constitutive exons
+        table.output_const_exons(cds_only=True)
 
     
 
