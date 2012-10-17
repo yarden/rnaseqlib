@@ -35,6 +35,9 @@ def get_tophat_mapping_cmd(tophat_path,
         mapper_cmd += " --output-dir %s %s %s" %(output_dir,
                                                  index_filename,
                                                  input_files)
+        # Specify the inner mate distance
+        mapper_cmd += " --mate-inner-dist %d" \
+            %(settings_info["mapping"]["mate_inner_dist"])
     else:
         input_files = sample.samples[0].reads_filename
     tophat_outfilename = os.path.join(output_dir,
