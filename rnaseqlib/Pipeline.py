@@ -22,21 +22,33 @@ class Sample:
     pair of samples. For single end, represents a
     single sample.
     """
-    def __init__(self, label, samples):
+    def __init__(self, label, rawdata):
         self.label = label
-        self.samples = samples
+        # For paired-end samples, samples_info is a list
+        # of samples.
+        # For single-end samples, it is just one object.
+        self.rawdata = rawdata
         self.paired = False
         self.sample_type = None
+        # Bowtie mapping for sample
+        self.bowtie_filename = None
+        # Tophat mapping for sample
+        self.tophat_filename = None
+        # BAM filename
+        self.bam_filename = None
         # Record if a sample is grouped
-        if len(self.samples) > 1:
+        if type(self.rawdata) == list:
             self.paired = True
-        # Sample type comes from samples info
-        self.sample_type = self.samples[0].sample_type
-        
+            self.sample_type = self.rawdata[0].sample_type
+        else:
+            self.sample_type = self.rawdata.sample_type
             
 
     def __repr__(self):
-        samples_str = ",".join([s.label for s in self.samples])
+        if self.paired:
+            samples_str = ",".join([s.label for s in self.rawdata])
+        else:
+            samples_str = self.rawdata.label
         return "Sample(%s, samples=%s)" \
             %(self.label, samples_str)
     
@@ -45,10 +57,10 @@ class Sample:
         return self.__repr__()
         
 
-class SampleInfo:
+class SampleRawdata:
     """
-    Representation a of a set of files related to a single
-    sample.
+    Representation a of a set of rawdata files related to a single
+    sample. This represents the raw data: like fastq file.
     """
     def __init__(self, label, seq_filename,
                  settings_info=None):
@@ -59,12 +71,6 @@ class SampleInfo:
         # for CLIP or Ribo-Seq
         # By default, just identical to raw sequence filename
         self.reads_filename = seq_filename
-        # Bowtie mapping for sample
-        self.bowtie_filename = None
-        # Tophat mapping for sample
-        self.tophat_filename = None
-        # BAM filename
-        self.bam_filename = None
         self.settings_info = settings_info
         self.sample_type = None
         if self.settings_info is not None:
@@ -72,9 +78,9 @@ class SampleInfo:
             
 
     def __str__(self):
-        return "SampleInfo(%s, %s, %s)" %(self.label,
-                                          self.sample_type,
-                                          self.seq_filename)
+        return "SampleRawdata(%s, %s, %s)" %(self.label,
+                                             self.sample_type,
+                                             self.seq_filename)
 
 
 class Pipeline:
@@ -282,9 +288,9 @@ class Pipeline:
             if not os.path.isfile(seq_filename):
                 print "Error: %s does not exist!" %(seq_filename)
                 sys.exit(1)
-            sample_info = SampleInfo(sample_label,
-                                seq_filename,
-                                settings_info=self.settings_info)
+            sample_info = SampleRawdata(sample_label,
+                                        seq_filename,
+                                        settings_info=self.settings_info)
             all_samples_info.append(sample_info)
         return all_samples_info
     
@@ -333,7 +339,10 @@ class Pipeline:
                                                           self.pipeline_outdirs["rawdata"])
             # Adjust the trimmed file to be the "reads" sequence file for this
             # sample
-            sample.reads_filename = trimmed_filename
+            sample.rawdata.reads_filename = trimmed_filename
+        else:
+            print "WARNING: Do not know how to pre-process type %s samples." \
+                %(sample.sample_type)
         return sample
 
 

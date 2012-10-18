@@ -49,6 +49,7 @@ class QualityControl:
         """
         Load QC data from file if already present.
         """
+        print "Loading QC from: ", self.qc_filename
         if os.path.isfile(self.qc_filename):
             qc_in = csv.DictReader(open(self.qc_filename, "r"),
                                    delimiter="\t")
@@ -62,12 +63,30 @@ class QualityControl:
     def get_num_reads(self):
         """
         Return number of reads in FASTQ file.
+
+        For single-end samples, returns a single number.
+
+        For paired-end samples, return pair of comma-separated
+        numbers: 'left_mate,right_mate'.
         """
-        fastq_entries = fastq_utils.get_fastq_entries(self.sample.reads_filename)
-        num_reads = 0
-        for entry in fastq_entries:
-            num_reads += 1
-        return num_reads
+        if self.sample.paired:
+            # Paired-end
+            mate_reads = []
+            for mate_rawdata in self.sample.rawdata:
+                num_reads = 0
+                fastq_entries = fastq_utils.get_fastq_entries(mate_rawdata.reads_filename)
+                for entry in fastq_entries:
+                    num_reads += 1
+                mate_reads.append(num_reads)
+            pair_num_reads = ",".join(map(str, mate_reads))
+            return pair_num_reads
+        else:
+            num_reads = 0
+            # Single-end
+            fastq_entries = fastq_utils.get_fastq_entries(self.sample.rawdata.reads_filename)
+            for entry in fastq_entries:
+                num_reads += 1
+            return num_reads
     
 
     def get_num_mapped(self):

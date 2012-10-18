@@ -30,8 +30,8 @@ def get_tophat_mapping_cmd(tophat_path,
         mapper_cmd += " --GTF %s" %(tophat_gtf)
     # If paired-end, get a pair of files for the sample
     if sample.paired:
-        input_files = " ".join([sample.samples[0].reads_filename,
-                                sample.samples[1].reads_filename])
+        input_files = " ".join([sample.rawdata[0].reads_filename,
+                                sample.rawdata[1].reads_filename])
         print "INPUT FILES: ", input_files
         mapper_cmd += " --output-dir %s %s %s" %(output_dir,
                                                  index_filename,
