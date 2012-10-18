@@ -49,7 +49,6 @@ class QualityControl:
         """
         Load QC data from file if already present.
         """
-        print "Loading QC from: ", self.qc_filename
         if os.path.isfile(self.qc_filename):
             qc_in = csv.DictReader(open(self.qc_filename, "r"),
                                    delimiter="\t")

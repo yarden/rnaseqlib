@@ -320,7 +320,7 @@ class Pipeline:
             # If single-end, then each sample consists of just one
             # sample rawdata object
             for sample_rawdata in all_samples_rawdata:
-                sample = Sample(sample_rawdata.label, [sample_rawdata])
+                sample = Sample(sample_rawdata.label, sample_rawdata)
                 samples.append(sample)
         self.samples = samples
 
@@ -333,7 +333,7 @@ class Pipeline:
         if sample.sample_type == "riboseq":
             # Preprocess riboseq samples by trimming trailing
             # As
-            trimmed_filename = ribo_utils.trim_polyA_ends(sample.seq_filename,
+            trimmed_filename = ribo_utils.trim_polyA_ends(sample.rawdata.seq_filename,
                                                           self.pipeline_outdirs["rawdata"])
             # Adjust the trimmed file to be the "reads" sequence file for this
             # sample

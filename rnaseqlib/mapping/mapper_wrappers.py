@@ -32,7 +32,6 @@ def get_tophat_mapping_cmd(tophat_path,
     if sample.paired:
         input_files = " ".join([sample.rawdata[0].reads_filename,
                                 sample.rawdata[1].reads_filename])
-        print "INPUT FILES: ", input_files
         mapper_cmd += " --output-dir %s %s %s" %(output_dir,
                                                  index_filename,
                                                  input_files)
@@ -40,7 +39,10 @@ def get_tophat_mapping_cmd(tophat_path,
         mapper_cmd += " --mate-inner-dist %d" \
             %(settings_info["mapping"]["mate_inner_dist"])
     else:
-        input_files = sample.samples[0].reads_filename
+        input_files = sample.rawdata.reads_filename
+        mapper_cmd += " --output-dir %s %s %s" %(output_dir,
+                                                 index_filename,
+                                                 input_files)
     tophat_outfilename = os.path.join(output_dir,
                                       "accepted_hits.bam")
     return mapper_cmd, tophat_outfilename
