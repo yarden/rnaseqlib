@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import glob
 import settings
 
 from collections import defaultdict
@@ -10,6 +11,9 @@ import rnaseqlib.utils as utils
 import rnaseqlib.mapping.mapper_wrappers as mapper_wrappers
 import rnaseqlib.ribo.ribo_utils as ribo_utils
 import rnaseqlib.QualityControl as qc
+
+import misopy
+import misopy.exon_utils as exon_utils
 
 # Import all paths
 from rnaseqlib.paths import *
@@ -104,6 +108,8 @@ class Pipeline:
         self.parsed_settings = None
         self.settings_info = None
         self.data_type = None
+        # Directory where pipeline init files are
+        self.init_dir = None
         # Paired-end or not
         self.is_paired_end = None
         self.sample_to_group = None
@@ -207,6 +213,8 @@ class Pipeline:
         self.output_dir = utils.pathify(self.settings_info["data"]["outdir"])
         print "Loaded pipeline settings (source: %s)." \
             %(self.settings_filename)
+        # Pipeline init directory
+        self.init_dir = os.path.join(self.settings_info["pipeline-files"]["init_dir"])
         # Loading group information if there is any
         self.load_groups()
         
@@ -500,6 +508,7 @@ class Pipeline:
             qc_obj.compute_qc()
             # Output QC to file
             qc_obj.output_qc()
+        return sample
         
 
     def compile_qc_output(self):
@@ -520,8 +529,35 @@ class Pipeline:
         print "  - Outputting QC to: %s" %(qc_output_filename)
         qc_stats.to_csv(qc_output_filename)
 
+
+    def output_rpkms(self, sample):
+        """
+        Output RPKMs.
+        """
+        print "Computing RPKMs for sample: %s" %(sample.label)
+        # Get all the constitutive exons filenames
+        const_exons_dir = os.path.join(self.init_dir, "ucsc",
+                                       "exons", "const_exons")
+        if not os.path.isdir(const_exons_dir):
+            print "Error: Cannot find exons directory."
+        const_exons_fnames = glob.glob(os.path.join(const_exons_dir, "*.gff"))
+        bam2gff_outdir = os.path.join(self.pipeline_outdirs["mapping"],
+                                      sample.label,
+                                      "bam2gff_const_exons")
+        utils.make_dir(bam2gff_outdir)
+        for const_exons_fname in const_exons_fnames:
+            print "  - Getting RPKMs based on %s" %(const_exons_fname)
+            # Map reads to GFF of constitutive exons
+            output_bam_fname = exon_utils.map_bam2gff(sample.bam_filename,
+                                                      const_exons_fname,
+                                                      bam2gff_outdir)
+
     
     def run_analysis(self, sample):
-        self.output_rpkms()
+        """
+        Run analysis on a sample.
+        """
+        # Compute RPKMs
+        self.output_rpkms(sample)
         return sample
         

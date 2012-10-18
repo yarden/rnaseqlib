@@ -13,6 +13,8 @@ from collections import namedtuple
 class Gene:
     """
     Representation of a gene model.
+
+    By convention, all coordinates will be a 1-based start (GFF conventions.)
     """
     __slots__ = ['transcripts', 'chrom', 'strand', 'label', 'gene_symbol',
                  'const_exons', 'has_cds']

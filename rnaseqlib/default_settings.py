@@ -53,9 +53,9 @@ def section_error(section):
     sys.exit(1)
 
 
-def param_error(param):
-    print "Error in settings: cannot find parameter %s." \
-        %(param)
+def param_error(param, sect):
+    print "Error in settings: cannot find parameter %s in section %s." \
+        %(param, sect)
     sys.exit(1)
 
 
@@ -68,11 +68,16 @@ def check_settings(settings_info):
     for section in required_sections:
         if section not in settings_info:
             section_error(section)
-    # Check that the major parameters are in place
-    mapping_params = ["readlen"]
-    for param in mapping_params:
-        if param not in settings_info["mapping"]:
-            param_error(param)
+    ##
+    ## Check that the major parameters are in place
+    ##
+    # Mapping from section to list of required parameters
+    required_params = {"mapping": ["readlen"],
+                       "pipeline-files": ["init_dir"]}
+    for sect, sect_params in required_params.iteritems():
+        for param in sect_params:
+            if param not in settings_info[sect]:
+                param_error(param, sect)
     # Check that paired-end specific parameters are correct
     if ("paired" in settings_info["mapping"]) and settings_info["mapping"]["paired"]:
         if "paired_end_frag" not in settings_info["mapping"]:
