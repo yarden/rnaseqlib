@@ -522,5 +522,6 @@ class Pipeline:
 
     
     def run_analysis(self, sample):
+        self.output_rpkms()
         return sample
         
