@@ -8,6 +8,7 @@ from collections import defaultdict
 
 import rnaseqlib
 import rnaseqlib.utils as utils
+import rnaseqlib.rpkm.rpkm_utils as rpkm_utils
 import rnaseqlib.mapping.mapper_wrappers as mapper_wrappers
 import rnaseqlib.ribo.ribo_utils as ribo_utils
 import rnaseqlib.QualityControl as qc
@@ -110,6 +111,7 @@ class Pipeline:
         self.data_type = None
         # Directory where pipeline init files are
         self.init_dir = None
+        self.rpkm_dir = None
         # Paired-end or not
         self.is_paired_end = None
         self.sample_to_group = None
@@ -174,11 +176,20 @@ class Pipeline:
         """
         print "Initializing the pipeline output directories."
         utils.make_dir(self.output_dir)
+        # Subdirectories of toplevel subdirs
+        self.toplevel_subdirs = defaultdict(list)
+        self.toplevel_subdirs["analysis"] = ["rpkm", "insert_lens"]
         for dirname in self.toplevel_dirs:
             dirpath = os.path.join(self.output_dir, dirname)
             print " - Creating: %s" %(dirpath)
             utils.make_dir(dirpath)
             self.pipeline_outdirs[dirname] = dirpath
+            for subdir_name in self.toplevel_subdirs[dirname]:
+                subdir_path = os.path.join(dirpath, subdir_name)
+                utils.make_dir(subdir_path)
+        # Variables storing commonly accessed directories
+        self.rpkm_dir = os.path.join(self.pipeline_outdirs["analysis"],
+                                     "rpkm")
 
         
     def check_settings(self):
@@ -541,16 +552,10 @@ class Pipeline:
         if not os.path.isdir(const_exons_dir):
             print "Error: Cannot find exons directory."
         const_exons_fnames = glob.glob(os.path.join(const_exons_dir, "*.gff"))
-        bam2gff_outdir = os.path.join(self.pipeline_outdirs["mapping"],
-                                      sample.label,
-                                      "bam2gff_const_exons")
-        utils.make_dir(bam2gff_outdir)
         for const_exons_fname in const_exons_fnames:
             print "  - Getting RPKMs based on %s" %(const_exons_fname)
-            # Map reads to GFF of constitutive exons
-            output_bam_fname = exon_utils.map_bam2gff(sample.bam_filename,
-                                                      const_exons_fname,
-                                                      bam2gff_outdir)
+            rpkm_utils.output_rpkm(sample, const_exons_fname,
+                                   self.rpkm_dir)
 
     
     def run_analysis(self, sample):

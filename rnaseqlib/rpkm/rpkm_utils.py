@@ -1,12 +1,32 @@
 ##
 ## Utilities for computing RPKM
 ##
+import os
+import sys
+import time
 
-def output_rpkm(sample, gff_filename, output_dir):
+import rnaseqlib
+import rnaseqlib.utils as utils
+
+import misopy
+import misopy.exon_utils as exon_utils
+
+def output_rpkm(sample, exons_gff_filename,
+                output_dir):
     """
     Output RPKM table per sample.
     """
-    pass
+    sample_outdir = os.path.join(output_dir, sample.label)
+    # Directory where BAM containing mapping to constitutive
+    # exons be stored
+    bam2gff_outdir = os.path.join(sample_outdir,
+                                  "bam2gff_const_exons")
+    utils.make_dir(bam2gff_outdir)
+    # Map reads to GFF of constitutive exons
+    output_bam_fname = exon_utils.map_bam2gff(sample.bam_filename,
+                                              exons_gff_filename,
+                                              bam2gff_outdir)
+    return output_bam_fname
     
     
 def rpkm_from_gff_aligned_bam(bam_filename, 
