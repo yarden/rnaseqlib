@@ -144,9 +144,10 @@ class Part:
         self.parent = parent
         # If label not given, set default label
         if self.label is None:
-            self.label = "%s_%s_%s_%s" %(start, end,
-                                         chrom, strand)
-        
+            self.label = "%s:%s-%s:%s" %(chrom,
+                                         start,
+                                         end,
+                                         strand)
 
     def __repr__(self):
         return "Part(%s, %s)" %(str(self.start),

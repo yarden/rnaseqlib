@@ -13,9 +13,6 @@ import rnaseqlib.mapping.mapper_wrappers as mapper_wrappers
 import rnaseqlib.ribo.ribo_utils as ribo_utils
 import rnaseqlib.QualityControl as qc
 
-import misopy
-import misopy.exon_utils as exon_utils
-
 # Import all paths
 from rnaseqlib.paths import *
 
@@ -29,6 +26,8 @@ class Sample:
     """
     def __init__(self, label, rawdata):
         self.label = label
+        # QC information for this sample
+        self.qc = None
         # For paired-end samples, samples_info is a list
         # of samples.
         # For single-end samples, it is just one object.
@@ -41,6 +40,8 @@ class Sample:
         self.tophat_filename = None
         # BAM filename
         self.bam_filename = None
+        # RPKM tables for the sample
+        self.rpkm_tables = {}
         # Record if a sample is grouped
         if type(self.rawdata) == list:
             self.paired = True
@@ -519,6 +520,7 @@ class Pipeline:
             qc_obj.compute_qc()
             # Output QC to file
             qc_obj.output_qc()
+        sample.qc = qc_obj
         return sample
         
 
@@ -552,11 +554,21 @@ class Pipeline:
         if not os.path.isdir(const_exons_dir):
             print "Error: Cannot find exons directory."
         const_exons_fnames = glob.glob(os.path.join(const_exons_dir, "*.gff"))
+        sample_rpkm_outdir = os.path.join(self.rpkm_dir, sample.label)
+        utils.make_dir(sample_rpkm_outdir)
         for const_exons_fname in const_exons_fnames:
-            print "  - Getting RPKMs based on %s" %(const_exons_fname)
-            rpkm_utils.output_rpkm(sample, const_exons_fname,
-                                   self.rpkm_dir)
-
+            print "Getting RPKMs based on %s" %(const_exons_fname)
+            # Name of the table (strip the .gff)
+            const_exons_tablename = os.path.basename(const_exons_fname).split(".gff")[0]
+            # Compute RPKM
+            rpkm_filename = rpkm_utils.output_rpkm(sample,
+                                                   const_exons_tablename,
+                                                   const_exons_fname,
+                                                   sample_rpkm_outdir)
+            # Store the RPKM output filename
+            sample.rpkm_tables[const_exons_tablename] = rpkm_filename
+        return sample
+        
     
     def run_analysis(self, sample):
         """

@@ -5,51 +5,64 @@ import os
 import sys
 import time
 
+from collections import defaultdict
+
 import rnaseqlib
 import rnaseqlib.utils as utils
 
 import misopy
 import misopy.exon_utils as exon_utils
 
-def output_rpkm(sample, exons_gff_filename,
+import pysam
+
+def output_rpkm(sample,
+                output_basename,
+                exons_gff_filename,
                 output_dir):
     """
     Output RPKM table per sample.
     """
-    sample_outdir = os.path.join(output_dir, sample.label)
+    rpkm_output_filename = "%s.rpkm" %(os.path.join(output_dir,
+                                                    output_basename))
+    if os.path.isfile(rpkm_output_filename):
+        print "  - Skipping RPKM output, %s exists" %(rpkm_output_filename)
+        return rpkm_output_filename
     # Directory where BAM containing mapping to constitutive
     # exons be stored
-    bam2gff_outdir = os.path.join(sample_outdir,
+    bam2gff_outdir = os.path.join(output_dir,
                                   "bam2gff_const_exons")
     utils.make_dir(bam2gff_outdir)
     # Map reads to GFF of constitutive exons
-    output_bam_fname = exon_utils.map_bam2gff(sample.bam_filename,
-                                              exons_gff_filename,
-                                              bam2gff_outdir)
-    return output_bam_fname
+    exons_bam_fname = exon_utils.map_bam2gff(sample.bam_filename,
+                                             exons_gff_filename,
+                                             bam2gff_outdir)
+    # Compute RPKMs for sample
+    num_mapped = sample.qc.qc_results["num_mapped"]
+    if num_mapped == 0:
+        print "Error: Cannot compute RPKMs since sample %s has 0 mapped reads." \
+            %(sample.label)
+        sys.exit(1)
+    print "Sample %s has %s mapped reads" %(sample.label, num_mapped)
+    output_rpkm_from_gff_aligned_bam(exons_bam_fname,
+                                     num_mapped,
+                                     rpkm_output_filename)
+    return rpkm_output_filename
     
     
-def rpkm_from_gff_aligned_bam(bam_filename, 
-                              num_total_reads,
-                              output_dir):
+def output_rpkm_from_gff_aligned_bam(bam_filename,
+                                     num_total_reads,
+                                     output_filename):
     """
     Given a BAM file aligned by bedtools (with 'gff' field),
     compute RPKM for each region, incorporating relevant
     optional fields from gff.
     """
     bam_file = pysam.Samfile(bam_filename, "rb")
-
-    if not os.path.isdir(output_dir):
-        os.makedirs(output_dir)
-    output_filename = os.path.join(output_dir,
-                                   "%s.rpkm.gff" \
-                                   %(os.path.basename(bam_filename)))
-
     source = os.path.basename(output_filename)
 
     print "Computing RPKM from BAM aligned to GFF..."
     print "  - BAM: %s" %(bam_filename)
-    print "  - Output dir: %s" %(output_dir)
+    print "  - Output filename: %s" %(output_filename)
 
     loaded_gff = False
     ref_gff_recs = None
@@ -59,16 +72,8 @@ def rpkm_from_gff_aligned_bam(bam_filename,
     region_to_count = defaultdict(int)
     region_to_len = defaultdict(int)
 
-    num_reads = 0
-
     for bam_read in bam_file:
         curr_chrom = bam_file.getrname(bam_read.tid)
-        
-        # Load the GFF records for this chromosome if not already loaded
-        # if last_chrom != curr_chrom:
-        #     print "Now on chrom %s" %(curr_chrom)
-        #     ref_gff_recs = load_gff_recs_by_chrom(gff_file,
-        #                                           curr_chrom)
         try:
             # Read aligns to region of interest
             gff_aligned_regions = bam_read.opt("YB")
@@ -85,13 +90,9 @@ def rpkm_from_gff_aligned_bam(bam_filename,
                                            int(region_end)
                 region_len = region_end - region_start
                 region_to_len[region] = region_len
-
-                if num_reads % 500000 == 0:
-                    print "through %d reads.." %(num_reads)
-                num_reads += 1
         except KeyError:
             gff_aligned_region = None
         last_chrom = curr_chrom
 
-    output_rpkm_as_gff(source, region_to_count, region_to_len,
-                       num_total_reads, output_filename)
+#    output_rpkm_as_gff(source, region_to_count, region_to_len,
+#                       num_total_reads, output_filename)
