@@ -74,7 +74,7 @@ def check_settings(settings_info):
         if param not in settings_info["mapping"]:
             param_error(param)
     # Check that paired-end specific parameters are correct
-    if "paired" in settings_info["mapping"]:
+    if ("paired" in settings_info["mapping"]) and settings_info["mapping"]["paired"]:
         if "paired_end_frag" not in settings_info["mapping"]:
             print "Error: Need \'paired_end_frag\' to be set for paired " \
                   "samples. Is your data paired-end?"

@@ -276,23 +276,23 @@ class Pipeline:
         return sequence_filenames
 
 
-    def get_samples_info(self):
+    def get_samples_rawdata(self):
         """
-        Load information related to each sample.
+        Load rawdata information related to each sample.
         """
         # Mapping from label to samples info
-        all_samples_info = []
+        all_samples_rawdata = []
         for seq_entry in self.sequence_filenames:
             seq_filename, sample_label = seq_entry
             # Ensure file exists
             if not os.path.isfile(seq_filename):
                 print "Error: %s does not exist!" %(seq_filename)
                 sys.exit(1)
-            sample_info = SampleRawdata(sample_label,
-                                        seq_filename,
-                                        settings_info=self.settings_info)
-            all_samples_info.append(sample_info)
-        return all_samples_info
+            sample_rawdata = SampleRawdata(sample_label,
+                                           seq_filename,
+                                           settings_info=self.settings_info)
+            all_samples_rawdata.append(sample_rawdata)
+        return all_samples_rawdata
     
         
     def load_pipeline_samples(self):
@@ -302,15 +302,15 @@ class Pipeline:
         print "Loading pipeline samples..."
         samples = []
         # Get samples information
-        all_samples_info = self.get_samples_info()
+        all_samples_rawdata = self.get_samples_rawdata()
         # Mapping from labels to sample info
-        samples_info_by_label = dict([(s.label, s) for s in all_samples_info])
+        samples_rawdata_by_label = dict([(s.label, s) for s in all_samples_rawdata])
         # If paired-end, also load sample groups information
         if self.is_paired_end:
             self.load_groups()
             for group_label, samples_in_group in self.group_to_samples.iteritems():
                 # Get all the samples in the group
-                group_samples = [samples_info_by_label[label] \
+                group_samples = [samples_rawdata_by_label[label] \
                                  for label in samples_in_group]
                 # Create a sample consisting of all the samples info
                 # objects in this group
@@ -318,12 +318,10 @@ class Pipeline:
                 samples.append(sample)
         else:
             # If single-end, then each sample consists of just one
-            # sample info object
-            for sample_info in samples_info:
-                sample = Sample(sample_info.label, [sample_info])
+            # sample rawdata object
+            for sample_rawdata in all_samples_rawdata:
+                sample = Sample(sample_rawdata.label, [sample_rawdata])
                 samples.append(sample)
-        print "LOADED SAMPLES: "
-        print samples
         self.samples = samples
 
 
