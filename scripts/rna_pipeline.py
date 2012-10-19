@@ -59,10 +59,16 @@ def check_requirements():
             print "WARNING: Cannot find required program \'%s\' " \
                   "on your path.  Please install it or add it. " \
                   "to your path if already installed." %(program)
+            if program == "genePredToGtf":
+                genePredToGtf_msg()
             print "  - Proceeding anyway..."
             found_all = False
     if found_all:
         print "Found all required programs."
+
+
+def genePredToGtf_msg():
+    
 
 
 def initialize_pipeline(genome,

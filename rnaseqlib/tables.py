@@ -355,7 +355,7 @@ class GeneTable:
         Output as gff format.
         """
         if cds_only:
-            exons_basename = "%s.const_exons.cds_only.gff" %(self.source)
+            exons_basename = "%s.cds_only.const_exons.gff" %(self.source)
         else:
             exons_basename = "%s.const_exons.gff" %(self.source)
         gff_output_filename = os.path.join(self.const_exons_dir, exons_basename)
@@ -426,7 +426,72 @@ class GeneTable:
     def load_ucsc_table(self):
         raise Exception, "Not implemented."
 
-    
+
+class ConstExons:
+    """
+    A table storing a set of constitutive exons.
+
+    Consists of a GFF filename specifying the exons
+    and a text file mapping genes to their constitutive exons.
+    """
+    def __init__(self, table_name,
+                 from_dir=None):
+        self.table_name = table_name
+        self.from_dir = from_dir
+        self.gff_filename = None
+        self.genes_to_exons_filename = None
+        # A list of genes to exons mapping
+        self.genes_to_exons = []
+        if from_dir is not None:
+            self.load_const_exons()
+
+
+    def load_const_exons(self):
+        """
+        Load constitutive exons from a table name.
+        """
+        print "Loading constitutive exons for %s from dir: %s" \
+            %(self.table_name,
+              self.from_dir)
+        self.gff_filename = os.path.join(self.from_dir,
+                                         "%s.const_exons.gff" %(self.table_name))
+        if not os.path.isfile(self.gff_filename):
+            print "WARNING: Cannot find constitutive exons GFF for %s" \
+                %(self.table_name)
+            return
+        # Look for the mapping from genes to exons
+        self.genes_to_exons_filename = os.path.join(self.from_dir,
+                                                    "%s.const_exons.to_genes.txt" \
+                                                    %(self.table_name))
+        if not os.path.isfile(self.genes_to_exons_filename):
+            print "WARNING: Cannot find mapping from genes to constitutive " \
+                "exons for %s" %(table_to_get)
+            return
+        # Load genes to exons mapping
+        self.load_genes_to_exons()
+
+
+    def load_genes_to_exons(self,
+                            header=["gene_id", "exons"]):
+        """
+        Return a dictionary mapping each table name to its file
+        that specifies a mapping from genes to constitutive
+        exons.
+        """
+        table_file = open(self.genes_to_exons_filename, "r")
+        table_in = csv.DictReader(table_file,
+                                  delimiter="\t",
+                                  fieldnames=header)
+        self.genes_to_exons = [entry for entry in table_in]
+        
+
+    def __repr__(self):
+        return "ConstExons(table=%s, gff=%s, genes_to_exons=%d entries)" \
+            %(self.table_name,
+              self.gff_filename,
+              len(self.genes_to_exons))
+        
+        
 
 
 ##

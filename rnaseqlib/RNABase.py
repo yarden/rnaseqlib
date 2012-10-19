@@ -6,6 +6,7 @@ import os
 import sys
 import time
 import glob
+import csv
 
 import rnaseqlib
 import rnaseqlib.init as init
@@ -20,12 +21,76 @@ class RNABase:
     the pipeline on a given genome.
     """
     def __init__(self, genome, output_dir,
-                 with_index=True):
+                 with_index=True,
+                 from_dir=None):
         self.genome = genome
-        self.output_dir = os.path.join(output_dir,
-                                       genome)
         self.with_index = with_index
         self.indices_dir = None
+        ##
+        ## Gene table names for various tasks
+        ##
+        self.ucsc_tables_dir = None
+        # Tables to use for RPKM computation
+        self.rpkm_table_names = ["ensGene",
+                                 "refSeq"]
+        # Mapping from tables to const exons information
+        self.tables_to_const_exons = {}
+        self.output_dir = None
+        if from_dir is None:
+            self.output_dir = os.path.join(output_dir,
+                                           self.genome)
+        else:
+            self.output_dir = from_dir
+            # Load the RNABase from a given directory
+            self.load_base(from_dir)
+            
+
+    def load_base(self, input_dir):
+        """
+        Loading RNABase from directory.
+        """
+        print "Loading RNA base from: %s" %(input_dir)
+        if not os.path.isdir(input_dir):
+            print "Error: Cannot find RNA base directory: %s" %(input_dir)
+            sys.exit(1)
+        self.ucsc_tables_dir = os.path.join(input_dir, "ucsc")
+        self.load_rpkm_info()
+        self.load_qc_info()
+
+
+
+    def load_rpkm_info(self):
+        """
+        Load all information needed to compute RPKM.
+        """
+        self.load_const_exons_info()
+
+
+    def get_const_exons_dir(self):
+        const_exons_dir = os.path.join(self.ucsc_tables_dir,
+                                       "exons",
+                                       "const_exons")
+        return const_exons_dir
+
+
+    def load_const_exons_info(self):
+        """
+        Load constitutive exons information for all tables.
+        """
+        const_exons_dir = self.get_const_exons_dir()
+        for table_name in self.rpkm_table_names:
+            # Look for the table and its CDS version
+            tables_to_get = [table_name, "%s.cds_only" %(table_name)]
+            for curr_table in tables_to_get:
+                const_exons = tables.ConstExons(curr_table, from_dir=const_exons_dir)
+                self.tables_to_const_exons[curr_table] = const_exons
+
+
+    def load_qc_info(self):
+        """
+        Load all information needed to compute QC.
+        """
+        pass
         
 
     def download_seqs(self):

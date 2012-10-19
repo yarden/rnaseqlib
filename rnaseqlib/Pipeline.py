@@ -12,6 +12,7 @@ import rnaseqlib.rpkm.rpkm_utils as rpkm_utils
 import rnaseqlib.mapping.mapper_wrappers as mapper_wrappers
 import rnaseqlib.ribo.ribo_utils as ribo_utils
 import rnaseqlib.QualityControl as qc
+import rnaseqlib.RNABase as rna_base
 
 # Import all paths
 from rnaseqlib.paths import *
@@ -99,6 +100,7 @@ class Pipeline:
         """
         Initialize pipeline.
         """
+        self.genome = None
         # Output directory for logging pipeline activity
         self.log_output_dir = log_output_dir
         # Output directory for actual pipeline output
@@ -123,7 +125,6 @@ class Pipeline:
         # Check settings are correct
         self.load_pipeline_settings()
         self.load_cluster()
-        self.check_settings()
         # Load samples
         self.load_pipeline_samples()
         # Pipeline output subdirectories
@@ -139,6 +140,19 @@ class Pipeline:
         # QC header: order of QC fields to be outputted
         self.qc_header = []
         self.init_qc()
+        # RNA Base: object storing all the relevant
+        # initialization information
+        self.rna_base = None
+        self.load_rna_base()
+
+
+    def load_rna_base(self):
+        """
+        Load pipeline RNA base.
+        """
+        self.rna_base = rna_base.RNABase(self.genome,
+                                         None,
+                                         from_dir=self.init_dir)
         
 
     def init_qc(self):
@@ -193,18 +207,6 @@ class Pipeline:
         self.rpkm_dir = os.path.join(self.pipeline_outdirs["analysis"],
                                      "rpkm")
 
-        
-    def check_settings(self):
-        if (self.settings_info == None) \
-            or self.parsed_settings == None:
-            print "Error: No settings loaded!"
-            sys.exit(1)
-        ##
-        ## TODO: Error check that the necessary parameters
-        ## are given here
-        ##
-        ## ...
-
             
     def load_pipeline_settings(self):
         """
@@ -216,6 +218,7 @@ class Pipeline:
             sys.exit(1)
         self.settings = settings.load_settings(self.settings_filename)
         self.settings_info, self.parsed_settings = self.settings
+        self.genome = self.settings_info["mapping"]["genome"]
         # Determine if we're in paired-end mode
         self.is_paired_end = False
         if self.settings_info["mapping"]["paired"]:
@@ -549,26 +552,13 @@ class Pipeline:
         Output RPKMs.
         """
         print "Computing RPKMs for sample: %s" %(sample.label)
-        # Get all the constitutive exons filenames
-        const_exons_dir = os.path.join(self.init_dir, "ucsc",
-                                       "exons", "const_exons")
-        if not os.path.isdir(const_exons_dir):
-            print "Error: Cannot find exons directory."
-        const_exons_fnames = glob.glob(os.path.join(const_exons_dir, "*.gff"))
         sample_rpkm_outdir = os.path.join(self.rpkm_dir, sample.label)
-        utils.make_dir(sample_rpkm_outdir)
-        for const_exons_fname in const_exons_fnames:
-            print "Getting RPKMs based on %s" %(const_exons_fname)
-            # Name of the table (strip the .gff)
-            const_exons_tablename = os.path.basename(const_exons_fname).split(".gff")[0]
-            # Compute RPKM
-            rpkm_filename = rpkm_utils.output_rpkm(sample,
-                                                   const_exons_tablename,
-                                                   const_exons_fname,
-                                                   sample_rpkm_outdir,
-                                                   self.settings_info)
-            # Store the RPKM output filename
-            sample.rpkm_tables[const_exons_tablename] = rpkm_filename
+        rpkm_tables = rpkm_utils.output_rpkm(sample,
+                                             sample_rpkm_outdir,
+                                             self.settings_info,
+                                             self.rna_base)
+        # Record the filenames of the RPKM tables for the sample
+        sample.rpkm_tables = rpkm_tables
         return sample
         
     

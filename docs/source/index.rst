@@ -23,7 +23,7 @@ Features
   - Maps reads to genome and splice junctions
   - Computes basic quality control statistics
   - Outputs RPKM values for genes
-* Includes support for Ribosome Footprinting data (Ribo-Seq) and CLIP (CLIP-Seq)
+* Support for Ribosome Footprinting data (Ribo-Seq) and CLIP (CLIP-Seq)
 
 
 Updates
@@ -37,7 +37,7 @@ Updates
 Installation
 ============
 
-To install: ::
+To install with `distribute`'s `easy_install`: ::
 
   easy_install rnaseqlib
 
@@ -45,19 +45,38 @@ For local installation, use: ::
 
   easy_install --user -U rnaseqlib
 
+If you don't have `easy_install`, install it as an ordinary Python package: ::
 
-Testing ``rnaseqlib``
----------------------
-.. _Testing rnaseqlib
+  python setup.py install 
+
+Or: ::
+
+  python setup.py install --prefix=/your/local/dir
+
+For local installation.
 
 
-Overview
+Running ``rnaseqlib``
+=====================
+.. _Running rnaseqlib
+
+Initializing an RNA base for your genome
+----------------------------------------
+
+The first step is to create a set of files, called an *RNA Base*, required to run `rnaseqlib` for a particular genome. For example, ::
+
+  rna_pipeline.py --init mm9 --output-dir pipeline_init
+
+This will create a directory called `mm9` in `pipeline_init` containing all the files.
+
+
+Configuration
 ========
 .. _config:
 
+
 Configuration
 -------------
-
 
   [data]
   # directory where BAM files are

@@ -16,15 +16,24 @@ import misopy.exon_utils as exon_utils
 import pysam
 
 def output_rpkm(sample,
-                output_basename,
-                exons_gff_filename,
                 output_dir,
-                settings_info):
+                settings_info,
+                rna_base):
     """
-    Output RPKM table per sample.
+    Output RPKM tables for the sample.
+
+    Takes as input:
+
+    - sample: a sample object
+    - output_dir: output directory
+    - settings_info: settings information
+    - rna_base: an RNABase object
     """
+    # Output RPKM information for all constitutive exon tables in the
+    # in the RNA Base
+    print "Outputting RPKM for: %s" %(sample.label)
     rpkm_output_filename = "%s.rpkm" %(os.path.join(output_dir,
-                                                    output_basename))
+                                                    table_name))
     if os.path.isfile(rpkm_output_filename):
         print "  - Skipping RPKM output, %s exists" %(rpkm_output_filename)
         return rpkm_output_filename
@@ -82,8 +91,6 @@ def output_rpkm_from_gff_aligned_bam(bam_filename,
             # Read aligns to region of interest
             gff_aligned_regions = bam_read.opt("YB")
             parsed_regions = gff_aligned_regions.split("gff:")[1:]
-            print parsed_regions
-
             # Compile region counts and lengths
             for region in parsed_regions:
                 region_to_count[region] += 1
@@ -97,8 +104,8 @@ def output_rpkm_from_gff_aligned_bam(bam_filename,
                 region_to_len[region] = region_len
         except KeyError:
             gff_aligned_region = None
-    print "region_to_count: ", region_to_count
-    print "region to len: ", region_to_len
+#    print "region_to_count: ", region_to_count
+#    print "region to len: ", region_to_len
 
 #    output_rpkm_as_gff(source, region_to_count, region_to_len,
 #                       num_total_reads, output_filename)
