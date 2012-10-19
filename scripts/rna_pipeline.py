@@ -53,13 +53,16 @@ def check_requirements():
                          "cat",
                          "zcat",
                          "cut"]
+    found_all = True
     for program in REQUIRED_PROGRAMS:
         if utils.which(program) is None:
-            print "Error: Cannot find required program \'%s\' " \
+            print "WARNING: Cannot find required program \'%s\' " \
                   "on your path.  Please install it or add it. " \
                   "to your path if already installed." %(program)
-            sys.exit(1)
-    print "Found all required programs."
+            print "  - Proceeding anyway..."
+            found_all = False
+    if found_all:
+        print "Found all required programs."
 
 
 def initialize_pipeline(genome,

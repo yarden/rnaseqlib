@@ -5,6 +5,10 @@ import os
 import sys
 import time
 
+from os.path import basename
+from urlparse import urlsplit
+
+
 def make_dir(dirpath):
     if os.path.isfile(dirpath):
         print "Error: %s is a file!" %(dirpath)
@@ -50,8 +54,6 @@ def gunzip_file(filename, output_dir,
 def pathify(filename):
     return os.path.abspath(os.path.expanduser(filename))
 
-from os.path import basename
-from urlparse import urlsplit
 
 def url2name(url):
     return basename(urlsplit(url)[2])
