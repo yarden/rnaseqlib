@@ -26,7 +26,8 @@ setup(name = 'rnaseqlib',
                   'rnaseqlib.clip', 'rnaseqlib.ribo'],
       # distutils always uses forward slashes      
       scripts = ['scripts/rna_pipeline.py',
-                 'scripts/gtf2gff3.pl'],
+                 'scripts/gtf2gff3.pl',
+                 'scripts/ucsc_table2gff3.pl'],
       # Required modules
       install_requires = [
 #          "matplotlib >= 1.1.0",
