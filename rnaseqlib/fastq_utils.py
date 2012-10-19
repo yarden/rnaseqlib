@@ -5,9 +5,6 @@
 import os
 import time
 import yklib
-from yklib.paths import *
-from yklib import settings
-from yklib import cluster
 from itertools import ifilter, islice
 
 import gzip
