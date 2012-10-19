@@ -1,0 +1,40 @@
+# -*- mode: sh -*-
+##
+## Pipeline settings for RNA-Seq
+##
+[pipeline]
+data_type = rnaseq
+
+[pipeline-files]
+#init_dir = /lab/solexa_jaenisch/solexa_jaenisch2/yarden/pipeline_init/
+init_dir = /lab/solexa_jaenisch/solexa_jaenisch2/yarden/test/mm9
+
+[mapping]
+mapper = tophat
+bowtie_path = /usr/local/bin/bowtie
+tophat_path = /lab/solexa_jaenisch/solexa_jaenisch2/yarden/software/tophat-2.0.5.Linux_x86_64/tophat
+tophat_index = /lab/solexa_jaenisch/solexa_jaenisch2/yarden/bowtie-indices/mm9/mm9_withRibo
+cluster_type = bsub
+genome = mm9
+tophat_options = --bowtie1 --min-anchor-length 4 --transcriptome-index /lab/solexa_jaenisch/solexa_jaenisch2/yarden/gff-events/gene-models/mm9/ucsc/knownGene
+tophat_gtf = /lab/solexa_jaenisch/solexa_jaenisch2/yarden/pipeline_init/mm9/ucsc/knownGene.gtf
+readlen = 40
+overhanglen = 4
+paired = True
+paired_end_frag = 300
+stranded = fr-first
+
+[data]
+indir = ~/jaen/rnaseqlib/examples/rnaseq/fastq/
+outdir = ~/jaen/pipeline_test/
+
+sequence_files = [
+    ["sample1_p1.fastq.gz", "sample1_p1"],
+    ["sample1_p2.fastq.gz", "sample1_p2"],
+    ["sample2_p1.fastq.gz", "sample2_p1"],
+    ["sample2_p2.fastq.gz", "sample2_p2"]]
+
+sample_groups = [["sample1", ["sample1_p1", "sample1_p2"]],
+                 ["sample2", ["sample2_p1", "sample2_p2"]]]
+
+
