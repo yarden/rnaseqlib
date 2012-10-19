@@ -9,10 +9,6 @@ use Pod::Usage;
 use Net::FTP;
 use Bio::SeqFeature::Lite;
 use FindBin qw($Bin);
-#use lib "$Bin/../lib";
-# Load the biotoolbox libraries
-# from a different location
-use lib "$Bin/biotblib";
 use tim_data_helper qw(
 	format_with_commas
 );
@@ -23,8 +19,6 @@ use tim_file_helper qw(
 my $VERSION = '1.8.5';
 
 print "\n A script to convert UCSC tables to GFF3 files\n\n";
-
-
 
 
 ### Quick help
