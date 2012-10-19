@@ -9,6 +9,7 @@ use Pod::Usage;
 use Net::FTP;
 use Bio::SeqFeature::Lite;
 use FindBin qw($Bin);
+use lib "$Bin/";
 use tim_data_helper qw(
 	format_with_commas
 );

@@ -509,7 +509,7 @@ def convert_tables_to_gff(tables_outdir):
     """
     print "Converting tables to GFF3 format.."
     # Use Biotoolbox script for UCSC to GFF3 conversion
-    ucsc2gff = os.path.join(SCRIPTS_DIR, "ucsc_table2gff3.pl")
+    ucsc2gff = "ucsc_table2gff3.pl"
     # Convert knownGene, Ensembl and RefSeq to GFF3
     tables_to_convert = ["knownGene.txt",
                          "ensGene.txt",
