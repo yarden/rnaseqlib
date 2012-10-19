@@ -440,6 +440,7 @@ class ConstExons:
         self.from_dir = from_dir
         self.gff_filename = None
         self.genes_to_exons_filename = None
+        self.found = False
         # A list of genes to exons mapping
         self.genes_to_exons = []
         if from_dir is not None:
@@ -469,6 +470,7 @@ class ConstExons:
             return
         # Load genes to exons mapping
         self.load_genes_to_exons()
+        self.found = True
 
 
     def load_genes_to_exons(self,

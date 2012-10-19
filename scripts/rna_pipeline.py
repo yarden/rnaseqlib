@@ -68,7 +68,10 @@ def check_requirements():
 
 
 def genePredToGtf_msg():
-    
+    print "To install genePredToGtf, download the executable for your OS " \
+          "from: "
+    print "http://hgdownload.cse.ucsc.edu/admin/exe/"
+    print "And place the executable in your PATH."
 
 
 def initialize_pipeline(genome,

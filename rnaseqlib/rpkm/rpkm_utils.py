@@ -32,32 +32,35 @@ def output_rpkm(sample,
     # Output RPKM information for all constitutive exon tables in the
     # in the RNA Base
     print "Outputting RPKM for: %s" %(sample.label)
-    rpkm_output_filename = "%s.rpkm" %(os.path.join(output_dir,
-                                                    table_name))
-    if os.path.isfile(rpkm_output_filename):
-        print "  - Skipping RPKM output, %s exists" %(rpkm_output_filename)
-        return rpkm_output_filename
-    # Directory where BAM containing mapping to constitutive
-    # exons be stored
-    bam2gff_outdir = os.path.join(output_dir,
-                                  "bam2gff_const_exons")
-    utils.make_dir(bam2gff_outdir)
-    # Map reads to GFF of constitutive exons
-    exons_bam_fname = exon_utils.map_bam2gff(sample.bam_filename,
-                                             exons_gff_filename,
-                                             bam2gff_outdir)
-    # Compute RPKMs for sample
-    num_mapped = sample.qc.qc_results["num_mapped"]
-    if num_mapped == 0:
-        print "Error: Cannot compute RPKMs since sample %s has 0 mapped reads." \
-            %(sample.label)
-        sys.exit(1)
-    print "Sample %s has %s mapped reads" %(sample.label, num_mapped)
-    read_len = settings_info["readlen"]
-    output_rpkm_from_gff_aligned_bam(exons_bam_fname,
-                                     num_mapped,
-                                     read_len,
-                                     rpkm_output_filename)
+    rpkm_tables = {}
+    for table_name, const_exons in rna_base.tables_to_const_exons.iteritems():
+        rpkm_output_filename = "%s.rpkm" %(os.path.join(output_dir,
+                                                        table_name))
+        rpkm_tables[table_name] = rpkm_output_filename
+        if os.path.isfile(rpkm_output_filename):
+            print "  - Skipping RPKM output, %s exists" %(rpkm_output_filename)
+            continue
+        # Directory where BAM containing mapping to constitutive
+        # exons be stored
+        bam2gff_outdir = os.path.join(output_dir,
+                                      "bam2gff_const_exons")
+        utils.make_dir(bam2gff_outdir)
+        # Map reads to GFF of constitutive exons
+        exons_bam_fname = exon_utils.map_bam2gff(sample.bam_filename,
+                                                 const_exons.gff_filename,
+                                                 bam2gff_outdir)
+        # Compute RPKMs for sample
+        num_mapped = sample.qc.qc_results["num_mapped"]
+        if num_mapped == 0:
+            print "Error: Cannot compute RPKMs since sample %s has 0 mapped reads." \
+                %(sample.label)
+            sys.exit(1)
+        print "Sample %s has %s mapped reads" %(sample.label, num_mapped)
+        read_len = settings_info["readlen"]
+        output_rpkm_from_gff_aligned_bam(exons_bam_fname,
+                                         num_mapped,
+                                         read_len,
+                                         rpkm_output_filename)
     return rpkm_output_filename
     
     
