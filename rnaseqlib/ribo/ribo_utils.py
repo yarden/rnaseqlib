@@ -6,10 +6,8 @@ import sys
 import time
 
 import rnaseqlib
+import rnaseqlib.utils as utils
 import rnaseqlib.fastq_utils as fastq_utils
-
-import yklib
-import yklib.utils as utils
 
 def rstrip_stretch(s, letter):
     """
