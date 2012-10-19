@@ -4,7 +4,6 @@
 
 import os
 import time
-import yklib
 from itertools import ifilter, islice
 
 import gzip
