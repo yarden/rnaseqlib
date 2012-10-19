@@ -19,7 +19,12 @@ setup(name = 'rnaseqlib',
 #      license = 'MIT License',
       author = 'Yarden Katz,Eric T. Wang,Noah Spies',
 #      data_files = [],
-      # distutils always uses forward slashes
+      packages = ['rnaseqlib', 'rnaseqlib.init',
+                  'rnaseqlib.genes', 'rnaseqlib.qc',
+                  'rnaseqlib.mapping', 'rnaseqlib.cluster_utils',
+                  'rnaseqlib.plotting', 'rnaseqlib.events',
+                  'rnaseqlib.clip', 'rnaseqlib.ribo'],
+      # distutils always uses forward slashes      
       scripts = ['scripts/rna_pipeline.py',
                  'scripts/gtf2gff3.pl'],
       # Required modules

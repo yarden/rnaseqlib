@@ -159,6 +159,7 @@ class Pipeline:
         for sample in self.samples:
             self.qc_objects[sample.label] = qc.QualityControl(sample,
                                                               self)
+            sample.qc = self.qc_objects[sample.label]
         # Retrieve QC header: get the header from first sample
         self.qc_header = self.qc_objects[self.samples[0].label].qc_header
         
@@ -564,7 +565,8 @@ class Pipeline:
             rpkm_filename = rpkm_utils.output_rpkm(sample,
                                                    const_exons_tablename,
                                                    const_exons_fname,
-                                                   sample_rpkm_outdir)
+                                                   sample_rpkm_outdir,
+                                                   self.settings_info)
             # Store the RPKM output filename
             sample.rpkm_tables[const_exons_tablename] = rpkm_filename
         return sample

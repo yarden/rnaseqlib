@@ -18,7 +18,8 @@ import pysam
 def output_rpkm(sample,
                 output_basename,
                 exons_gff_filename,
-                output_dir):
+                output_dir,
+                settings_info):
     """
     Output RPKM table per sample.
     """
@@ -43,14 +44,17 @@ def output_rpkm(sample,
             %(sample.label)
         sys.exit(1)
     print "Sample %s has %s mapped reads" %(sample.label, num_mapped)
+    read_len = settings_info["readlen"]
     output_rpkm_from_gff_aligned_bam(exons_bam_fname,
                                      num_mapped,
+                                     read_len,
                                      rpkm_output_filename)
     return rpkm_output_filename
     
     
 def output_rpkm_from_gff_aligned_bam(bam_filename,
                                      num_total_reads,
+                                     read_len,
                                      output_filename):
     """
     Given a BAM file aligned by bedtools (with 'gff' field),
@@ -78,6 +82,7 @@ def output_rpkm_from_gff_aligned_bam(bam_filename,
             # Read aligns to region of interest
             gff_aligned_regions = bam_read.opt("YB")
             parsed_regions = gff_aligned_regions.split("gff:")[1:]
+            print parsed_regions
 
             # Compile region counts and lengths
             for region in parsed_regions:
@@ -92,7 +97,8 @@ def output_rpkm_from_gff_aligned_bam(bam_filename,
                 region_to_len[region] = region_len
         except KeyError:
             gff_aligned_region = None
-        last_chrom = curr_chrom
+    print "region_to_count: ", region_to_count
+    print "region to len: ", region_to_len
 
 #    output_rpkm_as_gff(source, region_to_count, region_to_len,
 #                       num_total_reads, output_filename)
