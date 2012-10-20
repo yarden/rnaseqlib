@@ -15,10 +15,13 @@ class Cluster:
     def __init__(self,
                  cluster_type,
                  output_dir,
+                 logger,
                  supported_types=["bsub", "qsub"]):
+        self.logger = logger
         self.cluster_type = cluster_type
         self.output_dir = output_dir
         if self.cluster_type not in supported_types:
+            self.logger.critical("Unsupported cluster type: %s" %(self.cluster_type))
             print "Error: unsupported cluster type %s" %(self.cluster_type)
             sys.exit(1)
             
@@ -32,6 +35,8 @@ class Cluster:
         job_id = self.launch_job(cmd, job_name,
                                  unless_exists=unless_exists)
         if job_id is None:
+            self.logger.critical("Job submission failed for %s, %s" %(cmd,
+                                                                      job_name))
             # Job submission failed
             return None
         else:

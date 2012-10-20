@@ -8,6 +8,25 @@ import time
 from os.path import basename
 from urlparse import urlsplit
 
+import logging
+
+def get_logger(logger_name, log_outdir,
+               level=logging.INFO):
+    """
+    Return a logging object.
+    """
+    logger = logging.getLogger(logger_name)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                                  datefmt='%m/%d/%Y %I:%M:%S %p')
+    log_filename = os.path.join(log_outdir, "%s.log" %(logger_name))
+    fh = logging.FileHandler(log_filename)
+    fh.setLevel(level)
+    fh.setFormatter(formatter)    
+    logger.addHandler(fh)
+    logging.root.setLevel(level)
+    logger.info("Created logger %s" %(logger_name))
+    return logger
+
 
 def make_dir(dirpath):
     if os.path.isfile(dirpath):

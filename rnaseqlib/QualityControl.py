@@ -2,6 +2,8 @@ import os
 import sys
 import time
 
+import logging
+
 import csv
 
 import rnaseqlib
@@ -24,6 +26,9 @@ class QualityControl:
         self.pipeline = pipeline
         self.sample = sample
         self.settings_info = pipeline.settings_info
+        # Define logger
+        self.logger = utils.get_logger("QualityControl.%s" %(sample.label),
+                                       self.pipeline.pipeline_outdirs["logs"])
         # QC header: order of QC fields to be outputted
         self.qc_header = ["num_reads", 
                           "num_mapped",
@@ -49,7 +54,9 @@ class QualityControl:
         """
         Load QC data from file if already present.
         """
+        self.logger.info("Attempting to load QC from file...")
         if os.path.isfile(self.qc_filename):
+            self.logger.info("Loaded: %s" %(self.qc_filename))
             qc_in = csv.DictReader(open(self.qc_filename, "r"),
                                    delimiter="\t")
             # Load existing header
@@ -68,7 +75,9 @@ class QualityControl:
         For paired-end samples, return pair of comma-separated
         numbers: 'left_mate,right_mate'.
         """
+        self.logger.info("Getting number of reads.")
         if self.sample.paired:
+            self.logger.info("Getting number of paired-end reads.")
             # Paired-end
             mate_reads = []
             for mate_rawdata in self.sample.rawdata:
@@ -80,6 +89,7 @@ class QualityControl:
             pair_num_reads = ",".join(map(str, mate_reads))
             return pair_num_reads
         else:
+            self.logger.info("Getting number of single-end reads.")
             num_reads = 0
             # Single-end
             fastq_entries = fastq_utils.get_fastq_entries(self.sample.rawdata.reads_filename)
@@ -93,6 +103,7 @@ class QualityControl:
         Get number of mapped reads, not counting duplicates, i.e.
         reads that have alignments in the BAM file.
         """
+        self.logger.info("Getting number of reads mapped.")
         bam_read_ids = {}
         bamfile = pysam.Samfile(self.sample.bam_filename, "rb")
         for read in bamfile:
@@ -103,6 +114,7 @@ class QualityControl:
     
 
     def get_exon_intergenic_ratio(self):
+        self.logger.info("Getting exon intergenic ratio.")
         pass
     
 
@@ -118,6 +130,7 @@ class QualityControl:
         - chr_ribo denotes the name of the ribosome containing
           chromosome.
         """
+        self.logger.info("Getting number of ribosomal reads.")
         bamfile = pysam.Samfile(self.sample.bam_filename, "rb")
         # Retrieve all reads on the ribo chromosome
         ribo_reads = bamfile.fetch(reference=chr_ribo,
@@ -138,6 +151,7 @@ class QualityControl:
         """
         Compute all QC metrics for sample.
         """
+        self.logger.info("Computing QC for sample: %s" %(self.sample.label))
         num_reads = self.get_num_reads()
         self.qc_results["num_reads"] = num_reads
         # BAM-related statistics

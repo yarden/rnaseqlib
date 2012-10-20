@@ -29,6 +29,8 @@ def run_on_sample(sample_label,
     """
     Run pipeline on one particular sample.
     """
+    print "I AM RUNNING ON SAMPLE!"
+    raise Exception, "foo"
     pipeline = rna_pipeline.Pipeline(settings_filename,
                                      output_dir)
     pipeline.run_on_sample(sample_label)

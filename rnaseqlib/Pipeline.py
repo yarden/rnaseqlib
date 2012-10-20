@@ -124,7 +124,6 @@ class Pipeline:
         self.my_cluster = None
         # Check settings are correct
         self.load_pipeline_settings()
-        self.load_cluster()
         # Load samples
         self.load_pipeline_samples()
         # Pipeline output subdirectories
@@ -135,8 +134,12 @@ class Pipeline:
         self.toplevel_dirs = ["rawdata",
                               "mapping",
                               "qc",
-                              "analysis"]
+                              "analysis",
+                              "logs"]
         self.init_outdirs()
+        self.logger = utils.get_logger("Pipeline",
+                                       self.pipeline_outdirs["logs"])
+        self.load_cluster()
         # QC header: order of QC fields to be outputted
         self.qc_header = []
         self.init_qc()
@@ -269,7 +272,8 @@ class Pipeline:
         pipeline settings we were given.
         """
         self.my_cluster = cluster.Cluster(self.settings_info["mapping"]["cluster_type"],
-                                          self.output_dir)
+                                          self.output_dir,
+                                          self.logger)
         
 
     def load_sequence_files(self):
@@ -310,6 +314,7 @@ class Pipeline:
             seq_filename, sample_label = seq_entry
             # Ensure file exists
             if not os.path.isfile(seq_filename):
+                self.logger.critical("Error: %s does not exist!" %(seq_filename))
                 print "Error: %s does not exist!" %(seq_filename)
                 sys.exit(1)
             sample_rawdata = SampleRawdata(sample_label,
@@ -365,6 +370,8 @@ class Pipeline:
         else:
             print "WARNING: Do not know how to pre-process type %s samples." \
                 %(sample.sample_type)
+            self.logger.info("Do not know how to pre-process type %s samples" \
+                             %(sample.sample_type))
         return sample
 
 
@@ -380,6 +387,7 @@ class Pipeline:
             
     def run_on_samples(self):
         samples_job_ids = []
+        self.logger.info("Running on samples..")
         for sample in self.samples:
             print "Processing sample %s" %(sample)
             job_name = "pipeline_run_%s" %(sample.label)
@@ -388,8 +396,10 @@ class Pipeline:
                   sample.label,
                   self.settings_filename,
                   self.output_dir)
+            self.logger.info("Executing: %s" %(sample_cmd))
             print "Executing: %s" %(sample_cmd)
             job_id = self.my_cluster.launch_job(sample_cmd, job_name)
+            self.logger.info("Job launched with ID %s" %(job_id))
             samples_job_ids.append(job_id)
         return samples_job_ids
         
@@ -399,6 +409,7 @@ class Pipeline:
         """
         Run pipeline. 
         """
+        self.logger.info("Running pipeline.")
         print "Running pipeline..."
         num_samples = len(self.samples)
         if num_samples == 0:
@@ -415,18 +426,26 @@ class Pipeline:
 
 
     def run_on_sample(self, label):
+        self.logger.info("Running on sample: %s" %(label))
+        self.logger.info("Retrieving sample...")
         # Fetch the sample by its label
         sample = self.get_sample_by_label(label)
         if sample is None:
+            self.logger.info("Cannot find sample %s! Exiting.." \
+                             %(label))
             print "Error: Cannot find sample %s" %(label)
             sys.exit(1)
         # Pre-process the data if needed
+        self.logger.info("Preprocessing reads")
         sample = self.preprocess_reads(sample)
         # Map the data
+        self.logger.info("Mapping reads")
         sample = self.map_reads(sample)
         # Perform QC
+        self.logger.info("Running QC")
         sample = self.run_qc(sample)
         # Run gene expression analysis
+        self.logger.info("Running analysis")
         sample = self.run_analysis(sample)
 
             
@@ -513,10 +532,12 @@ class Pipeline:
         """
         Run QC for this sample.
         """
+        self.logger.info("run_qc: Running on %s" %(sample.label))
         print "Running QC on sample: %s" %(sample.label)
         # Retrieve QC object for sample
         qc_obj = self.qc_objects[sample.label]
         if qc_obj.qc_loaded:
+            self.logger.info("QC objects already loaded.")
             # Don't load QC information if it already exists
             print "  - QC objects already loaded from file."
         else:
