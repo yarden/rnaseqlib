@@ -439,10 +439,12 @@ class ConstExons:
         self.table_name = table_name
         self.from_dir = from_dir
         self.gff_filename = None
+        self.na_val = "NA"
         self.genes_to_exons_filename = None
         self.found = False
         # A list of genes to exons mapping
         self.genes_to_exons = []
+        self.exon_lens = defaultdict(int)
         if from_dir is not None:
             self.load_const_exons()
 
@@ -473,8 +475,7 @@ class ConstExons:
         self.found = True
 
 
-    def load_genes_to_exons(self,
-                            header=["gene_id", "exons"]):
+    def load_genes_to_exons(self):
         """
         Return a dictionary mapping each table name to its file
         that specifies a mapping from genes to constitutive
@@ -482,10 +483,19 @@ class ConstExons:
         """
         table_file = open(self.genes_to_exons_filename, "r")
         table_in = csv.DictReader(table_file,
-                                  delimiter="\t",
-                                  fieldnames=header)
-        self.genes_to_exons = [entry for entry in table_in]
-        
+                                  delimiter="\t")
+        for entry in table_in:
+            self.genes_to_exons.append(entry)
+            # Compute the length of each set of exons
+            if entry["exons"] == self.na_val:
+                continue
+            exons = entry["exons"].split(",")
+            exon_coords = map(lambda e: e.split(":")[1].split("-"), exons)
+            exon_lens = map(lambda coords: int(coords[1]) - int(coords[0]) + 1,
+                            exon_coords)
+            for exon, exon_len in itertools.izip(exons, exon_lens):
+                self.exon_lens[exon] = exon_len
+                
 
     def __repr__(self):
         return "ConstExons(table=%s, gff=%s, genes_to_exons=%d entries)" \

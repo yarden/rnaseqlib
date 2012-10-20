@@ -13,6 +13,8 @@ import rnaseqlib.utils as utils
 import misopy
 import misopy.exon_utils as exon_utils
 
+import pandas
+
 import pysam
 
 def output_rpkm(sample,
@@ -50,7 +52,7 @@ def output_rpkm(sample,
                                                  const_exons.gff_filename,
                                                  bam2gff_outdir)
         # Compute RPKMs for sample
-        num_mapped = sample.qc.qc_results["num_mapped"]
+        num_mapped = int(sample.qc.qc_results["num_mapped"])
         if num_mapped == 0:
             print "Error: Cannot compute RPKMs since sample %s has 0 mapped reads." \
                 %(sample.label)
@@ -60,55 +62,106 @@ def output_rpkm(sample,
         output_rpkm_from_gff_aligned_bam(exons_bam_fname,
                                          num_mapped,
                                          read_len,
+                                         const_exons,
                                          rpkm_output_filename)
     return rpkm_output_filename
     
     
 def output_rpkm_from_gff_aligned_bam(bam_filename,
-                                     num_total_reads,
+                                     num_mapped,
                                      read_len,
-                                     output_filename):
+                                     const_exons,
+                                     output_filename,
+                                     rpkm_header=["gene_id",
+                                                  "rpkm",
+                                                  "counts",
+                                                  "exons"],
+                                     na_val="NA"):
     """
     Given a BAM file aligned by bedtools (with 'gff' field),
     compute RPKM for each region, incorporating relevant
     optional fields from gff.
+
+    Takes as input:
+
+     - bam_filename: the BAM file
+     - num_mapped: number of mapped reads to normalize to
+     - read_len: read length
+     - const_exons: Constitutive exons object
+     - output_filename: output filename
     """
     bam_file = pysam.Samfile(bam_filename, "rb")
-    source = os.path.basename(output_filename)
-
     print "Computing RPKM from BAM aligned to GFF..."
     print "  - BAM: %s" %(bam_filename)
     print "  - Output filename: %s" %(output_filename)
-
-    loaded_gff = False
-    ref_gff_recs = None
-    last_chrom = None
-
     # Map of gff region to read counts
     region_to_count = defaultdict(int)
-    region_to_len = defaultdict(int)
-
     for bam_read in bam_file:
-        curr_chrom = bam_file.getrname(bam_read.tid)
         try:
             # Read aligns to region of interest
             gff_aligned_regions = bam_read.opt("YB")
             parsed_regions = gff_aligned_regions.split("gff:")[1:]
             # Compile region counts and lengths
             for region in parsed_regions:
-                region_to_count[region] += 1
-
-                # Get region length
-                coord_field = region.split(",")[0].split(":")[1]
-                region_start, region_end = coord_field.split("-")
-                region_start, region_end = int(region_start), \
-                                           int(region_end)
-                region_len = region_end - region_start
-                region_to_len[region] = region_len
+                region_chrom, coord_field = region.split(",")[0].split(":")[0:2]
+                # Region internally converted to 0-based start, so we must add 1
+                # to get it back
+                region_start, region_end = map(int, coord_field.split("-"))
+                region_start += 1
+                region_str = "%s:%s-%s" %(region_chrom,
+                                          str(region_start),
+                                          str(region_end))
+                # Count reads in region
+                region_to_count[region_str] += 1
         except KeyError:
             gff_aligned_region = None
-#    print "region_to_count: ", region_to_count
-#    print "region to len: ", region_to_len
+    # For each gene, find its exons. Sum their counts
+    # and length to compute RPKM
+    rpkm_table = []
+    for gene_info in const_exons.genes_to_exons:
+        gene_id = gene_info["gene_id"]
+        exons = gene_info["exons"]
+        if exons == na_val:
+            continue
+        parsed_exons = exons.split(",")
+        # Strip the strand of the exons
+        strandless_exons = map(lambda x: x[0:-2], parsed_exons)
+        curr_counts = [region_to_count[s_exon] for s_exon in strandless_exons]
+        sum_counts = sum(curr_counts)
+        curr_lens = [const_exons.exon_lens[exon] for exon in parsed_exons]
+        sum_lens = sum(curr_lens)
+        assert(len(curr_counts) == len(curr_lens)), \
+            "Error: sum_counts != sum_lens in RPKM computation."
+        gene_rpkm = compute_rpkm(sum_counts, sum_lens, num_mapped)
+        # RPKM entry for gene
+        rpkm_entry = {"rpkm": gene_rpkm,
+                      "gene_id": gene_id,
+                      "counts": sum_counts,
+                      "exons": exons}
+        rpkm_table.append(rpkm_entry)
+    rpkm_df = pandas.DataFrame(rpkm_table)
+    rpkm_df.to_csv(output_filename,
+                   cols=rpkm_header,
+                   sep="\t",
+                   index=False)
+    return output_filename
 
-#    output_rpkm_as_gff(source, region_to_count, region_to_len,
-#                       num_total_reads, output_filename)
+
+def compute_rpkm(region_count,
+                 region_len,
+                 num_total_reads):
+    """
+    Compute RPKM for a region.
+    """
+    # Get length of region in KB
+    region_kb = region_len / float(1e3)
+
+    # Numerator of RPKM: reads per kilobase
+    rpkm_num = (region_count / region_kb)
+
+    # Denominator of RPKM: per M mapped reads
+    num_reads_per_million = num_total_reads / float(1e6)
+
+    rpkm = (rpkm_num / num_reads_per_million)
+    return rpkm
+            
