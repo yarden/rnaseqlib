@@ -4,6 +4,8 @@ import time
 import glob
 import settings
 
+import pandas
+
 from collections import defaultdict
 
 import rnaseqlib
@@ -41,6 +43,8 @@ class Sample:
         self.tophat_filename = None
         # BAM filename
         self.bam_filename = None
+        # Sample's RPKM directory
+        self.rpkm_dir = None
         # RPKM tables for the sample
         self.rpkm_tables = {}
         # Record if a sample is grouped
@@ -114,7 +118,6 @@ class Pipeline:
         self.data_type = None
         # Directory where pipeline init files are
         self.init_dir = None
-        self.rpkm_dir = None
         # Paired-end or not
         self.is_paired_end = None
         self.sample_to_group = None
@@ -124,10 +127,10 @@ class Pipeline:
         self.my_cluster = None
         # Check settings are correct
         self.load_pipeline_settings()
-        # Load samples
-        self.load_pipeline_samples()
         # Pipeline output subdirectories
         self.pipeline_outdirs = {}
+        # RPKM directory for teh pipeline
+        self.rpkm_dir = None
         # QC objects for each sample in pipeline
         self.qc_objects = {}
         # Top-level output dirs
@@ -140,13 +143,17 @@ class Pipeline:
         self.logger = utils.get_logger("Pipeline",
                                        self.pipeline_outdirs["logs"])
         self.load_cluster()
+        ## Load RNA Base: object storing all the relevant
+        ## initialization information
+        self.rna_base = None
+        self.load_rna_base()
+        ## Load samples
+        self.load_pipeline_samples()
+        
+        ## Initialize QC for samples
         # QC header: order of QC fields to be outputted
         self.qc_header = []
         self.init_qc()
-        # RNA Base: object storing all the relevant
-        # initialization information
-        self.rna_base = None
-        self.load_rna_base()
 
 
     def load_rna_base(self):
@@ -179,6 +186,69 @@ class Pipeline:
             sample.qc = self.qc_objects[sample.label]
         # Retrieve QC header: get the header from first sample
         self.qc_header = self.qc_objects[self.samples[0].label].qc_header
+
+
+    def load_rpkms(self):
+        """
+        Load RPKM information from samples.
+        """
+        for sample in self.samples:
+            # Get mapping from table names to loaded RPKM tables
+            sample.rpkm_tables = rpkm_utils.load_sample_rpkms(sample,
+                                                              self.rna_base)
+        # Load RPKMs into combined RPKM tables for all samples
+        # Create a mapping from table name to RPKM DataFrame
+        # that includes all samples
+        self.rpkm_tables = {}
+        for table_name in self.rna_base.rpkm_table_names:
+            curr_sample = self.samples[0]
+            # Change the RPKM and counts fields to reflect sample name
+            new_cols = []
+            for col in curr_sample.rpkm_tables[table_name].columns:
+                if (col == "rpkm") or (col == "counts"):
+                    # Add the name of the sample as a suffix
+                    new_col = "%s_%s" %(col, curr_sample.label)
+                else:
+                    new_col = col
+                new_cols.append(new_col)
+            # If we have only one sample, make add it to the set of
+            # RPKM tables by itself and continue to next table
+            if len(self.samples) == 1:
+                # Set new column names as index
+                curr_sample.rpkm_tables[table_name].columns = pandas.Index(new_cols)
+                self.rpkm_tables[table_name] = curr_sample.rpkm_tables[table_name]
+                continue
+            # For multiple samples: collect each sample's RPKM table
+            # for the current table (e.g. ensGene)
+            print "FIRST SAMPLE COLUMNS: "
+            print curr_sample.rpkm_tables[table_name].columns
+            combined_rpkm_table = curr_sample.rpkm_tables[table_name]
+            print 'ITERATING THROUGH %d samples' %(len(self.samples))
+            for next_sample in self.samples[1:]:
+                # Merge with next sample's RPKM table
+                next_sample_rpkm = next_sample.rpkm_tables[table_name]
+                print "merging %s with %s" %(curr_sample.label,
+                                             next_sample.label)
+                print "next sample rpkm: "
+                print next_sample_rpkm, next_sample_rpkm.columns
+                print next_sample.label
+                combined_rpkm_table = pandas.merge(combined_rpkm_table,
+                                                   next_sample_rpkm,
+                                                   # Merge on common columns of
+                                                   # gene ID and exons
+                                                   on=["gene_id", "exons"],
+                                                   # Use the sample names as suffixes
+                                                   suffixes=["_%s" %(curr_sample.label),
+                                                             "_%s" %(next_sample.label)])
+                print "COMB: ", combined_rpkm_table, combined_rpkm_table.columns
+                
+            print "combined table entry 1: "
+            print combined_rpkm_table
+            print "first sample table"
+            print curr_sample.rpkm_tables[table_name]
+            # Record the combined RPKM table
+            self.rpkm_tables[table_name] = combined_rpkm_table
+        
         
 
     def init_outdirs(self):
@@ -352,7 +422,11 @@ class Pipeline:
                 sample = Sample(sample_rawdata.label, sample_rawdata)
                 samples.append(sample)
         self.samples = samples
-
+        # Tell each sample locations of its various output directories
+        # (e.g. where its RPKM directory is)
+        for sample in self.samples:
+            sample.rpkm_dir = os.path.join(self.rpkm_dir, sample.label)
+            
 
     def preprocess_reads(self, sample):
         """
@@ -423,6 +497,8 @@ class Pipeline:
         self.my_cluster.wait_on_jobs(job_ids)
         # Compile all the QC results
         self.compile_qc_output()
+        # Compile all the analysis results
+        self.compile_analysis_output()
 
 
     def run_on_sample(self, label):
@@ -453,12 +529,14 @@ class Pipeline:
         """
         Map reads.
         """
+        self.logger.info("Mapping reads for sample: %s" %(sample.label))
         print "Mapping reads..."
         mapper = self.settings_info["mapping"]["mapper"]
         mapping_cmd = None
         job_name = "%s_%s" %(sample.label, mapper)
         print "Mapping sample: %s" %(sample)
         print "  - mapper: %s" %(mapper)
+        self.logger.info("Mapper: %s" %(mapper))
         if mapper == "bowtie":
             bowtie_path = self.settings_info["mapping"]["bowtie_path"]
             index_filename = self.settings_info["mapping"]["bowtie_index"]
@@ -508,6 +586,8 @@ class Pipeline:
 
         Once completed, delete the unsorted file.
         """
+        self.logger.info("Sort and indexing BAM for sample: %s" \
+                         %(sample.label))
         bam_basename = os.path.basename(sample.bam_filename).split(".bam")[0]
         sorted_bam_filename = os.path.join(os.path.dirname(sample.bam_filename),
                                            "%s.sorted" %(bam_basename))
@@ -553,6 +633,7 @@ class Pipeline:
         """
         Compile QC output for all samples.
         """
+        self.logger.info("Compiling QC output for all samples...")
         print "Compiling QC output for all samples..."
         # Load QC information from existing files
         self.load_qc()
@@ -565,21 +646,41 @@ class Pipeline:
         qc_output_filename = os.path.join(self.pipeline_outdirs["qc"],
                                           "qc_stats.txt")
         print "  - Outputting QC to: %s" %(qc_output_filename)
+        self.logger.info("Outputting QC to: %s" %(qc_output_filename))
         qc_stats.to_csv(qc_output_filename)
+
+
+    def compile_analysis_output(self):
+        """
+        Compile analysis output for all samples.
+        """
+        self.logger.info("Compiling analysis output for all samples...")
+        print "Compiling analysis output for all samples..."
+        # Compile RPKM results
+        self.compile_rpkms_output()
+
+
+    def compile_rpkms_output(self):
+        """
+        Compile and output RPKMs for all samples.
+        """
+        # Load RPKMs for all samples
+        self.load_rpkms()
+        
+        
+        
 
 
     def output_rpkms(self, sample):
         """
         Output RPKMs.
         """
-        print "Computing RPKMs for sample: %s" %(sample.label)
+        print "Outputting RPKMs for sample: %s" %(sample.label)
         sample_rpkm_outdir = os.path.join(self.rpkm_dir, sample.label)
         rpkm_tables = rpkm_utils.output_rpkm(sample,
                                              sample_rpkm_outdir,
                                              self.settings_info,
                                              self.rna_base)
-        # Record the filenames of the RPKM tables for the sample
-        sample.rpkm_tables = rpkm_tables
         return sample
         
     
@@ -588,6 +689,7 @@ class Pipeline:
         Run analysis on a sample.
         """
         # Compute RPKMs
+        self.logger.info("Computing RPKMs for sample: %s" %(sample.label))
         self.output_rpkms(sample)
         return sample
         

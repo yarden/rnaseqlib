@@ -57,8 +57,6 @@ def launchJob(cmd, job_name,
     utils.make_dir(script_outdir)
     scriptOptions["outf"] = os.path.abspath(os.path.join(script_outdir,
                                                          outscriptName+".out"))
-    print "Dumping script to: %s" %(scriptOptions["outf"])
-
     outtext = """#!/bin/sh
 
     #BSUB -n %(ppn)s 

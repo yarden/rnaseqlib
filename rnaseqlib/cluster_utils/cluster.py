@@ -35,8 +35,6 @@ class Cluster:
         job_id = self.launch_job(cmd, job_name,
                                  unless_exists=unless_exists)
         if job_id is None:
-            self.logger.critical("Job submission failed for %s, %s" %(cmd,
-                                                                      job_name))
             # Job submission failed
             return None
         else:

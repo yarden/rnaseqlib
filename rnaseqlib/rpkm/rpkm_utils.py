@@ -17,6 +17,26 @@ import pandas
 
 import pysam
 
+
+def load_sample_rpkms(sample,
+                      rna_base):
+    """
+    Load RPKM tables for a sample. Return
+    """
+    rpkm_tables = {}
+    for table_name in rna_base.rpkm_table_names:
+        rpkm_table = None
+        rpkm_filename = os.path.join(sample.rpkm_dir,
+                                     "%s.rpkm" %(table_name))
+        if os.path.isfile(rpkm_filename):
+            # Load each table as a DataFrame
+            rpkm_table = pandas.read_csv(rpkm_filename, sep="\t")
+        else:
+            print "WARNING: Cannot find RPKM filename %s" %(rpkm_filename)
+        rpkm_tables[table_name] = rpkm_table
+    return rpkm_tables
+    
+
 def output_rpkm(sample,
                 output_dir,
                 settings_info,
@@ -142,7 +162,11 @@ def output_rpkm_from_gff_aligned_bam(bam_filename,
     rpkm_df = pandas.DataFrame(rpkm_table)
     rpkm_df.to_csv(output_filename,
                    cols=rpkm_header,
+                   na_rep=na_val,
                    sep="\t",
+                   # 4-decimal point RPKM format
+                   # Not compatible with current pandas versions
+                   #float_format="%.4f",
                    index=False)
     return output_filename
 
