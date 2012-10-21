@@ -32,6 +32,7 @@ class RNABase:
         self.ucsc_tables_dir = None
         # Tables to use for RPKM computation
         self.rpkm_table_names = ["ensGene",
+                                 "ensGene.cds_only",
                                  "refSeq"]
         # Mapping from tables to const exons information
         self.tables_to_const_exons = {}

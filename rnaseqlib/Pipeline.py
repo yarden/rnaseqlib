@@ -222,7 +222,6 @@ class Pipeline:
                                                    on=["gene_id", "exons"])
             # Record the combined RPKM table
             self.rpkm_tables[table_name] = combined_rpkm_table
-        print self.rpkm_tables
         
 
     def init_outdirs(self):
