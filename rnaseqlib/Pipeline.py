@@ -211,21 +211,17 @@ class Pipeline:
                 continue
             # For multiple samples: collect each sample's RPKM table
             # for the current table (e.g. ensGene)
-            combined_rpkm_table = \
-                reduce(lambda left_table, right_table:
-                       pandas.merge(left_table, right_table,
-                                    on=["gene_id", "exons"]))
-#            for next_sample in self.samples[1:]:
+            combined_rpkm_table = curr_sample.rpkm_tables[table_name]
+            for next_sample in self.samples[1:]:
                 # Merge with next sample's RPKM table
-#                next_sample_rpkm = next_sample.rpkm_tables[table_name]
-#                combined_rpkm_table = pandas.merge(combined_rpkm_table,
-#                                                   next_sample_rpkm,
-#                                                   # Merge on common columns of
-#                                                   # gene ID and exons
-#                                                   on=["gene_id", "exons"])
+                next_sample_rpkm = next_sample.rpkm_tables[table_name]
+                combined_rpkm_table = pandas.merge(combined_rpkm_table,
+                                                   next_sample_rpkm,
+                                                   # Merge on common columns of
+                                                   # gene ID and exons
+                                                   on=["gene_id", "exons"])
             # Record the combined RPKM table
             self.rpkm_tables[table_name] = combined_rpkm_table
-        print "self.rpkmtables: "
         print self.rpkm_tables
         
 
