@@ -192,63 +192,38 @@ class Pipeline:
         """
         Load RPKM information from samples.
         """
-        for sample in self.samples:
+        for sample_num, sample in enumerate(self.samples):
             # Get mapping from table names to loaded RPKM tables
-            sample.rpkm_tables = rpkm_utils.load_sample_rpkms(sample,
-                                                              self.rna_base)
+            self.samples[sample_num].rpkm_tables = rpkm_utils.load_sample_rpkms(sample,
+                                                                                self.rna_base)
         # Load RPKMs into combined RPKM tables for all samples
         # Create a mapping from table name to RPKM DataFrame
         # that includes all samples
         self.rpkm_tables = {}
         for table_name in self.rna_base.rpkm_table_names:
             curr_sample = self.samples[0]
-            # Change the RPKM and counts fields to reflect sample name
-            new_cols = []
-            for col in curr_sample.rpkm_tables[table_name].columns:
-                if (col == "rpkm") or (col == "counts"):
-                    # Add the name of the sample as a suffix
-                    new_col = "%s_%s" %(col, curr_sample.label)
-                else:
-                    new_col = col
-                new_cols.append(new_col)
+            # If the RPKM table is not available, skip it
+            if curr_sample.rpkm_tables[table_name] is None: continue
             # If we have only one sample, make add it to the set of
             # RPKM tables by itself and continue to next table
             if len(self.samples) == 1:
-                # Set new column names as index
-                curr_sample.rpkm_tables[table_name].columns = pandas.Index(new_cols)
                 self.rpkm_tables[table_name] = curr_sample.rpkm_tables[table_name]
                 continue
             # For multiple samples: collect each sample's RPKM table
             # for the current table (e.g. ensGene)
-            print "FIRST SAMPLE COLUMNS: "
-            print curr_sample.rpkm_tables[table_name].columns
             combined_rpkm_table = curr_sample.rpkm_tables[table_name]
-            print 'ITERATING THROUGH %d samples' %(len(self.samples))
             for next_sample in self.samples[1:]:
                 # Merge with next sample's RPKM table
                 next_sample_rpkm = next_sample.rpkm_tables[table_name]
-                print "merging %s with %s" %(curr_sample.label,
-                                             next_sample.label)
-                print "next sample rpkm: "
-                print next_sample_rpkm, next_sample_rpkm.columns
-                print next_sample.label
                 combined_rpkm_table = pandas.merge(combined_rpkm_table,
                                                    next_sample_rpkm,
                                                    # Merge on common columns of
                                                    # gene ID and exons
-                                                   on=["gene_id", "exons"],
-                                                   # Use the sample names as suffixes
-                                                   suffixes=["_%s" %(curr_sample.label),
-                                                             "_%s" %(next_sample.label)])
-                print "COMB: ", combined_rpkm_table, combined_rpkm_table.columns
-                
-            print "combined table entry 1: "
-            print combined_rpkm_table
-            print "first sample table"
-            print curr_sample.rpkm_tables[table_name]
+                                                   on=["gene_id", "exons"])
             # Record the combined RPKM table
             self.rpkm_tables[table_name] = combined_rpkm_table
-        
+        print "self.rpkmtables: "
+        print self.rpkm_tables
         
 
     def init_outdirs(self):
@@ -666,9 +641,24 @@ class Pipeline:
         """
         # Load RPKMs for all samples
         self.load_rpkms()
-        
-        
-        
+        # Output RPKM tables
+        # Order in which table columns should be serialized:
+        # Gene ID first, followed by the counts for each sample,
+        # followed by the exons used in the calculation
+        fieldnames = ["gene_id"]
+        fieldnames.extend(["rpkm_%s" %(sample.label) \
+                           for sample in self.samples])
+        fieldnames.extend(["counts_%s" %(sample.label) \
+                           for sample in self.samples])
+        fieldnames.extend(["exons"])
+        for table_name, rpkm_table in self.rpkm_tables.iteritems():
+            if rpkm_table is None: continue
+            rpkm_table_filename = os.path.join(self.rpkm_dir,
+                                               "%s.rpkm.txt" %(table_name))
+            rpkm_table.to_csv(rpkm_table_filename,
+                              cols=fieldnames,
+                              sep="\t",
+                              index=False)
 
 
     def output_rpkms(self, sample):

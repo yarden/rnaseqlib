@@ -29,8 +29,15 @@ def load_sample_rpkms(sample,
         rpkm_filename = os.path.join(sample.rpkm_dir,
                                      "%s.rpkm" %(table_name))
         if os.path.isfile(rpkm_filename):
+            # Insert the sample name into the header
+            fieldnames = ["gene_id",
+                          "rpkm_%s" %(sample.label),
+                          "counts_%s" %(sample.label),
+                          "exons"]
             # Load each table as a DataFrame
-            rpkm_table = pandas.read_csv(rpkm_filename, sep="\t")
+            rpkm_table = pandas.read_csv(rpkm_filename,
+                                         sep="\t",
+                                         names=fieldnames)
         else:
             print "WARNING: Cannot find RPKM filename %s" %(rpkm_filename)
         rpkm_tables[table_name] = rpkm_table
