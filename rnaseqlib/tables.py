@@ -122,10 +122,18 @@ class GeneTable:
         self.load_kgXref_table()
         if self.source == "ensGene":
             self.load_ensGene_table(tables_only=tables_only)
-#        elif self.source == "ucsc":
-#            self.load_ucsc_table(tables_only=tables_only)
-#        elif self.source == "refSeq":
-#            self.load_refSeq_table(tables_only=tables_only)
+        elif self.source == "knownGene":
+            self.load_knownGene_table(tables_only=tables_only)
+        elif self.source == "refSeq":
+            self.load_refSeq_table(tables_only=tables_only)
+
+        
+    def load_knownGene_table(self, tables_only=False):
+        raise Exception, "Not implemented."
+
+
+    def load_refSeq_table(self, tables_only=False):
+        raise Exception, "Not implemented."
 
             
     def load_ensGene_table(self, tables_only=False):
@@ -262,7 +270,32 @@ class GeneTable:
         # Parse table into actual gene objects if asked
         if not tables_only:
             self.genes = self.get_genes()
+
+
+    def load_introns(self):
+        """
+        Load introns.
+        """
+        if self.source == "ensGene":
+            self.load_ensGene_introns()
+        elif self.source == "knownGene":
+            self.load_knownGene_introns()
+        elif self.source == "refSeq":
+            self.load_refSeq_introns()
+        else:
+            print "WARNING: Loading of introns not implemented yet " \
+                  "for %s" %(self.source)
+
+
+    def load_ensGene_introns(self):
+        """
+        Load ensGene introns.
+
+        For each transcript, compute the coordinates of introns between the exons.
+        """
+        pass
         
+            
 
     def get_genes(self):
         """
@@ -330,49 +363,6 @@ class GeneTable:
         t2 = time.time()
         print "Loading took %.2f secs" %(t2 - t1)
         return self.genes
-            
-        
-
-#     def load_ensGene_by_genes(self):
-#         print "Loading Ensembl table into genes.."
-#         # Main ensGene table
-#         ensGene_filename = os.path.join(self.table_dir,
-#                                         "ensGene.txt")
-#         t1 = time.time()
-#         main_table = csv.DictReader(open(ensGene_filename),
-#                                     delimiter="\t",
-#                                     fieldnames=self.ensGene_header)
-#         self.load_ensGene_name_table()
-#         # Convert genes into gene models
-#         for gene_id, gene_entries in itertools.groupby(main_table,
-#                                                        key=operator.itemgetter("name2")):
-#             gene_symbol = None
-#             all_transcripts = []
-#             for entry in gene_entries:
-#                 chrom = entry["chrom"]
-#                 strand = entry["strand"]
-#                 exon_starts = (int(start) for start in entry["exonStarts"].split(",")[0:-1])
-#                 exon_ends = (int(end) for end in entry["exonEnds"].split(",")[0:-1])
-#                 exon_coords = itertools.izip(exon_starts, exon_ends)
-#                 cds_start = int(entry["cdsStart"])
-#                 cds_end = int(entry["cdsEnd"])
-# #                parts = [GeneModel.Part(exon[0], exon[1], chrom, strand) \
-# #                         for exon in exon_coords]
-#                 parts = ((exon, chrom, strand) for exon in exon_coords)
-#                 transcript_id = entry["name"]
-#                 transcript = GeneModel.Transcript(parts, chrom, strand,
-#                                                   label=transcript_id,
-#                                                   cds_start=cds_start,
-#                                                   cds_end=cds_end)
-#                 gene_symbol = self.trans_to_names[transcript_id]
-#                 all_transcripts.append(transcript)
-#             gene_model = GeneModel.Gene(all_transcripts, chrom, strand,
-#                                         label=gene_id,
-#                                         gene_symbol=gene_symbol)
-#             self.genes[gene_id] = gene_model
-#         t2 = time.time()
-#         print "Loading took %.2f secs" %(t2 - t1)
-#         return self.genes
 
 
     def load_ensGene_name_table(self, delimiter="\t"):
@@ -452,7 +442,13 @@ class GeneTable:
                               cols=genes_to_exons_header,
                               index=False,
                               sep="\t")
-            
+
+
+    def output_exons(self):
+        """
+        Output the tables exons as a (sorted)
+        BED file.
+        """
 
 
     def parse_string_int_list(self, int_list_as_str,
@@ -467,13 +463,6 @@ class GeneTable:
         ints = tuple(map(int, str_list[0:-1]))
         return ints
 
-        
-    def load_ucsc_table(self, tables_only=False):
-        raise Exception, "Not implemented."
-
-
-    def load_refSeq_table(self, tables_only=False):
-        raise Exception, "Not implemented."
 
 
 class ConstExons:
@@ -621,6 +610,8 @@ def process_ucsc_tables(genome, output_dir):
     table_names = ["ensGene"]#, "refGene"]
     for table_name in table_names:
         table = GeneTable(tables_outdir, table_name)
+        # Output the table's exons
+        table.output_exons()
         # Output the table's constitutive exons
         table.output_const_exons()
         # Output the table's CDS-only constitutive exons

@@ -8,6 +8,7 @@ import time
 from os.path import basename
 from urlparse import urlsplit
 
+import itertools
 import logging
 
 def get_logger(logger_name, log_outdir,
@@ -354,26 +355,21 @@ def which(program):
             if is_exe(exe_file):
                 return exe_file
     return None
+            
 
 
-# def download_url(url, localFileName = None):
-#     localName = url2name(url)
-#     req = urllib2.Request(url)
-#     r = urllib2.urlopen(req)
-#     if r.info().has_key('Content-Disposition'):
-#         # If the response has Content-Disposition, we take file name from it
-#         localName = r.info()['Content-Disposition'].split('filename=')[1]
-#         if localName[0] == '"' or localName[0] == "'":
-#         localName = localName[1:-1]
-#     elif r.url != url: 
-#         # if we were redirected, the real file name we take from the final URL
-#         localName = url2name(r.url)
-#     if localFileName: 
-#         # we can force to save the file as specified name
-#         localName = localFileName
-#     f = open(localName, 'wb')
-#     f.write(r.read())
-#     f.close()
+##
+## Misc. utilities for manipulating strings/lists
+##
+def iter_by_pair(l, step=2):
+    """
+    Return an iterator over pairs in the list 'l'.
+
+    'step' determines the number of elements to advance
+    the pair iterator by.
+    """
+    return itertools.izip(l, l[1::step])
+    
 
 
 

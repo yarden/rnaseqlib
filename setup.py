@@ -31,10 +31,7 @@ setup(name = 'rnaseqlib',
       # distutils always uses forward slashes      
       scripts = ['scripts/rna_pipeline.py',
                  'scripts/gtf2gff3.pl',
-                 'scripts/ucsc_table2gff3.pl',
-                 'scripts/tim_file_helper.pm',                 
-                 'scripts/tim_big_helper.pm',
-                 'scripts/tim_data_helper.pm'],
+                 'scripts/ucsc_table2gff3.pl'],
       # Required modules
       install_requires = [
 #          "matplotlib >= 1.1.0",
