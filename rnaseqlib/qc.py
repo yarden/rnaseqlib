@@ -7,7 +7,6 @@ import time
 import utils
 
 from numpy import *
-from scipy import *
 
 import rnaseqlib
 from rnaseqlib.QualityControl import QualityControl
