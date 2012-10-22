@@ -444,10 +444,12 @@ class GeneTable:
                               sep="\t")
 
 
-    def output_exons(self):
+    def output_merged_exons(self):
         """
-        Output the tables exons as a (sorted)
-        BED file.
+        Output the table's merged exons as a (sorted) BED file.
+
+        Used to determine the exonic content of a sample. Relies on
+        sortBed and mergeBed to do the heavy lifting.
         """
         pass
 
@@ -611,8 +613,8 @@ def process_ucsc_tables(genome, output_dir):
     table_names = ["ensGene"]#, "refGene"]
     for table_name in table_names:
         table = GeneTable(tables_outdir, table_name)
-        # Output the table's exons
-        table.output_exons()
+        # Output the table's merged exons
+        table.output_merged_exons()
         # Output the table's constitutive exons
         table.output_const_exons()
         # Output the table's CDS-only constitutive exons
