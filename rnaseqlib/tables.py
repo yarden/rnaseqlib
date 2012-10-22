@@ -449,6 +449,7 @@ class GeneTable:
         Output the tables exons as a (sorted)
         BED file.
         """
+        pass
 
 
     def parse_string_int_list(self, int_list_as_str,
