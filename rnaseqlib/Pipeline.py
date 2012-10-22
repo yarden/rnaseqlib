@@ -46,7 +46,7 @@ class Sample:
         # Sample's RPKM directory
         self.rpkm_dir = None
         # RPKM tables for the sample
-        self.rpkm_tables = {}
+        self.rpkm_tables = defaultdict(lambda: None)
         # Record if a sample is grouped
         if type(self.rawdata) == list:
             self.paired = True
@@ -149,7 +149,6 @@ class Pipeline:
         self.load_rna_base()
         ## Load samples
         self.load_pipeline_samples()
-        
         ## Initialize QC for samples
         # QC header: order of QC fields to be outputted
         self.qc_header = []
@@ -163,6 +162,9 @@ class Pipeline:
         self.rna_base = rna_base.RNABase(self.genome,
                                          None,
                                          from_dir=self.init_dir)
+        # Load genes information: tables only, without parsing
+        # into gene objects
+        self.rna_base.load_gene_tables(tables_only=True)
         
 
     def init_qc(self):
@@ -199,7 +201,7 @@ class Pipeline:
         # Load RPKMs into combined RPKM tables for all samples
         # Create a mapping from table name to RPKM DataFrame
         # that includes all samples
-        self.rpkm_tables = {}
+        self.rpkm_tables = defaultdict(lambda: None)
         for table_name in self.rna_base.rpkm_table_names:
             curr_sample = self.samples[0]
             # If the RPKM table is not available, skip it
@@ -219,7 +221,8 @@ class Pipeline:
                                                    next_sample_rpkm,
                                                    # Merge on common columns of
                                                    # gene ID and exons
-                                                   on=["gene_id", "exons"])
+                                                   on=["gene_id", "exons",
+                                                       "gene_symbol", "gene_desc"])
             # Record the combined RPKM table
             self.rpkm_tables[table_name] = combined_rpkm_table
         
@@ -641,14 +644,15 @@ class Pipeline:
         self.load_rpkms()
         # Output RPKM tables
         # Order in which table columns should be serialized:
-        # Gene ID first, followed by the counts for each sample,
-        # followed by the exons used in the calculation
-        fieldnames = ["gene_id"]
+        # Gene ID first, followed by gene symbol, the counts for each sample,
+        # followed by the exons used in the calculation and the
+        # gene description
+        fieldnames = ["gene_id", "gene_symbol"]
         fieldnames.extend(["rpkm_%s" %(sample.label) \
                            for sample in self.samples])
         fieldnames.extend(["counts_%s" %(sample.label) \
                            for sample in self.samples])
-        fieldnames.extend(["exons"])
+        fieldnames.extend(["exons", "gene_desc"])
         for table_name, rpkm_table in self.rpkm_tables.iteritems():
             if rpkm_table is None: continue
             rpkm_table_filename = os.path.join(self.rpkm_dir,

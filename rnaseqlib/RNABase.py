@@ -31,9 +31,12 @@ class RNABase:
         ##
         self.ucsc_tables_dir = None
         # Tables to use for RPKM computation
+        self.gene_table_names = ["ensGene", "refSeq"]
         self.rpkm_table_names = ["ensGene",
                                  "ensGene.cds_only",
                                  "refSeq"]
+        # Gene tables indexed by table name
+        self.gene_tables = {}
         # Mapping from tables to const exons information
         self.tables_to_const_exons = {}
         self.output_dir = None
@@ -59,7 +62,6 @@ class RNABase:
         self.load_qc_info()
 
 
-
     def load_rpkm_info(self):
         """
         Load all information needed to compute RPKM.
@@ -72,6 +74,19 @@ class RNABase:
                                        "exons",
                                        "const_exons")
         return const_exons_dir
+
+
+    def load_gene_tables(self, tables_only=False):
+        """
+        Load gene information.
+        """
+        # Load all gene tables
+        for table_name in self.gene_table_names:
+            table = tables.GeneTable(self.ucsc_tables_dir,
+                                     table_name,
+                                     tables_only=tables_only)
+            self.gene_tables[table_name] = table
+        return table
 
 
     def load_const_exons_info(self):

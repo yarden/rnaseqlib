@@ -50,7 +50,8 @@ class GeneTable:
     """
     Parse gene table.
     """
-    def __init__(self, table_dir, source):
+    def __init__(self, table_dir, source,
+                 tables_only=False):
         self.table_dir = table_dir
         self.exons_dir = os.path.join(self.table_dir, "exons")
         self.const_exons_dir = os.path.join(self.exons_dir,
@@ -65,25 +66,69 @@ class GeneTable:
         self.trans_to_names = defaultdict(lambda: self.na_val)
         # Mapping from genes to gene names/symbols
         self.genes_to_names = defaultdict(lambda: self.na_val)
+        # Mapping from genes to descriptions
+        self.genes_to_desc = defaultdict(lambda: self.na_val)        
         # Table indexed by gene
         self.table_by_gene = None
+        # UCSC known to Ensembl
+        self.known_to_ensembl = defaultdict(lambda: self.na_val)
+        # kgXref table
+        self.kgXref_table = None
         # Load tables
-        self.load_tables()
-        
+        self.load_tables(tables_only=tables_only)
 
-    def load_tables(self):
+
+    def load_kgXref_table(self):
+        """
+        Load kgXref table mapping UCSC transcript names to
+        Ensembl transcript names.
+
+        kgXref.txt format:
+
+          `kgID` varchar(40) NOT NULL,
+          `mRNA` varchar(40) default NULL,
+          `spID` varchar(40) default NULL,
+          `spDisplayID` varchar(40) default NULL,
+          `geneSymbol` varchar(40) default NULL,
+          `refseq` varchar(40) default NULL,
+          `protAcc` varchar(40) default NULL,
+          `description` longblob NOT NULL,        
+        """
+        self.kgXref_header = ["kgID",
+                              "mRNA",
+                              "spID",
+                              "spDisplayID",
+                              "geneSymbol",
+                              "refseq",
+                              "protAcc",
+                              "description"]
+        kgXref_filename = os.path.join(self.table_dir, "kgXref.txt")
+        if not os.path.isfile(kgXref_filename):
+            print "Error: Cannot find kgXref table %s" \
+                %(kgXref_filename)
+            sys.exit(1)
+        self.kgXref_table = pandas.read_table(kgXref_filename,
+                                              sep="\t",
+                                              names=self.kgXref_header)
+            
+
+    def load_tables(self, tables_only=False):
         """
         Load table.
         """
         utils.make_dir(self.exons_dir)
         utils.make_dir(self.const_exons_dir)
+        # Load kgXref for all tables
+        self.load_kgXref_table()
         if self.source == "ensGene":
-            self.load_ensGene_table()
-        elif self.source == "ucsc":
-            self.load_ucsc_table()
+            self.load_ensGene_table(tables_only=tables_only)
+#        elif self.source == "ucsc":
+#            self.load_ucsc_table(tables_only=tables_only)
+#        elif self.source == "refSeq":
+#            self.load_refSeq_table(tables_only=tables_only)
 
             
-    def load_ensGene_table(self):
+    def load_ensGene_table(self, tables_only=False):
         """
         Load ensGene table. Expects an 'ensGene.txt' and
         the related 'ensemblToGeneName.txt' file.
@@ -110,7 +155,10 @@ class GeneTable:
         ensemblToGeneName.txt format:
 
           `name` varchar(255) NOT NULL,
-          `value` varchar(255) NOT NULL,        
+          `value` varchar(255) NOT NULL,
+
+        if tables_only is True, do not parse table into
+        genes but only load tables.
         """
         self.ensGene_header = ["bin",
                                "name",
@@ -128,6 +176,8 @@ class GeneTable:
                                "cdsStartStat",
                                "cdsEndStat",
                                "exonFrames"]
+        self.knownToEnsembl_header = ["knownGene_name",
+                                      "name"]
         self.ensemblToGeneName_header = ["name",
                                          "value"]
         ensGene_filename = os.path.join(self.table_dir,
@@ -138,35 +188,75 @@ class GeneTable:
             sys.exit(1)
         ensGene_name_filename = os.path.join(self.table_dir,
                                              "ensemblToGeneName.txt")
+        known_to_ensembl_filename = os.path.join(self.table_dir,
+                                                 "knownToEnsembl.txt")
         if not os.path.isfile(ensGene_name_filename):
             print "Error: Cannot find ensemblToGeneName table %s" \
                 %(ensGene_name_filename)
             sys.exit(1)
+        if not os.path.isfile(known_to_ensembl_filename):
+            print "Error: Cannot find knownToEnsembl table %s" \
+                %(known_to_ensembl_filename)
+            sys.exit(1)
         # Load the main ensGene table
         main_table = pandas.read_table(ensGene_filename,
                                        sep=self.delimiter,
-                                       names=self.ensGene_header,
-                                       converters={"exonStarts":
-                                                   self.parse_string_int_list,
-                                                   "exonEnds":
-                                                   self.parse_string_int_list})
+                                       names=self.ensGene_header)
+#                                       converters={"exonStarts":
+#                                                   self.parse_string_int_list,
+#                                                   "exonEnds":
+#                                                   self.parse_string_int_list})
         # Load ensemblToGeneName table and add this info to
         # main table
-        ensGene_to_name = pandas.read_table(ensGene_name_filename,
-                                            sep=self.delimiter,
-                                            names=self.ensemblToGeneName_header)
-        self.table = pandas.merge(main_table, ensGene_to_name)
-        # Load table by gene
-        self.table_by_gene = self.table.set_index("name2")#self.table#self.load_by_genes()
-        # Get a genes list
-        self.genes_list = self.load_ensGene_list()
-        self.genes = self.get_genes()
-#        self.genes_by_id = self.load_genes_by_id()
-#        for k, v in self.genes_by_id:
-#            print "k: ", k
-#            print "v: ", v
-#            raise Exception
-        # Load map of gene IDs to gene
+        ensGene_to_names = pandas.read_table(ensGene_name_filename,
+                                             sep=self.delimiter,
+                                             names=self.ensemblToGeneName_header)
+        known_to_ensembl = pandas.read_table(known_to_ensembl_filename,
+                                             sep=self.delimiter,
+                                             names=self.knownToEnsembl_header)
+        # Add mapping from Ensembl to gene names
+        self.ensembl_to_known = known_to_ensembl.set_index("name")
+        self.table = pandas.merge(main_table, ensGene_to_names,
+                                  how="outer")
+        # Add mapping from Ensembl transcripts to UCSC transcripts
+        self.table = pandas.merge(self.table, known_to_ensembl,
+                                  how="outer",
+                                  on=["name"])
+        # Bring information from kgXref
+        table2 = pandas.merge(self.table, self.kgXref_table,
+                              how="outer",
+                              left_on=["knownGene_name"],
+                              right_on=["kgID"])
+        ensGene_to_names = ensGene_to_names.set_index("name")
+        # Get mapping from transcripts to genes
+        self.trans_to_genes = self.table.set_index("name")
+        ##
+        ## Index table by gene and load a list of genes
+        ## Also compute mapping from gene to symbol
+        ## and gene to description
+        ##
+        self.table_by_gene = defaultdict(list)
+        seen_genes = {}
+        for idx, series in self.table.iterrows():
+            gene_id = series["name2"]
+            gene_info = series.to_dict()
+            trans = gene_info["name"]
+            self.table_by_gene[gene_id].append(gene_info)
+            if gene_id in seen_genes:
+                continue
+            else:
+                self.genes_list.append(gene_id)
+                seen_genes[gene_id] = True
+                # Record mapping from gene to name via transcript
+                self.genes_to_names[gene_id] = ensGene_to_names.ix[trans]["value"]
+                # Get Ensembl transcript's UCSC name and from that get
+                # the gene description
+                known_name = self.ensembl_to_known.ix[trans]["knownGene_name"]
+#                self.genes_to_desc[gene_id] = \
+#                    self.kgXref_table.ix[]
+        # Parse table into actual gene objects if asked
+        if not tables_only:
+            self.genes = self.get_genes()
         
 
     def get_genes(self):
@@ -294,58 +384,8 @@ class GeneTable:
             self.trans_to_names[key_header] = val_header
         name_table.close()
         return self.trans_to_names
+
         
-
-    def load_ensGene_by_genes_pandas(self):
-        """
-        Load ensGene table as genes.
-        """
-        num_genes = len(self.genes_list)
-        print "Loading %d genes.." %(num_genes)
-        t1 = time.time()
-        for gene in self.genes_list:
-#            if gene != "ENSMUSG00000025902" : continue
-            # Get all transcripts related to gene
-#            transcripts = self.table[self.table["name2"] == gene]
-            transcripts = self.table_by_gene.ix["ENSMUSG00000025902"]
-            pass
-            # Index by transcripts
-#            transcripts = transcripts.set_index("name")
-#            exon_starts = transcripts["exonStarts"]
-            # for trans_name in transcripts.index:
-            #     curr_trans = transcripts.ix[trans_name]
-            #     # Get chrom and strand
-            #     chrom = curr_trans["chrom"]
-            #     strand = curr_trans["strand"]
-            #     exon_starts = curr_trans["exonStarts"]
-            #     exon_ends = curr_trans["exonEnds"]
-            #     exon_coords = zip(*[exon_starts, exon_ends])
-            #     parts = [GeneModel.Part(exon[0], exon[1],
-            #                             chrom, strand) \
-            #              for exon in exon_coords]
-            #     transcript = GeneModel.Transcript(parts, chrom, strand,
-            #                                       label=trans_name)
-            #     all_transcripts.append(transcript)
-            #self.genes.append(transcripts)
-        t2 = time.time()
-        print "Loading took: %.2f secs" %(t2 - t1)
-        raise Exception
-            
-
-    
-    def load_ensGene_list(self):
-        """
-        Get (a non-redundant) list of genes present in the ensGene
-        table.
-        """
-        seen_genes = {}
-        for gene in self.table_by_gene.index:
-            if gene not in seen_genes:
-                self.genes_list.append(gene)
-                seen_genes[gene] = True
-        return self.genes_list
-        
-
     def output_const_exons(self, 
                            base_diff=6,
                            cds_only=False):
@@ -423,7 +463,11 @@ class GeneTable:
         return ints
 
         
-    def load_ucsc_table(self):
+    def load_ucsc_table(self, tables_only=False):
+        raise Exception, "Not implemented."
+
+
+    def load_refSeq_table(self, tables_only=False):
         raise Exception, "Not implemented."
 
 
