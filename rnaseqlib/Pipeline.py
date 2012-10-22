@@ -652,7 +652,7 @@ class Pipeline:
                            for sample in self.samples])
         fieldnames.extend(["counts_%s" %(sample.label) \
                            for sample in self.samples])
-        fieldnames.extend(["exons", "gene_desc"])
+        fieldnames.extend(["gene_desc", "exons"])
         for table_name, rpkm_table in self.rpkm_tables.iteritems():
             if rpkm_table is None: continue
             rpkm_table_filename = os.path.join(self.rpkm_dir,
