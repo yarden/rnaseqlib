@@ -43,9 +43,10 @@ def load_sample_rpkms(sample,
             gene_table = rna_base.gene_tables[table_name.split(".")[0]]
             gene_symbols = [gene_table.genes_to_names[gid] \
                             for gid in rpkm_table["gene_id"]]
+            gene_descs = [gene_table.genes_to_desc[gid] \
+                          for gid in rpkm_table["gene_id"]]
             rpkm_table["gene_symbol"] = gene_symbols
-            # TODO:
-            # Add gene desc here...
+            rpkm_table["gene_desc"] = gene_descs
         else:
             print "WARNING: Cannot find RPKM filename %s" %(rpkm_filename)
         rpkm_tables[table_name] = rpkm_table

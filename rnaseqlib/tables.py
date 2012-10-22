@@ -220,14 +220,21 @@ class GeneTable:
                                   how="outer")
         # Add mapping from Ensembl transcripts to UCSC transcripts
         self.table = pandas.merge(self.table, known_to_ensembl,
-                                  how="outer",
-                                  on=["name"])
+                                  how="outer")
         # Bring information from kgXref
-        table2 = pandas.merge(self.table, self.kgXref_table,
-                              how="outer",
-                              left_on=["knownGene_name"],
-                              right_on=["kgID"])
-        ensGene_to_names = ensGene_to_names.set_index("name")
+        # Note that ensGene table keys are used only in the join,
+        # to avoid introducing into the table entries that have
+        # kgXref info and a UCSC transcript name but *do not*
+        # have an Ensembl transcript ID
+        self.table = pandas.merge(self.table, self.kgXref_table,
+                                  # use ensGene table keys 
+                                  how="left",
+                                  left_index=True,
+                                  left_on=["knownGene_name"],
+                                  right_on=["kgID"])
+        self.table_by_trans = self.table.set_index("name")
+        # Record genes to names mapping
+        # ...
         # Get mapping from transcripts to genes
         self.trans_to_genes = self.table.set_index("name")
         ##
@@ -248,12 +255,10 @@ class GeneTable:
                 self.genes_list.append(gene_id)
                 seen_genes[gene_id] = True
                 # Record mapping from gene to name via transcript
-                self.genes_to_names[gene_id] = ensGene_to_names.ix[trans]["value"]
+                self.genes_to_names[gene_id] = gene_info["value"]
                 # Get Ensembl transcript's UCSC name and from that get
                 # the gene description
-                known_name = self.ensembl_to_known.ix[trans]["knownGene_name"]
-#                self.genes_to_desc[gene_id] = \
-#                    self.kgXref_table.ix[]
+                self.genes_to_desc[gene_id] = gene_info["description"]
         # Parse table into actual gene objects if asked
         if not tables_only:
             self.genes = self.get_genes()
