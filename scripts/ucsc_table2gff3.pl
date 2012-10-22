@@ -8,18 +8,15 @@ use Getopt::Long;
 use Pod::Usage;
 use Net::FTP;
 use Bio::SeqFeature::Lite;
-use FindBin qw($Bin);
-use lib "$Bin/";
-use tim_data_helper qw(
-	format_with_commas
-);
-use tim_file_helper qw(
-	open_to_read_fh
-	open_to_write_fh
-);
-my $VERSION = '1.8.5';
+use IO::File;
+use IO::Zlib;
+
+
+my $VERSION = '1.9.1';
 
 print "\n A script to convert UCSC tables to GFF3 files\n\n";
+
+
 
 
 ### Quick help
@@ -1568,12 +1565,177 @@ sub print_chromosomes {
 
 
 
+######################## Imported ##############################################
+
+# The open_to_read_fh() and open_to_write_fh() subroutines are copied from 
+# biotoolbox/lib/tim_file_helper.pm to make a streamlined single executable
+
+# The format_with_commas() subroutine was copied from 
+# biotoolbox/lib/tim_data_helper.pm
+
+
+
+
+#### Open a file for reading
+sub open_to_read_fh {
+	# a simple subroutine to open a filehandle for reading a file
+	
+	# check filename
+	my $filename = shift;
+	unless (-e $filename) {
+		warn " file '$filename' does not exist!\n";
+		return;
+	}
+	
+	# Open filehandle object as appropriate
+	my $fh; # filehandle
+	if ($filename =~ /\.gz$/i) {
+		# the file is compressed with gzip
+		$fh = IO::Zlib->new;
+	} 
+	else {
+		# the file is uncompressed and space hogging
+		$fh = IO::File->new;
+	}
+	
+	# Open file and return
+	if ($fh->open($filename, "r") ) {
+		return $fh;
+	}
+	else {
+		warn "unable to open file '$filename': " . $fh->error . "\n";
+		return;
+	}
+}
+
+
+#### Open a file for writing
+sub open_to_write_fh {
+	# A simple subroutine to open a filehandle for writing a file
+	
+	my ($filename, $gz, $append) = @_;
+	
+	# check filename
+	unless ($filename) {
+		warn " no filename to write!";
+		return;
+	}
+	
+	# check zip status if necessary
+	unless (defined $gz) {
+		# look at filename extension as a clue
+		# in case we're overwriting the input file, keep the zip status
+		if ($filename =~ m/\.gz$/i) {
+			$gz = 1;
+		}
+		else {
+			$gz = 0; # default
+		}
+	}
+	
+	# check file append mode
+	unless (defined $append) {
+		# default is not to append
+		$append = 0;
+	}
+	
+	# determine write mode
+	my $mode;
+	if ($gz and $append) {
+		# append a gzip file
+		$mode = 'ab';
+	}
+	elsif (!$gz and $append) {
+		# append a normal file
+		$mode = 'a';
+	}
+	elsif ($gz and !$append) {
+		# write a new gzip file
+		$mode = 'wb';
+	}
+	else {
+		# write a new normal file
+		$mode = 'w';
+	}
+	
+	
+	# Generate appropriate filehandle object and name
+	my $fh;
+	if ($gz) {
+		# write a space-saving compressed file
+		
+		# add gz extension if necessary
+		unless ($filename =~ m/\.gz$/i) {
+			$filename .= '.gz';
+		}
+		$fh = new IO::Zlib;
+	}
+	else {
+		# write a normal space-hogging file
+		
+		# strip gz extension if present
+		$filename =~ s/\.gz$//i; 
+		
+		$fh = new IO::File;
+	}
+	
+	# Open file for writing and return
+	if ($fh->open($filename, $mode) ) {
+		return $fh;
+	}
+	else {
+		warn " unable to open file '$filename': " . $fh->error . "\n";
+		return;
+	}
+}
+
+
+### Format a number into readable comma-delimited by thousands number
+sub format_with_commas {
+	# for formatting a number with commas
+	my $number = shift;
+	if ($number =~ /[^\d,\-\.]/) {
+		warn " the string contains characters that can't be parsed\n";
+		return $number;
+	}
+	
+	# check for decimals
+	my ($integers, $decimals);
+	if ($number =~ /^\-?(\d+)\.(\d+)$/) {
+		$integers = $1;
+		$decimals = $2;
+	}
+	else {
+		$integers = $number;
+	}
+	
+	# format
+	my @digits = split //, $integers;
+	my @formatted;
+	while (@digits) {
+		if (@digits > 3) {
+			unshift @formatted, pop @digits;
+			unshift @formatted, pop @digits;
+			unshift @formatted, pop @digits;
+			unshift @formatted, ',';
+		}
+		else {
+			while (@digits) {
+				unshift @formatted, pop @digits;
+			}
+		}
+	}
+	
+	# finished
+	return join("", @formatted) . $decimals;
+}
+
+
+
 
 __END__
 
 =head1 NAME ucsc_table2gff3.pl
-
-
 
 =head1 SYNOPSIS
 
@@ -1750,14 +1912,22 @@ GFF file. If only one table is being converted, then the chromosome features
 are prepended to the GFF file; otherwise, a separate chromosome GFF file is 
 written.
 
+=head1 PROJECT
+
+This script is part of the BioToolBox collection of scripts. This and other 
+scripts may be found at L<http://code.google.com/p/biotoolbox/>.
+
 =head1 AUTHOR
 
  Timothy J. Parnell, PhD
- Howard Hughes Medical Institute
  Dept of Oncological Sciences
  Huntsman Cancer Institute
  University of Utah
  Salt Lake City, UT, 84112
+ parnell.tj@gmail.com
+ timothy.parnell@hci.utah.edu
+
+=head1 LICENSE
 
 This package is free software; you can redistribute it and/or modify
 it under the terms of the GPL (either version 1, or at your option,
