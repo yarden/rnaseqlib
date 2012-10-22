@@ -56,6 +56,8 @@ class GeneTable:
         self.exons_dir = os.path.join(self.table_dir, "exons")
         self.const_exons_dir = os.path.join(self.exons_dir,
                                             "const_exons")
+        self.introns_dir = os.path.join(self.table_dir, "introns")
+        self.utrs_dir = os.path.join(self.table_dir, "utrs")
         self.source = source
         self.delimiter = "\t"
         self.table = None
@@ -74,8 +76,20 @@ class GeneTable:
         self.known_to_ensembl = defaultdict(lambda: self.na_val)
         # kgXref table
         self.kgXref_table = None
+        # Initialize output directories
+        self.init_dirs()
         # Load tables
         self.load_tables(tables_only=tables_only)
+        
+
+    def init_dirs(self):
+        """
+        Make sure directories exist.
+        """
+        utils.make_dir(self.exons_dir)
+        utils.make_dir(self.const_exons_dir)
+        utils.make_dir(self.introns_dir)
+        utils.make_dir(self.utrs_dir)
 
 
     def load_kgXref_table(self):
@@ -116,8 +130,6 @@ class GeneTable:
         """
         Load table.
         """
-        utils.make_dir(self.exons_dir)
-        utils.make_dir(self.const_exons_dir)
         # Load kgXref for all tables
         self.load_kgXref_table()
         if self.source == "ensGene":
@@ -241,8 +253,6 @@ class GeneTable:
                                   left_on=["knownGene_name"],
                                   right_on=["kgID"])
         self.table_by_trans = self.table.set_index("name")
-        # Record genes to names mapping
-        # ...
         # Get mapping from transcripts to genes
         self.trans_to_genes = self.table.set_index("name")
         ##
@@ -444,12 +454,57 @@ class GeneTable:
                               sep="\t")
 
 
+    def output_exons(self):
+        """
+        Output the table's exons as BED.
+        
+        Only implemented for ensGene.txt; probably not
+        necessary to work out for other tables since this is
+        only used for aggregate statistics.
+        """
+        if self.source != "ensGene":
+            return
+        output_filename = os.path.join(self.exons_dir,
+                                       "%s.exons.txt" %(self.source))
+        if os.path.isfile(output_filename):
+            print "Found %s. Skipping..." %(output_filename)
+            return output_filename
+        for idx, series in self.table.iterrows():
+            gene_info = series.to_dict()
+            exon_starts = gene_info["exonStarts"]
+            exon_ends = gene_info["exonEnds"]
+            gene_id = gene_info["value"]
+            strand = gene_info["strand"]
+            # Get exon coords with izip as usual
+            exon_coords = [] #....FILL ME IN.....
+            # Output as BED
+            bedtools_utils.output_exons_as_bed(chrom, exon_coords, strand)
+        return output_filename
+
+
     def output_merged_exons(self):
         """
         Output the table's merged exons as a (sorted) BED file.
 
         Used to determine the exonic content of a sample. Relies on
         sortBed and mergeBed to do the heavy lifting.
+
+        Only implemented for ensGene.txt; probably not
+        necessary to work out for other tables since this is
+        only used for aggregate statistics.
+        """
+        if self.source != "ensGene":
+            return
+        print "Outputting merged exons..."
+
+
+    def output_introns(self):
+        """
+        Given the merged exons, compute the intronic coordinates.
+        
+        Only implemented for ensGene.txt; probably not
+        necessary to work out for other tables since this is
+        only used for aggregate statistics.
         """
         pass
 
@@ -613,6 +668,8 @@ def process_ucsc_tables(genome, output_dir):
     table_names = ["ensGene"]#, "refGene"]
     for table_name in table_names:
         table = GeneTable(tables_outdir, table_name)
+        # Output the table's exons
+        table.output_exons()
         # Output the table's merged exons
         table.output_merged_exons()
         # Output the table's constitutive exons
