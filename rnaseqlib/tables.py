@@ -513,6 +513,28 @@ class GeneTable:
         bedtools_utils.merge_bed(exons_filename, output_filename)
 
 
+    def load_merged_exons_by_gene(self):
+        """
+        Load ensGene exons from a BED file, indexed by gene.
+        """
+        self.merged_exons_header = ["chrom",
+                                    "start",
+                                    "end",
+                                    "name"]
+        merged_exons_filename = os.path.join(self.exons_dir,
+                                             "ensGene.merged_exons.bed")
+        ensGene_bed = csv.DictReader(merged_exons_filename,
+                                     fieldnames=self.merged_exons_header,
+                                     delimiter="\t")
+        merged_exons_by_gene = defaultdict(list)
+        for entry in ensGene_bed:
+            # Gene names might appear multiple times due in mergeBed
+            # output in which case they are semi-colon delimited
+            gene_id = entry["name"].split(";")[0]
+            exons_by_gene[gene_id].append(entry)
+        return merged_exons_by_gene
+
+
     def output_introns(self):
         """
         Given the merged exons, compute the intronic coordinates.
@@ -521,7 +543,12 @@ class GeneTable:
         necessary to work out for other tables since this is
         only used for aggregate statistics.
         """
-        pass
+        if self.source != "ensGene":
+            return
+        # Load ensGene exons
+        merged_exons_by_gene = self.load_merged_exons_by_gene()
+        print "Merged exons are: "
+        print merged_exons_by_gene
 
 
     def parse_string_int_list(self, int_list_as_str,
@@ -691,6 +718,8 @@ def process_ucsc_tables(genome, output_dir):
         table.output_const_exons()
         # Output the table's CDS-only constitutive exons
         table.output_const_exons(cds_only=True)
+        # Output introns
+        table.output_introns()
 
     
 
