@@ -23,6 +23,7 @@ import rnaseqlib.genes.GeneModel as GeneModel
 from rnaseqlib.paths import *
 from rnaseqlib.init.genome_urls import *
 import rnaseqlib.init.download_utils as download_utils
+import rnaseqlib.mapping.bedtools_utils as bedtools_utils
 
 import misopy
 import misopy.gff_utils as gff_utils
@@ -280,7 +281,7 @@ class GeneTable:
         # Parse table into actual gene objects if asked
         if not tables_only:
             self.genes = self.get_genes()
-
+            
 
     def load_introns(self):
         """
@@ -288,10 +289,6 @@ class GeneTable:
         """
         if self.source == "ensGene":
             self.load_ensGene_introns()
-        elif self.source == "knownGene":
-            self.load_knownGene_introns()
-        elif self.source == "refSeq":
-            self.load_refSeq_introns()
         else:
             print "WARNING: Loading of introns not implemented yet " \
                   "for %s" %(self.source)
@@ -305,7 +302,6 @@ class GeneTable:
         """
         pass
         
-            
 
     def get_genes(self):
         """
@@ -465,20 +461,29 @@ class GeneTable:
         if self.source != "ensGene":
             return
         output_filename = os.path.join(self.exons_dir,
-                                       "%s.exons.txt" %(self.source))
+                                       "%s.exons.bed" %(self.source))
+        print "Outputting exons..."
         if os.path.isfile(output_filename):
-            print "Found %s. Skipping..." %(output_filename)
+            print "  - Found %s. Skipping..." %(output_filename)
             return output_filename
+        exons_file = open(output_filename, "w")
         for idx, series in self.table.iterrows():
             gene_info = series.to_dict()
-            exon_starts = gene_info["exonStarts"]
-            exon_ends = gene_info["exonEnds"]
-            gene_id = gene_info["value"]
+            gene_id = gene_info["name2"]
+            chrom = gene_info["chrom"]
             strand = gene_info["strand"]
-            # Get exon coords with izip as usual
-            exon_coords = [] #....FILL ME IN.....
-            # Output as BED
-            bedtools_utils.output_exons_as_bed(chrom, exon_coords, strand)
+            exonStarts = gene_info["exonStarts"]
+            exonEnds = gene_info["exonEnds"]
+            # Keep 0-based start of ensGene table since
+            # this will be outputted as a BED
+            exon_starts = (int(start) for start in exonStarts.rstrip(",").split(","))
+            exon_ends = (int(end) for end in exonEnds.rstrip(",").split(","))
+            exon_coords = zip(exon_starts, exon_ends)
+            # Output as BED: encode gene ID
+            bedtools_utils.output_exons_as_bed(exons_file,
+                                               chrom, exon_coords, strand,
+                                               name=gene_id)
+        exons_file.close()
         return output_filename
 
 
@@ -496,6 +501,16 @@ class GeneTable:
         if self.source != "ensGene":
             return
         print "Outputting merged exons..."
+        exons_filename = os.path.join(self.exons_dir,
+                                      "ensGene.exons.bed")
+        if not os.path.isfile(exons_filename):
+            print "Error: Could not find exons filename %s" %(exons_filename)
+            print "Did a previous step fail?"
+            sys.exit(1)
+        output_filename = os.path.join(self.exons_dir,
+                                       "ensGene.merged_exons.bed")
+        # Merge the exons and output them as a new BED file
+        bedtools_utils.merge_bed(exons_filename, output_filename)
 
 
     def output_introns(self):

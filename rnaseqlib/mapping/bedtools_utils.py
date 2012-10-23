@@ -50,17 +50,20 @@ def merge_bed(input_filename, output_filename,
         print "%s exists. Skipping..." %(output_filename)
         return output_filename
     if sort_input:
-        merge_cmd = "sortBed -i %s | mergeBed -i stdin %s > %s" \
+        merge_cmd = "sortBed -i %s | mergeBed -i stdin -nms > %s" \
             %(input_filename,
               output_filename)
+        print "Executing: %s" %(merge_cmd)
+        os.system(merge_cmd)
     else:
         raise Exception, "Not implemented."
     return output_filename
 
 
 def output_exons_as_bed(out_file, chrom, exon_coords, strand,
-                        name="",
-                        score=""):
+                        name="exon",
+                        score="1",
+                        delimiter="\t"):
     """
     Output exons as BED.
 
@@ -72,6 +75,7 @@ def output_exons_as_bed(out_file, chrom, exon_coords, strand,
     - strand
     """
     for exon in exon_coords:
-        # WRITE TO FILE HERE
-        pass
-    pass
+        start, end = exon
+        bed_fields = map(str, [chrom, start, end, name, score])
+        bed_line = delimiter.join(bed_fields)
+        out_file.write("%s\n" %(bed_line))
