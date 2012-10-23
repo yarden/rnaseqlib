@@ -480,9 +480,9 @@ class GeneTable:
             exon_ends = (int(end) for end in exonEnds.rstrip(",").split(","))
             exon_coords = zip(exon_starts, exon_ends)
             # Output as BED: encode gene ID
-            bedtools_utils.output_exons_as_bed(exons_file,
-                                               chrom, exon_coords, strand,
-                                               name=gene_id)
+            bedtools_utils.output_intervals_as_bed(exons_file,
+                                                   chrom, exon_coords, strand,
+                                                   name=gene_id)
         exons_file.close()
         return output_filename
 
@@ -520,10 +520,12 @@ class GeneTable:
         self.merged_exons_header = ["chrom",
                                     "start",
                                     "end",
-                                    "name"]
+                                    "name",
+                                    "strand"]
         merged_exons_filename = os.path.join(self.exons_dir,
                                              "ensGene.merged_exons.bed")
-        ensGene_bed = csv.DictReader(merged_exons_filename,
+        merged_exons_file = open(merged_exons_filename)
+        ensGene_bed = csv.DictReader(merged_exons_file,
                                      fieldnames=self.merged_exons_header,
                                      delimiter="\t")
         merged_exons_by_gene = defaultdict(list)
@@ -531,7 +533,7 @@ class GeneTable:
             # Gene names might appear multiple times due in mergeBed
             # output in which case they are semi-colon delimited
             gene_id = entry["name"].split(";")[0]
-            exons_by_gene[gene_id].append(entry)
+            merged_exons_by_gene[gene_id].append(entry)
         return merged_exons_by_gene
 
 
@@ -545,11 +547,34 @@ class GeneTable:
         """
         if self.source != "ensGene":
             return
+        output_filename = os.path.join(self.introns_dir,
+                                       "ensGene.introns.bed")
+        print "Outputting introns..."
+        if os.path.isfile(output_filename):
+            print "  - Found %s. Skipping..." %(output_filename)
+            return
+        introns_file = open(output_filename, "w")
         # Load ensGene exons
         merged_exons_by_gene = self.load_merged_exons_by_gene()
-        print "Merged exons are: "
-        print merged_exons_by_gene
-
+        for gene_id, merged_exons in merged_exons_by_gene.iteritems():
+            chrom = merged_exons[0]["chrom"]
+            strand = merged_exons[0]["strand"]
+            # For each gene, get its list of introns and serialize them
+            exon_coords = [(int(exon["start"]), int(exon["end"])) \
+                           for exon in merged_exons]
+            intron_coords = []
+            for first_exon, second_exon in zip(exon_coords, exon_coords[1::1]):
+                # Intron start coordinate is the coordinate right after
+                # the end of the first exon, intron end coordinate is the
+                # coordinate just before the beginning of the second exon
+                intron_coords.append((first_exon[1] + 1, second_exon[0] - 1))
+            bedtools_utils.output_intervals_as_bed(introns_file,
+                                                   chrom,
+                                                   intron_coords,
+                                                   strand,
+                                                   name=gene_id)
+        introns_file.close()
+                                                   
 
     def parse_string_int_list(self, int_list_as_str,
                               delim=","):
@@ -562,7 +587,6 @@ class GeneTable:
         # in the delimiter we split in
         ints = tuple(map(int, str_list[0:-1]))
         return ints
-
 
 
 class ConstExons:

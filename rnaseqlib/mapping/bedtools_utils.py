@@ -50,7 +50,7 @@ def merge_bed(input_filename, output_filename,
         print "%s exists. Skipping..." %(output_filename)
         return output_filename
     if sort_input:
-        merge_cmd = "sortBed -i %s | mergeBed -i stdin -nms > %s" \
+        merge_cmd = "sortBed -i %s | mergeBed -i stdin -nms -s > %s" \
             %(input_filename,
               output_filename)
         print "Executing: %s" %(merge_cmd)
@@ -60,22 +60,22 @@ def merge_bed(input_filename, output_filename,
     return output_filename
 
 
-def output_exons_as_bed(out_file, chrom, exon_coords, strand,
-                        name="exon",
-                        score="1",
-                        delimiter="\t"):
+def output_intervals_as_bed(out_file, chrom, interval_coords, strand,
+                            name="exon",
+                            score="1",
+                            delimiter="\t"):
     """
-    Output exons as BED.
+    Output intervals as BED.
 
     Takes:
 
     - out_file: file handle to the BED
     - chrom: chromosome
-    - exon_coords: list of (start, end) coords for exons
+    - interval_coords: list of (start, end) coords for parts
     - strand
     """
-    for exon in exon_coords:
-        start, end = exon
-        bed_fields = map(str, [chrom, start, end, name, score])
+    for part in interval_coords:
+        start, end = part
+        bed_fields = map(str, [chrom, start, end, name, score, strand])
         bed_line = delimiter.join(bed_fields)
         out_file.write("%s\n" %(bed_line))
