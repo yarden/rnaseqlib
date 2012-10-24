@@ -237,11 +237,13 @@ class GeneTable:
                                              names=self.knownToEnsembl_header)
         # Add mapping from Ensembl to gene names
         self.ensembl_to_known = known_to_ensembl.set_index("name")
-        self.table = pandas.merge(main_table, ensGene_to_names,
-                                  how="outer")
+        self.raw_table = pandas.merge(main_table, ensGene_to_names,
+                                      how="left")
+#                                      how="outer")
         # Add mapping from Ensembl transcripts to UCSC transcripts
-        self.table = pandas.merge(self.table, known_to_ensembl,
-                                  how="outer")
+        self.table = pandas.merge(self.raw_table, known_to_ensembl,
+                                  how="left")
+#                                  how="outer")
         # Bring information from kgXref
         # Note that ensGene table keys are used only in the join,
         # to avoid introducing into the table entries that have
@@ -331,17 +333,16 @@ class GeneTable:
         ensGene_filename = os.path.join(self.table_dir,
                                         "ensGene.txt")
         t1 = time.time()
-        main_table = csv.DictReader(open(ensGene_filename),
-                                    delimiter="\t",
-                                    fieldnames=self.ensGene_header)
-        self.load_ensGene_name_table()
-        # Convert genes into gene models
-        # Group items by their gene id ("name2" column)
-        for gene_id, gene_entries in itertools.groupby(main_table,
-                                                       key=operator.itemgetter("name2")):
+        table = dictread_groupby_col(open(ensGene_filename),
+                                     "name2",
+                                     delimiter="\t",
+                                     fieldnames=self.ensGene_header)
+        for gene_id, gene_entries in table.iteritems():
             gene_symbol = self.na_val
             all_transcripts = []
+            entries_copy = []
             for entry in gene_entries:
+                entries_copy.append(entry)
                 chrom = entry["chrom"]
                 strand = entry["strand"]
                 # Convert start coordinates into 1-based coordinates
@@ -387,20 +388,28 @@ class GeneTable:
         return self.trans_to_names
 
         
-    def output_const_exons(self, 
-                           base_diff=6,
-                           cds_only=False):
+    def output_exons_as_gff(self,
+                            base_diff=6,
+                            const_only=False,
+                            cds_only=False):
         """
-        Output constitutive exons for all genes.
+        Output constitutive exons for all genes as GFF.
 
-        Output as gff format.
+        - const_only: if True, output only constitutive exons
+        - cds_only: if True, output CDS only exons 
         """
+        exons_type = "exons"
+        exons_outdir = self.exons_dir
+        if const_only:
+            exons_type = "const_exons"
+            exons_outdir = self.const_exons_dir
         if cds_only:
-            exons_basename = "%s.cds_only.const_exons.gff" %(self.source)
+            exons_basename = "%s.cds_only.%s.gff" %(self.source, exons_type)
         else:
-            exons_basename = "%s.const_exons.gff" %(self.source)
-        gff_output_filename = os.path.join(self.const_exons_dir, exons_basename)
-        print "Outputting constitutive exons..."
+            exons_basename = "%s.%s.gff" %(self.source, exons_type)
+        gff_output_filename = os.path.join(exons_outdir, exons_basename)
+        print "Outputting exons..."
+        print "  - Exons type: %s" %(exons_type)
         print "  - Output file: %s" %(gff_output_filename)
         print "  - CDS only: %s" %(cds_only)
         if os.path.isfile(gff_output_filename):
@@ -408,41 +417,40 @@ class GeneTable:
             return
         # Output a map from genes to constitutive exons
         # for convenience
-        genes_to_exons_fname = os.path.join(self.const_exons_dir,
+        genes_to_exons_fname = os.path.join(exons_outdir,
                                             exons_basename.replace(".gff",
                                                                    ".to_genes.txt"))
         gff_out = gff_utils.Writer(open(gff_output_filename, "w"))
-        rec_source = self.source
         rec_type = "exon"
         genes_to_exons = []
         genes_to_exons_header = ["gene_id", "exons"]
         for gene_id, gene in self.genes.iteritems():
-            const_exons = gene.compute_const_exons(base_diff=base_diff,
-                                                   cds_only=cds_only)
-            rec_chrom = gene.chrom
-            rec_strand = gene.strand
-            exon_labels = [e.label for e in const_exons]
+            if const_only:
+                # Get only constitutive exons
+                exons = gene.compute_const_exons(base_diff=base_diff,
+                                                 cds_only=cds_only)
+            elif cds_only:
+                # Get all CDS exons
+                exons = gene.cds_parts
+            else:
+                # Get all exons
+                exons = gene.parts
+            exon_labels = [e.label for e in exons]
             if len(exon_labels) == 0:
-                # Record genes with no constitutive exons
-                # as missing values
                 exon_labels = self.na_val
             else:
                 exon_labels = ",".join(exon_labels)
             entry = {"gene_id": gene_id,
                      "exons": exon_labels}
             genes_to_exons.append(entry)
-            for const_exon in const_exons:
-                attributes = {
-                    'ID': ["exon.%s" %(const_exon.label)],
-                    'Parent': [const_exon.parent],
-                    'gene': [gene.label],
-                    }
-                rec_start, rec_end = const_exon.start, const_exon.end
-                gff_rec = gff_utils.GFF(rec_chrom, rec_source, rec_type,
-                                        rec_start, rec_end,
-                                        attributes=attributes,
-                                        strand=rec_strand)
-                gff_out.write(gff_rec)
+            # Output constitutive exons to GFF file
+            GeneModel.output_parts_as_gff(gff_out,
+                                          exons,
+                                          gene.chrom,
+                                          gene.strand,
+                                          source=self.source,
+                                          rec_type=rec_type,
+                                          gene_id=gene_id)
         genes_to_exons = pandas.DataFrame(genes_to_exons)
         genes_to_exons.to_csv(genes_to_exons_fname,
                               cols=genes_to_exons_header,
@@ -450,7 +458,7 @@ class GeneTable:
                               sep="\t")
 
 
-    def output_exons(self):
+    def output_exons_as_bed(self):
         """
         Output the table's exons as BED.
         
@@ -467,7 +475,7 @@ class GeneTable:
             print "  - Found %s. Skipping..." %(output_filename)
             return output_filename
         exons_file = open(output_filename, "w")
-        for idx, series in self.table.iterrows():
+        for idx, series in self.raw_table.iterrows():
             gene_info = series.to_dict()
             gene_id = gene_info["name2"]
             chrom = gene_info["chrom"]
@@ -734,14 +742,17 @@ def process_ucsc_tables(genome, output_dir):
     table_names = ["ensGene"]#, "refGene"]
     for table_name in table_names:
         table = GeneTable(tables_outdir, table_name)
-        # Output the table's exons
-        table.output_exons()
+        # Output the table's exons as GFF
+        table.output_exons_as_gff()
+        # Output the table's exons as BED
+        table.output_exons_as_bed()
         # Output the table's merged exons
         table.output_merged_exons()
         # Output the table's constitutive exons
-        table.output_const_exons()
+        table.output_exons_as_gff(const_only=True)
         # Output the table's CDS-only constitutive exons
-        table.output_const_exons(cds_only=True)
+        table.output_exons_as_gff(const_only=True,
+                                  cds_only=True)
         # Output introns
         table.output_introns()
 
@@ -805,4 +816,24 @@ def convert_knowngene_to_gtf(tables_outdir):
     if not os.path.isfile(knowngene_gff_filename):
         os.system(convert_gff_cmd)
     return knowngene_gtf_filename, knowngene_gff_filename
-    
+
+
+##
+## Random table utilities
+##
+def dictread_groupby_col(file_in, col,
+                         delimiter="\t",
+                         fieldnames=None):
+    """
+    Read entries via DictReader grouped by column 'col'.
+
+    Returns a defaultdict of lists.
+    """
+    table_in = csv.DictReader(file_in,
+                              delimiter=delimiter,
+                              fieldnames=fieldnames)
+    table = defaultdict(list)
+    for row in table_in:
+        table[row[col]].append(row)
+    return table
+                          

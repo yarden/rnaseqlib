@@ -72,7 +72,9 @@ def output_intervals_as_bed(out_file, chrom, interval_coords, strand,
     - out_file: file handle to the BED
     - chrom: chromosome
     - interval_coords: list of (start, end) coords for parts
-    - strand
+    - strand: the strand
+
+    NOTE: Assumes interval_coords are in 0-based format already!
     """
     for part in interval_coords:
         start, end = part

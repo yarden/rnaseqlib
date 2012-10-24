@@ -8,6 +8,9 @@ import time
 import numpy
 from numpy import *
 
+import misopy
+import misopy.gff_utils as gff_utils
+
 from collections import namedtuple
 
 class Gene:
@@ -17,7 +20,7 @@ class Gene:
     By convention, all coordinates will be a 1-based start (GFF conventions.)
     """
     __slots__ = ['transcripts', 'chrom', 'strand', 'label', 'gene_symbol',
-                 'const_exons', 'has_cds']
+                 'parts', 'const_exons', 'has_cds']
     def __init__(self, transcripts, chrom, strand,
                  label=None,
                  gene_symbol=None):
@@ -35,6 +38,14 @@ class Gene:
                 self.has_cds = True
                 break
         if not self.has_cds: print "has no cds: %s" %(self.label)
+        # Get all parts from all transcripts
+        self.parts = []
+        for trans in self.transcripts:
+            self.parts.extend(trans.parts)
+        # Get all CDS parts from all transcripts
+        self.cds_parts = []
+        for trans in self.transcripts:
+            self.cds_parts.extend(trans.cds_parts)
         
 
     def compute_const_exons(self, base_diff=6, cds_only=False):
@@ -111,9 +122,10 @@ class Transcript:
         self.cds_end = cds_end
         self.cds_coords = (self.cds_start,
                            self.cds_end)
-        self.cds_parts = None
+        self.cds_parts = self.get_cds_parts()
         self.parent = parent
 
+        
     def __repr__(self):
         parts_str = ",".join(p.__str__() for p in self.parts)
         return "Transcript(%s, %s, %s, parent=%s)" %(parts_str,
@@ -122,10 +134,52 @@ class Transcript:
                                                      self.parent)
 
     def get_cds_parts(self):
+        """
+        Compute the parts that are in the CDS.  Trim UTR containing
+        exons to start/end at the CDS start/end, respectively.
+        """
         # Compute the parts that are in the CDS
-        self.cds_parts = tuple(filter(lambda p: \
-                                      part_contained_in(p, self.cds_coords),
-                                      self.parts))
+        self.cds_parts = []
+        if self.cds_start is None:
+            return self.cds_parts
+        for part in self.parts:
+            # Skip parts that end before the CDS or
+            # start after the CDS
+            if (part.end <= self.cds_start) or \
+               (part.start >= self.cds_end):
+                continue
+            cds_part_label = "cds.%s" %(part.label)
+            # If the part is overlapping the CDS start make it
+            # start at the CDS
+            cds_part = None
+            if (part.start <= self.cds_start) and \
+               (part.end > self.cds_start):
+                # Create CDS part
+                cds_part = Part(self.cds_start, part.end,
+                                chrom=part.chrom,
+                                strand=part.chrom,
+                                label=cds_part_label,
+                                parent=part.parent)
+            elif (part.start <= self.cds_end) and \
+                 (part.end > self.cds_end):
+                # If the part is overlapping the CDS end make it
+                # end at the CDS
+                cds_part = Part(part.start, self.cds_end,
+                                chrom=part.chrom,
+                                strand=part.chrom,
+                                label=cds_part_label,
+                                parent=part.parent)
+            elif (part.start >= self.cds_start) and \
+                 (part.end <= self.cds_end):
+                # If the part is totally contained within CDS,
+                # add it as is
+                cds_part = Part(part.start, self.cds_end,
+                                chrom=part.chrom,
+                                strand=part.chrom,
+                                label=cds_part_label,
+                                parent=part.parent)
+            self.cds_parts.append(cds_part)
+        self.cds_parts = tuple(self.cds_parts)
         return self.cds_parts
         
     
@@ -156,6 +210,29 @@ class Part:
 
     def __str__(self):
         return self.__repr__()
+
+
+def output_parts_as_gff(gff_out, parts, chrom, strand,
+                        source=".",
+                        rec_type="exon",
+                        gene_id="NA",
+                        na_val="NA"):
+    """
+    Output a set of parts to GFF.
+    """
+    for part in parts:
+        attributes = {
+            'ID': ["%s.%s" %(rec_type, part.label)],
+            'Parent': [part.parent],
+            'gene_id': [gene_id],
+            }
+        rec_start, rec_end = part.start, part.end
+        gff_rec = gff_utils.GFF(chrom, source, rec_type,
+                                rec_start, rec_end,
+                                attributes=attributes,
+                                strand=strand)
+        gff_out.write(gff_rec)
+
 
 ##
 ## Coordinate utilities
