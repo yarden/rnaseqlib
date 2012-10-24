@@ -8,6 +8,7 @@ import csv
 
 import rnaseqlib
 import rnaseqlib.fastq_utils as fastq_utils
+import rnaseqlib.mapping.bedtools_utils as bedtools_utils
 import rnaseqlib.utils as utils
 
 import pandas
@@ -30,9 +31,20 @@ class QualityControl:
         self.logger = utils.get_logger("QualityControl.%s" %(sample.label),
                                        self.pipeline.pipeline_outdirs["logs"])
         # QC header: order of QC fields to be outputted
+        self.regions_header = ["num_ribo",
+                               "num_exons",
+                               "num_cds",
+                               "num_introns",
+                               "num_3p_utr",
+                               "num_5p_utr"]
+        self.qc_stats_header = ["percent_mapped",
+                                "percent_ribo",
+                                "percent_exons",
+                                "percent_introns",
+                                "percent_cds"]
         self.qc_header = ["num_reads", 
                           "num_mapped",
-                          "num_ribo"]
+                          "num_ribo"] + self.qc_stats_header + self.regions_header
         # QC results
         self.qc_results = {}
         # QC output dir
@@ -41,11 +53,16 @@ class QualityControl:
         self.sample_outdir = os.path.join(self.qc_outdir,
                                           self.sample.label)
         utils.make_dir(self.sample_outdir)
+        # Regions output dir
+        self.regions_outdir = os.path.join(self.sample_outdir, "regions")
+        utils.make_dir(self.regions_outdir)
         self.qc_filename = os.path.join(self.sample_outdir,
                                         "%s.qc.txt" %(self.sample.label))
         self.qc_loaded = False
         self.na_val = "NA"
         self.qc_results = defaultdict(lambda: self.na_val)
+        # use ensGene gene table for QC computations
+        self.gene_table = self.pipeline.rna_base.gene_tables["ensGene"]
         # Load QC information if file corresponding to sample already exists
         self.load_qc_from_file()
 
@@ -76,6 +93,9 @@ class QualityControl:
         numbers: 'left_mate,right_mate'.
         """
         self.logger.info("Getting number of reads.")
+        print "TEMPORARILY RETURNING 0"
+        return 0
+        ##
         if self.sample.paired:
             self.logger.info("Getting number of paired-end reads.")
             # Paired-end
@@ -104,6 +124,8 @@ class QualityControl:
         reads that have alignments in the BAM file.
         """
         self.logger.info("Getting number of reads mapped.")
+        print "TEMPORARILY RETURNING 0"
+        return 0
         bam_read_ids = {}
         bamfile = pysam.Samfile(self.sample.bam_filename, "rb")
         for read in bamfile:
@@ -115,7 +137,7 @@ class QualityControl:
 
     def get_exon_intergenic_ratio(self):
         self.logger.info("Getting exon intergenic ratio.")
-        pass
+        return 0
     
 
     def get_exon_intron_ratio(self):
@@ -130,7 +152,7 @@ class QualityControl:
         - chr_ribo denotes the name of the ribosome containing
           chromosome.
         """
-        self.logger.info("Getting number of ribosomal reads.")
+        self.logger.info("Getting number of ribosomal reads..")
         bamfile = pysam.Samfile(self.sample.bam_filename, "rb")
         # Retrieve all reads on the ribo chromosome
         ribo_reads = bamfile.fetch(reference=chr_ribo,
@@ -145,29 +167,53 @@ class QualityControl:
 
     def get_qc(self):
         return self.qc_results
-
     
+
     def get_num_exons(self):
         """
         Return number of reads mapping to exons.
         """
-        self.logger.info("Getting number of exons..")
-        return 0
+        self.logger.info("Getting number of exonic reads..")
+        merged_exons_filename = os.path.join(self.gene_table.exons_dir,
+                                             "ensGene.merged_exons.bed")
+        output_basename = "region.merged_exons.bed"
+        merged_exons_map_fname = os.path.join(self.regions_outdir,
+                                              output_basename)
+        num_exons_reads = 0
+        result = bedtools_utils.count_reads_matching_intervals(self.sample.bam_filename,
+                                                               merged_exons_filename,
+                                                               merged_exons_map_fname)
+        if result is None:
+            self.logger.info("Mapping to exons failed.")
+        num_exons_reads = result
+        return num_exons_reads
 
     
     def get_num_introns(self):
         """
         Return number of reads mapping to introns.
         """
-        self.logger.info("Getting number of introns..")
-        return 0
+        self.logger.info("Getting number of intronic reads..")
+        introns_filename = os.path.join(self.gene_table.exons_dir,
+                                             "ensGene.introns.bed")
+        output_basename = "region.introns.bed"
+        introns_map_fname = os.path.join(self.regions_outdir,
+                                         output_basename)
+        num_introns_reads = 0
+        result = bedtools_utils.count_reads_matching_intervals(self.sample.bam_filename,
+                                                               introns_filename,
+                                                               introns_map_fname)
+        if result is None:
+            self.logger.info("Mapping to introns failed.")
+        num_introns_reads = result
+        return num_introns_reads 
 
 
     def get_num_3p_utrs(self):
         """
         Return number of reads mapping to 3' UTRs.
         """
-        self.logger.info("Getting number of 3\' UTRs..")
+        self.logger.info("Getting number of 3\' UTRs reads..")
         return 0
 
     
@@ -175,7 +221,7 @@ class QualityControl:
         """
         Return number of reads mapping to 5' UTRs.
         """
-        self.logger.info("Getting number of 5\' UTRs..")
+        self.logger.info("Getting number of 5\' UTRs reads..")
         return 0
     
 
@@ -183,9 +229,10 @@ class QualityControl:
         """
         Return number of reads mapping to CDS regions.
         """
-        pass
+        self.logger.info("Getting number of CDS reads..")
+        return 0
 
-
+    
     def compute_regions(self):
         """
         Compute number of reads mapping to various regions.
@@ -193,36 +240,57 @@ class QualityControl:
         self.logger.info("Computing reads in regions..")
         # Dictionary mapping regions to number of reads mapping
         # to them
-        self.region_funcs = [("ribo", self.get_num_ribo),
-                             ("exons", self.get_num_exons),
-                             ("cds", self.get_num_cds),
-                             ("introns", self.get_num_introns),
-                             ("three_prime_utr", self.get_num_3p_utrs),
-                             ("five_prime_utr", self.get_num_5p_utrs)]
+        self.region_funcs = [("num_ribo", self.get_num_ribo),
+                             ("num_exons", self.get_num_exons),
+                             ("num_cds", self.get_num_cds),
+                             ("num_introns", self.get_num_introns),
+                             ("num_3p_utr", self.get_num_3p_utrs),
+                             ("num_5p_utr", self.get_num_5p_utrs)]
         # Get the number of reads in each region and add these
         # to QC results
         for region_name, region_func in self.region_funcs:
             self.qc_results[region_name] = region_func()
-        # Get the regions header (order in which these will be output)
-        self.regions_header = [r[0] for r in self.region_funcs]
         
 
     def compute_basic_qc(self):
         """
         Compute basic QC stats like number of reads mapped.
         """
+        self.qc_results["num_reads"] = self.get_num_reads()
         self.qc_results["num_mapped"] = self.get_num_mapped()
+
+
+    def percent_mapped(self):
+        return 0
+
+    
+    def percent_ribo(self):
+        return 0
+
+    
+    def percent_exons(self):
+        return 0
+
+
+    def percent_introns(self):
+        return 0
+
+
+    def percent_cds(self):
+        return 0
 
 
     def compute_qc_stats(self):
         """
         Compute various statistics from the QC numbers we have.
         """
-        # exon / intron  (Should be in log2)
-        # 3' / CDS'      (Should not be in log2)
-        # 5' / CDS'      (Should not be in log2)
-        # 3' / 5'
-        pass
+        self.qc_stat_funcs = [("percent_mapped", self.percent_mapped),
+                              ("percent_ribo", self.percent_ribo),
+                              ("percent_exons", self.percent_exons),
+                              ("percent_introns", self.percent_introns),
+                              ("percent_cds", self.percent_cds)]
+        for stat_name, stat_func in self.qc_stat_funcs:
+            self.qc_results[stat_name] = stat_func()
         
 
     def compute_qc(self):
@@ -230,8 +298,6 @@ class QualityControl:
         Compute all QC metrics for sample.
         """
         self.logger.info("Computing QC for sample: %s" %(self.sample.label))
-        num_reads = self.get_num_reads()
-        self.qc_results["num_reads"] = num_reads
         # BAM-related statistics
         # First check that BAM file is present
         if (self.sample.bam_filename is None) or \
@@ -258,10 +324,7 @@ class QualityControl:
                                                               self.qc_filename)
             return None
         # Header for QC output file for sample
-        qc_entry = {"num_reads": self.qc_results["num_reads"],
-                    "num_mapped": self.qc_results["num_mapped"],
-                    "num_ribo": self.qc_results["num_ribo"]}
-        qc_df = pandas.DataFrame([qc_entry])
+        qc_df = pandas.DataFrame([self.qc_results])
         # Write QC information as csv
         qc_df.to_csv(self.qc_filename,
                      cols=self.qc_header,

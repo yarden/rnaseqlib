@@ -367,6 +367,18 @@ def which(program):
     return None
             
 
+def count_lines(fname, skipstart="#"):
+    """
+    Return number of lines in file.
+
+    Skip liens starting with 'skipstart'.
+    """
+    num_lines = 0
+    for line in open(fname):
+        if line.startswith(skipstart): continue
+        num_lines += 1
+    return num_lines
+
 ##
 ## Misc. utilities for manipulating strings/lists
 ##

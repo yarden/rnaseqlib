@@ -5,12 +5,21 @@ import os
 import sys
 import time
 
+import rnaseqlib
+import rnaseqlib.utils as utils
+
 def intersect_bam_with_bed(bam_filename,
                            bed_filename,
                            output_filename,
-                           frac_overlap=1):
+                           frac_overlap=1,
+                           unique=False,
+                           bed_opts=""):
     """
     Intersect a BAM filename with BED.
+
+    If 'unique' is True, then pass -u option to intersectBed,
+    which states that each entry in the BAM is written once if it
+    overlaps any BED
     """
     print "Intersecting %s with %s" %(bam_filename,
                                       bed_filename)
@@ -19,13 +28,45 @@ def intersect_bam_with_bed(bam_filename,
         return output_filename
     # Intersect given BAM with given BED and write result
     # as a BED file
-    intersect_cmd = "intersectBed -abam %s -b %s -f %s -bed > %s" \
+    intersect_cmd = "intersectBed -abam %s -b %s -f %s -bed " \
         %(bam_filename,
           bed_filename,
-          str(frac_overlap),
-          output_filename)
-    os.system(intersect_cmd) 
+          str(frac_overlap))
+    if unique:
+        print "Looking only at unique entries"
+        intersect_cmd += " -u"
+    # Other bed options
+    intersect_cmd += " %s " %(bed_opts)
+    intersect_cmd += "> %s" %(output_filename)
+    print "Executing: %s" %(intersect_cmd)
+    os.system(intersect_cmd)
+    time.sleep(5)
     return output_filename
+    
+
+def count_reads_matching_intervals(bam_filename,
+                                   intervals_filename,
+                                   output_filename):
+    """
+    Count number of reads matching the given intervals
+    filename, which could be a BED or a GFF.
+
+    Output the resulting file (a BED) to output filename.
+    """
+    if not os.path.isfile(intervals_filename):
+        print "WARNING: Cannot find exons file %s" %(output_filename)
+        return None
+    # intersect BAM with merged exons, outputting one line per read that
+    # overlaps any region in the merged exons BED
+    intersect_bam_with_bed(bam_filename,
+                           intervals_filename,
+                           output_filename,
+                           unique=True,
+                           bed_opts="-wa -bed")
+    if not os.path.isfile(output_filename):
+        return None
+    num_reads = utils.count_lines(output_filename)
+    return num_reads
 
 
 def sort_bed(input_filename, output_filename):
