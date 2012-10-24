@@ -744,6 +744,8 @@ def process_ucsc_tables(genome, output_dir):
         table = GeneTable(tables_outdir, table_name)
         # Output the table's exons as GFF
         table.output_exons_as_gff()
+        # Output the table's CDS-only exons as GFF
+        table.output_exons_as_gff(cds_only=True)        
         # Output the table's exons as BED
         table.output_exons_as_bed()
         # Output the table's merged exons
