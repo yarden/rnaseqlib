@@ -69,6 +69,8 @@ def check_requirements():
             found_all = False
     if found_all:
         print "Found all required programs."
+    else:
+        time.sleep(20)
 
 
 def genePredToGtf_msg():
