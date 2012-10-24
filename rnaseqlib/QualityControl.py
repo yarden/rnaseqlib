@@ -38,13 +38,12 @@ class QualityControl:
                                "num_3p_utr",
                                "num_5p_utr"]
         self.qc_stats_header = ["percent_mapped",
-                                "percent_ribo",
+                                "percent_ribno",
                                 "percent_exons",
                                 "percent_introns",
                                 "percent_cds"]
         self.qc_header = ["num_reads", 
-                          "num_mapped",
-                          "num_ribo"] + self.qc_stats_header + self.regions_header
+                          "num_mapped"] + self.qc_stats_header + self.regions_header
         # QC results
         self.qc_results = {}
         # QC output dir
@@ -184,7 +183,7 @@ class QualityControl:
                                                                merged_exons_filename,
                                                                merged_exons_map_fname)
         if result is None:
-            self.logger.info("Mapping to exons failed.")
+            self.logger.warning("Mapping to exons failed.")
         num_exons_reads = result
         return num_exons_reads
 
@@ -194,8 +193,8 @@ class QualityControl:
         Return number of reads mapping to introns.
         """
         self.logger.info("Getting number of intronic reads..")
-        introns_filename = os.path.join(self.gene_table.exons_dir,
-                                             "ensGene.introns.bed")
+        introns_filename = os.path.join(self.gene_table.introns_dir,
+                                        "ensGene.introns.bed")
         output_basename = "region.introns.bed"
         introns_map_fname = os.path.join(self.regions_outdir,
                                          output_basename)
@@ -204,7 +203,7 @@ class QualityControl:
                                                                introns_filename,
                                                                introns_map_fname)
         if result is None:
-            self.logger.info("Mapping to introns failed.")
+            self.logger.warning("Mapping to introns failed.")
         num_introns_reads = result
         return num_introns_reads 
 
