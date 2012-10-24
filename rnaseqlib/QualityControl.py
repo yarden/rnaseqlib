@@ -145,6 +145,84 @@ class QualityControl:
 
     def get_qc(self):
         return self.qc_results
+
+    
+    def get_num_exons(self):
+        """
+        Return number of reads mapping to exons.
+        """
+        self.logger.info("Getting number of exons..")
+        return 0
+
+    
+    def get_num_introns(self):
+        """
+        Return number of reads mapping to introns.
+        """
+        self.logger.info("Getting number of introns..")
+        return 0
+
+
+    def get_num_3p_utrs(self):
+        """
+        Return number of reads mapping to 3' UTRs.
+        """
+        self.logger.info("Getting number of 3\' UTRs..")
+        return 0
+
+    
+    def get_num_5p_utrs(self):
+        """
+        Return number of reads mapping to 5' UTRs.
+        """
+        self.logger.info("Getting number of 5\' UTRs..")
+        return 0
+    
+
+    def get_num_cds(self):
+        """
+        Return number of reads mapping to CDS regions.
+        """
+        pass
+
+
+    def compute_regions(self):
+        """
+        Compute number of reads mapping to various regions.
+        """
+        self.logger.info("Computing reads in regions..")
+        # Dictionary mapping regions to number of reads mapping
+        # to them
+        self.region_funcs = [("ribo", self.get_num_ribo),
+                             ("exons", self.get_num_exons),
+                             ("cds", self.get_num_cds),
+                             ("introns", self.get_num_introns),
+                             ("three_prime_utr", self.get_num_3p_utrs),
+                             ("five_prime_utr", self.get_num_5p_utrs)]
+        # Get the number of reads in each region and add these
+        # to QC results
+        for region_name, region_func in self.region_funcs:
+            self.qc_results[region_name] = region_func()
+        # Get the regions header (order in which these will be output)
+        self.regions_header = [r[0] for r in self.region_funcs]
+        
+
+    def compute_basic_qc(self):
+        """
+        Compute basic QC stats like number of reads mapped.
+        """
+        self.qc_results["num_mapped"] = self.get_num_mapped()
+
+
+    def compute_qc_stats(self):
+        """
+        Compute various statistics from the QC numbers we have.
+        """
+        # exon / intron  (Should be in log2)
+        # 3' / CDS'      (Should not be in log2)
+        # 5' / CDS'      (Should not be in log2)
+        # 3' / 5'
+        pass
         
 
     def compute_qc(self):
@@ -160,10 +238,12 @@ class QualityControl:
            (not os.path.isfile(self.sample.bam_filename)):
             print "WARNING: Cannot find BAM filename for %s" %(self.sample.label)
         else:
-            num_mapped = self.get_num_mapped()
-            num_ribo = self.get_num_ribo()
-            self.qc_results["num_mapped"] = num_mapped
-            self.qc_results["num_ribo"] = num_ribo
+            # Basic QC stats
+            self.compute_basic_qc()
+            # Number of reads in various regions
+            self.compute_regions()
+            # Compute statistics from these results
+            self.compute_qc_stats()
         # Set that QC results were loaded
         self.qc_loaded = True
         return self.qc_results

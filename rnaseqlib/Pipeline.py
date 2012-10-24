@@ -676,14 +676,6 @@ class Pipeline:
                                              self.rna_base)
         return sample
 
-
-    def output_regions_analysis(self, sample):
-        """
-        Output analysis of reads mapping to various
-        genomic regions.
-        """
-        pass
-        
     
     def run_analysis(self, sample):
         """
@@ -692,7 +684,5 @@ class Pipeline:
         # Compute RPKMs
         self.logger.info("Computing RPKMs for sample: %s" %(sample.label))
         self.output_rpkms(sample)
-        # Compute regions
-        self.output_regions_analysis(sample)
         return sample
         
