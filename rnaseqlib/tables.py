@@ -561,6 +561,7 @@ class GeneTable:
         if os.path.isfile(output_filename):
             print "  - Found %s. Skipping..." %(output_filename)
             return
+        print " - Output file: %s" %(output_filename)
         introns_file = open(output_filename, "w")
         # Load ensGene exons
         merged_exons_by_gene = self.load_merged_exons_by_gene()
@@ -575,7 +576,10 @@ class GeneTable:
                 # Intron start coordinate is the coordinate right after
                 # the end of the first exon, intron end coordinate is the
                 # coordinate just before the beginning of the second exon
-                intron_coords.append((first_exon[1] + 1, second_exon[0] - 1))
+                intron_start = first_exon[1] + 1
+                intron_end = second_exon[0] - 1
+                if intron_start >= intron_end: continue
+                intron_coords.append((intron_start, intron_end))
             bedtools_utils.output_intervals_as_bed(introns_file,
                                                    chrom,
                                                    intron_coords,

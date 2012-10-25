@@ -38,14 +38,15 @@ class QualityControl:
                                "num_3p_utr",
                                "num_5p_utr"]
         self.qc_stats_header = ["percent_mapped",
-                                "percent_ribno",
+                                "percent_ribo",
                                 "percent_exons",
-                                "percent_introns",
-                                "percent_cds"]
+                                "percent_cds",     
+                                "percent_introns"]
         self.qc_header = ["num_reads", 
                           "num_mapped"] + self.qc_stats_header + self.regions_header
         # QC results
-        self.qc_results = {}
+        self.na_val = "NA"
+        self.qc_results = defaultdict(lambda: self.na_val)
         # QC output dir
         self.qc_outdir = self.pipeline.pipeline_outdirs["qc"]
         # QC filename for this sample
@@ -58,8 +59,6 @@ class QualityControl:
         self.qc_filename = os.path.join(self.sample_outdir,
                                         "%s.qc.txt" %(self.sample.label))
         self.qc_loaded = False
-        self.na_val = "NA"
-        self.qc_results = defaultdict(lambda: self.na_val)
         # use ensGene gene table for QC computations
         self.gene_table = self.pipeline.rna_base.gene_tables["ensGene"]
         # Load QC information if file corresponding to sample already exists
@@ -92,9 +91,6 @@ class QualityControl:
         numbers: 'left_mate,right_mate'.
         """
         self.logger.info("Getting number of reads.")
-        print "TEMPORARILY RETURNING 0"
-        return 0
-        ##
         if self.sample.paired:
             self.logger.info("Getting number of paired-end reads.")
             # Paired-end
@@ -122,9 +118,6 @@ class QualityControl:
         Get number of mapped reads, not counting duplicates, i.e.
         reads that have alignments in the BAM file.
         """
-        self.logger.info("Getting number of reads mapped.")
-        print "TEMPORARILY RETURNING 0"
-        return 0
         bam_read_ids = {}
         bamfile = pysam.Samfile(self.sample.bam_filename, "rb")
         for read in bamfile:
@@ -195,6 +188,7 @@ class QualityControl:
         self.logger.info("Getting number of intronic reads..")
         introns_filename = os.path.join(self.gene_table.introns_dir,
                                         "ensGene.introns.bed")
+        self.logger.info("Reading: %s" %(introns_filename))
         output_basename = "region.introns.bed"
         introns_map_fname = os.path.join(self.regions_outdir,
                                          output_basename)
@@ -204,6 +198,7 @@ class QualityControl:
                                                                introns_map_fname)
         if result is None:
             self.logger.warning("Mapping to introns failed.")
+            return num_introns_reads
         num_introns_reads = result
         return num_introns_reads 
 
@@ -268,21 +263,42 @@ class QualityControl:
 
     
     def percent_exons(self):
-        return 0
+        percent_exons = 0
+        if self.qc_results["num_exons"] == self.na_val:
+            return percent_exons
+        percent_exons = \
+            float(self.qc_results["num_exons"]) / self.qc_results["num_mapped"]
+        return percent_exons
 
 
     def percent_introns(self):
-        return 0
+        percent_introns = 0
+        if self.qc_results["num_introns"] == self.na_val:
+            percent_introns = \
+                float(self.qc_results["num_introns"]) / self.qc_results["num_mapped"]
+        return percent_introns
 
 
     def percent_cds(self):
-        return 0
+        percent_cds = 0
+        if self.qc_results["num_cds"] == self.na_val:
+            return percent_cds
+        percent_cds = \
+                float(self.qc_results["num_cds"]) / self.qc_results["num_mapped"]
+        return percent_cds
 
 
     def compute_qc_stats(self):
         """
         Compute various statistics from the QC numbers we have.
         """
+        # Check that the number of reads mapped is non-zero
+        if (self.qc_results["num_mapped"] == self.na_val) or \
+           (self.qc_results["num_mapped"] == 0):
+            self.logger.critical("Cannot compute QC stats since number of reads "
+                                 "mapped is not available!")
+            self.logger.critical("num_mapped = %s" %(str(self.qc_results["num_mapped"])))
+            sys.exit(1)
         self.qc_stat_funcs = [("percent_mapped", self.percent_mapped),
                               ("percent_ribo", self.percent_ribo),
                               ("percent_exons", self.percent_exons),
