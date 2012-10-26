@@ -1,0 +1,37 @@
+[settings]
+read_len = 40
+overhang_len = 4
+#miso_dir = "/usr/local/bin/"
+# local MISO
+miso_dir = "/home/yarden/jaen/pylibs/bin/"
+miso_events_dir = "~/jaen/gff-events/mm9/pickled/"
+miso_settings_filename = "~/jaen/Musashi/code/msi/settings/miso_settings.txt"
+miso_output_dir = "~/jaen/Musashi/rna-seq/miso_output/"
+pipeline_dir = "~/jaen/Musashi-seq/curr-pipeline-output/with-bowtie"
+plots_dir = "~/jaen/Musashi/rna-seq/plots/"
+##
+## Gene tables
+##
+ensembl_genes = "~/jaen/gene-tables/mm9/ensembl.mm9.from_ucsc_tables.txt"
+ucsc_genes = "~/jaen/gene-tables/mm9/ucsc.knownGenes.mm9.kgXref.txt"
+
+[data]
+# constitutive exons GFF
+#const_exons_gff = "~/jaen/gff-events/mm9/const-exons/Mus_musculus.NCBIM37.65.min_1000.const_exons.gff"
+const_exons_gff = "~/jaen/gff-events/mm9/const-exons/knownGenes-kgXref.with_chr.min_1000.const_exons.gff"
+
+insert_lens_dir = "~/jaen/Musashi/rna-seq/insert_lens/"
+
+sample_labels = [["KH2_NoDox_A", "KH2 -Dox (A)"],
+                 ["MSI1_NoDox_A", "MSI1 -Dox (A)"],
+                 ["MSI1_NoDox_B", "MSI1 -Dox (B)"],
+                 ["MSI1_DOX_A", "MSI1 +DOX (A)"]]
+
+# BAM files to be used
+bam_files = ["~/jaen/Musashi-seq/curr-pipeline-output/with-bowtie/rawdata/bam/KH2_NoDox_A.combined.sorted.bam",
+             "~/jaen/Musashi-seq/curr-pipeline-output/with-bowtie/rawdata/bam/MSI1_NoDox_A.combined.sorted.bam",
+             "~/jaen/Musashi-seq/curr-pipeline-output/with-bowtie/rawdata/bam/MSI1_NoDox_B.combined.sorted.bam",
+             "~/jaen/Musashi-seq/curr-pipeline-output/with-bowtie/rawdata/bam/MSI1_DOX_A.combined.sorted.bam"]
+
+
+
