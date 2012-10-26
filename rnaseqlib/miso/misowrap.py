@@ -1,4 +1,7 @@
-#!/usr/bin/env python
+##
+## misowrap: a wrapper to running MISO on a set of samples
+## and processing its output
+##
 import os
 import sys
 import time
@@ -7,50 +10,16 @@ import pandas
 import itertools
 from collections import defaultdict
 
-import yklib
-import yklib.settings as settings
-import yklib.cluster as cluster
+import rnaseqlib
+import rnaseqlib.miso.miso_utils as miso_utils
 
-def read_pe_params(insert_len_filename):
+class MISOWrap:
     """
-    Get paired-end parameters from .insert_len file.
+    Object containing information about a set of samples to be
+    processed by MISO and their MISO output.
     """
-    insert_len_filename = os.path.abspath(os.path.expanduser(insert_len_filename))
-    if not os.path.isfile(insert_len_filename):
-        print "Error: %s not a file." %(insert_len_filename)
-        sys.exit(1)
-
-    insert_file = open(insert_len_filename, "r")
-    fields = insert_file.readline()[1:].strip().split(",")
-    pe_params = {}
-    for field in fields:
-        k, v = field.split("=")
-        pe_params[k] = float(v)
-    insert_file.close()
-    return pe_params
-
-
-def load_miso_bf_file(comparisons_dir, comparison_name):
-    """
-    Load MISO information for a comparison name.
-    """
-    sample_comparison_dir = os.path.join(comparisons_dir, comparison_name)
-    bf_filename = get_bf_filename(sample_comparison_dir)
-    if bf_filename is None or (not os.path.isfile(bf_filename)):
-        return None
-    miso_bf_data = pandas.read_table(bf_filename, sep="\t")
-    return miso_bf_data
-    
-
-def get_event_types_dirs(settings_info):
-    """
-    Return event types.
-    """
-    miso_events_dir = os.path.abspath(os.path.expanduser(settings_info["settings"]["miso_events_dir"]))
-    event_types_dirs = [os.path.join(miso_events_dir, dirname) \
-                        for dirname in os.listdir(miso_events_dir)]
-    return event_types_dirs
-
+    def __init__(self, samples):
+        self.samples = samples
 
 def summarize_miso_samples(settings_filename,
                            miso_output_dir):
@@ -90,76 +59,6 @@ def summarize_miso_samples(settings_filename,
             print "event_dir_path: %s" %(event_dir_path)
             cluster.run_on_cluster(summary_cmd, job_name,
                                    event_dir_path)
-
-
-def get_summary_filename(sample_dir):
-    """
-    Get summary filename from directory.
-    """
-    summary_dir = os.path.join(sample_dir, "summary")
-    if not os.path.isdir(summary_dir):
-        raise Exception, "%s not a summary dir." %(summary_dir)
-    summary_files = glob.glob(os.path.join(summary_dir,
-                                           "*.miso_summary"))
-    summary_files = [os.path.join(summary_dir, fname) \
-                     for fname in summary_files]
-    if len(summary_files) > 1:
-        raise Exception, "Warning: more than 1 summary file for %s" \
-            %(summary_dir)
-    return summary_files[0]
-
-    
-def get_bf_filename(pairwise_comparison_dir):
-    """
-    Return a Bayes factor filename from a
-    pairwise comparisons directory.
-    """
-    pairwise_comparison_dir = os.path.abspath(os.path.expanduser(pairwise_comparison_dir))
-    bf_dir = os.path.join(pairwise_comparison_dir, "bayes-factors")
-    if not os.path.isdir(bf_dir):
-        print "WARNING: Could not get BF dir %s" %(bf_dir)
-        return None
-    bf_filename = glob.glob(os.path.join(bf_dir,
-                                         "*.miso_bf"))
-    if len(bf_filename) > 1:
-        print "Error: Multiple BF filenames in %s" %(bf_dir)
-        return None
-    bf_filename = bf_filename[0]
-    return bf_filename
-    
-
-def get_comparisons_dirs(comparisons_dir):
-    """
-    Get all comparisons directories.
-    """
-    comparisons_dirs = []
-    comparisons_dir = os.path.abspath(os.path.expanduser(comparisons_dir))
-    candidate_dirs = glob.glob(os.path.join(comparisons_dir, "*_vs_*"))
-    for dirname in candidate_dirs:
-        if not os.path.isdir(dirname):
-            continue
-        comparisons_dirs.append(dirname)
-    return comparisons_dirs
-
-
-def get_pairwise_from_sets(first_samples, second_samples):
-    seen_pairs = []
-    for sample_pair in itertools.product(first_samples,
-                                         second_samples):
-        sample1, sample2 = sample_pair
-        if (sample_pair in seen_pairs) or (sample1 == sample2) or \
-            ((sample2, sample1) in seen_pairs):
-            continue
-        seen_pairs.append(sample_pair)
-    return seen_pairs
-    
-        
-def get_pairwise_comparisons(samples):
-    """
-    Return pairwise comparisons between samples.
-    """
-    return get_pairwise_from_sets(samples, samples)
-    
 
 def compare_miso_samples(settings_filename,
                          miso_output_dir,
@@ -263,7 +162,7 @@ def run_miso_on_samples(settings_filename, output_dir,
         insert_lens_dir = settings_info["data"]["insert_lens_dir"]
     run_events_analysis = os.path.join(miso_dir,
                                        "run_events_analysis.py")
-    event_types_dirs = get_event_types_dirs(settings_info)
+    event_types_dirs = miso_utils.get_event_types_dirs(settings_info)
     miso_settings_filename = settings_info["settings"]["miso_settings_filename"]
     
     for bam_filename in bam_files:
@@ -284,7 +183,7 @@ def run_miso_on_samples(settings_filename, output_dir,
                 insert_len_filename = os.path.join(insert_lens_dir,
                                                    "%s.insert_len" %(bam_basename))
                 print "Reading paired-end parameters from file..."
-                pe_params = read_pe_params(insert_len_filename)
+                pe_params = miso_utils.read_pe_params(insert_len_filename)
                 # Paired-end parameters
                 miso_cmd += " --paired-end %.2f %.2f" %(pe_params["mean"],
                                                         pe_params["sdev"])
