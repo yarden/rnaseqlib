@@ -61,8 +61,7 @@ def count_reads_matching_intervals(bam_filename,
     intersect_bam_with_bed(bam_filename,
                            intervals_filename,
                            output_filename,
-                           unique=True,
-                           bed_opts="-wa -bed")
+                           unique=True)
     if not os.path.isfile(output_filename):
         return None
     num_reads = utils.count_lines(output_filename)

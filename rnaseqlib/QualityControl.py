@@ -254,15 +254,18 @@ class QualityControl:
         self.qc_results["num_mapped"] = self.get_num_mapped()
 
 
-    def percent_mapped(self):
+    def get_percent_mapped(self):
         return 0
 
     
-    def percent_ribo(self):
+    def get_percent_ribo(self):
+        percent_ribo = 0
+        if self.qc_results["num_ribo"] == self.na_val:
+            return percent_ribo 
         return 0
 
     
-    def percent_exons(self):
+    def get_percent_exons(self):
         percent_exons = 0
         if self.qc_results["num_exons"] == self.na_val:
             return percent_exons
@@ -271,15 +274,16 @@ class QualityControl:
         return percent_exons
 
 
-    def percent_introns(self):
+    def get_percent_introns(self):
         percent_introns = 0
         if self.qc_results["num_introns"] == self.na_val:
-            percent_introns = \
-                float(self.qc_results["num_introns"]) / self.qc_results["num_mapped"]
+            return percent_introns
+        percent_introns = \
+            float(self.qc_results["num_introns"]) / self.qc_results["num_mapped"]
         return percent_introns
 
 
-    def percent_cds(self):
+    def get_percent_cds(self):
         percent_cds = 0
         if self.qc_results["num_cds"] == self.na_val:
             return percent_cds
@@ -299,11 +303,11 @@ class QualityControl:
                                  "mapped is not available!")
             self.logger.critical("num_mapped = %s" %(str(self.qc_results["num_mapped"])))
             sys.exit(1)
-        self.qc_stat_funcs = [("percent_mapped", self.percent_mapped),
-                              ("percent_ribo", self.percent_ribo),
-                              ("percent_exons", self.percent_exons),
-                              ("percent_introns", self.percent_introns),
-                              ("percent_cds", self.percent_cds)]
+        self.qc_stat_funcs = [("percent_mapped", self.get_percent_mapped),
+                              ("percent_ribo", self.get_percent_ribo),
+                              ("percent_exons", self.get_percent_exons),
+                              ("percent_introns", self.get_percent_introns),
+                              ("percent_cds", self.get_percent_cds)]
         for stat_name, stat_func in self.qc_stat_funcs:
             self.qc_results[stat_name] = stat_func()
         
