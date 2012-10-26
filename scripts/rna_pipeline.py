@@ -63,6 +63,8 @@ def check_requirements():
                   "to your path if already installed." %(program)
             if program == "genePredToGtf":
                 genePredToGtf_msg()
+            elif program == "gtf2gff3.pl":
+                gtf2gff3_msg()
             print "  - Proceeding anyway..."
             found_all = False
     if found_all:
@@ -72,6 +74,11 @@ def check_requirements():
         sys.exit(1)
 
 
+def gtf2gff3_msg():
+    print "To get gtf2gff3.pl, see: "
+    print "http://cpansearch.perl.org/src/LDS/GBrowse-2.12/bin/gtf2gff3.pl"
+    
+        
 def genePredToGtf_msg():
     print "To install genePredToGtf, download the executable for your OS " \
           "from: "

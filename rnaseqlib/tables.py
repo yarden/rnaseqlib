@@ -545,13 +545,15 @@ class GeneTable:
         return merged_exons_by_gene
 
 
-    def output_introns(self):
+    def output_introns(self, min_intron_size=50):
         """
         Given the merged exons, compute the intronic coordinates.
         
         Only implemented for ensGene.txt; probably not
         necessary to work out for other tables since this is
         only used for aggregate statistics.
+
+        Exclude intronic content that is less than 'min_intron_size'.
         """
         if self.source != "ensGene":
             return
@@ -578,7 +580,12 @@ class GeneTable:
                 # coordinate just before the beginning of the second exon
                 intron_start = first_exon[1] + 1
                 intron_end = second_exon[0] - 1
-                if intron_start >= intron_end: continue
+                if intron_start >= intron_end:
+                    continue
+                # Filter on intron size (in 0-based coordinates)
+                intron_size = intron_end - intron_start
+                if intron_size < min_intron_size:
+                    continue
                 intron_coords.append((intron_start, intron_end))
             bedtools_utils.output_intervals_as_bed(introns_file,
                                                    chrom,
