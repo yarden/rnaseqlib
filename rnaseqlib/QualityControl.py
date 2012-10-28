@@ -150,10 +150,12 @@ class QualityControl:
         ribo_reads = bamfile.fetch(reference=chr_ribo,
                                    start=None,
                                    end=None)
-        num_ribo = 0
+        bam_reads_ids = {}
         # Count reads (fetch returns an iterator)
-        for r in ribo_reads:
-            num_ribo += 1
+        # Do not count duplicates
+        for read in ribo_reads:
+            bam_read_ids[read.qname] = 1
+        num_ribo = len(bam_read_ids.keys())
         return num_ribo
 
 

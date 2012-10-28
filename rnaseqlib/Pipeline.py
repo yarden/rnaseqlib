@@ -4,6 +4,7 @@ import time
 import glob
 import settings
 
+import pysam
 import pandas
 
 from collections import defaultdict
@@ -44,6 +45,8 @@ class Sample:
         self.tophat_filename = None
         # BAM filename
         self.bam_filename = None
+        # Unique BAM filename
+        self.unique_bam_filename = None
         # Sample's RPKM directory
         self.rpkm_dir = None
         # RPKM tables for the sample
@@ -504,7 +507,10 @@ class Pipeline:
             
     def map_reads(self, sample):
         """
-        Map reads.
+        Map reads using a read mapper.
+
+        Also creates a BAM file containing only the uniquely mapped
+        reads, which is used for downstream analyses (e.g. in QC).
         """
         self.logger.info("Mapping reads for sample: %s" %(sample.label))
         print "Mapping reads..."
@@ -552,44 +558,79 @@ class Pipeline:
         else:
             print "Error: unsupported mapper %s" %(mapper)
             sys.exit(1)
-        # Sort and index the resulting BAM
-        sample = self.sort_and_index_bam(sample)
+        # Get the uniquely mapping reads
+        sample.unique_bam_filename = self.get_unique_reads(sample)
+        # Sort and index the mapped reads BAM
+        sample.bam_filename = self.sort_and_index_bam(sample.bam_filename)
+        # Sort and index the unique BAM reads
+        sample.unique_bam_filename = self.sort_and_index_bam(sample.unique_bam_filename)
         return sample
 
 
-    def sort_and_index_bam(self, sample):
+    def sort_and_index_bam(self, bam_filename):
         """
         Sort and index the BAM for the sample.
 
-        Once completed, delete the unsorted file.
+        Return the filename of the sorted, index filename.
         """
-        self.logger.info("Sort and indexing BAM for sample: %s" \
-                         %(sample.label))
-        bam_basename = os.path.basename(sample.bam_filename).split(".bam")[0]
-        sorted_bam_filename = os.path.join(os.path.dirname(sample.bam_filename),
+        self.logger.info("Sort and indexing BAM: %s" \
+                         %(bam_filename))
+        bam_basename = os.path.basename(bam_filename).split(".bam")[0]
+        sorted_bam_filename = os.path.join(os.path.dirname(bam_filename),
                                            "%s.sorted" %(bam_basename))
-        print "Sorting %s as %s" %(sample.bam_filename,
+        print "Sorting %s as %s" %(bam_filename,
                                    sorted_bam_filename)
-        sort_cmd = "samtools sort %s %s" %(sample.bam_filename,
+        sort_cmd = "samtools sort %s %s" %(bam_filename,
                                            sorted_bam_filename)
-        job_name = "sorted_bam_%s" %(sample.label)
+        job_name = "sorted_bam_%s" %(bam_basename)
         expected_bam_filename = "%s.bam" %(sorted_bam_filename)
         self.my_cluster.launch_and_wait(sort_cmd, job_name,
                                         unless_exists=expected_bam_filename)
-        sample.bam_filename = expected_bam_filename
-        index_cmd = "samtools index %s" %(sample.bam_filename)
-        index_filename = "%s.bai" %(sample.bam_filename)
-        print "Indexing %s" %(sample.bam_filename)
+        index_cmd = "samtools index %s" %(bam_filename)
+        index_filename = "%s.bai" %(bam_filename)
+        print "Indexing %s" %(bam_filename)
         self.my_cluster.launch_and_wait(index_cmd, job_name,
                                         unless_exists=index_filename)
-        return sample
+        return expected_bam_filename
+
+
+    def get_unique_reads(self, sample):
+        """
+        Get only the uniquely mapping reads from the reads BAM
+        file and put them in a new file.
+        """
+        self.logger.info("Getting unique reads for %s" %(sample.label))
+        mapped_reads = pysam.Samfile(sample.bam_filename, "rb")
+        if not sample.bam_filename.endswith(".bam"):
+            self.logger.critical("BAM %s file does not end in .bam" \
+                                 %(sample.bam_filename))
+        unique_bam_filename = "%s.unique.bam" %(sample.bam_filename[0:-4])
+        print "Getting unique reads for %s" %(sample.label)
+        print "  - Output file: %s" %(unique_bam_filename)
+        if not os.path.isfile(unique_bam_filename):
+            # Get unique reads if file for them does not already
+            # exist
+            unique_reads = pysam.Samfile(unique_bam_filename, "wb",
+                                         # Use original file's headers
+                                         template=mapped_reads)
+            unique_bam_filename
+            num_unique = 0
+            for read in mapped_reads:
+                # Keep only reads with 'NH' tag equal to 1
+                if ("NH", 1) in read.tags:
+                    unique_reads.write(read)
+            unique_reads.close()
+        else:
+            print "Found %s. Skipping.." %(unique_bam_filename)
+        mapped_reads.close()
+        return unique_bam_filename
     
 
     def run_qc(self, sample):
         """
         Run QC for this sample.
         """
-        self.logger.info("run_qc: Running on %s" %(sample.label))
+        self.logger.info("Running QC on %s" %(sample.label))
         print "Running QC on sample: %s" %(sample.label)
         # Retrieve QC object for sample
         qc_obj = self.qc_objects[sample.label]

@@ -11,6 +11,7 @@ import itertools
 from collections import defaultdict
 
 import rnaseqlib
+import rnaseqlib.utils as utils
 import rnaseqlib.miso.miso_utils as miso_utils
 
 class MISOWrap:
@@ -18,8 +19,11 @@ class MISOWrap:
     Object containing information about a set of samples to be
     processed by MISO and their MISO output.
     """
-    def __init__(self, samples):
-        self.samples = samples
+    def __init__(self, settings_filename):
+        self.settings_filename = settings_filename
+        # Load settings
+        # ...
+
 
 def summarize_miso_samples(settings_filename,
                            miso_output_dir):
@@ -91,7 +95,7 @@ def compare_miso_samples(settings_filename,
     if not os.path.isdir(comparisons_dir):
         os.makedirs(comparisons_dir)
 
-    sample_pairs = get_pairwise_comparisons(sample_labels)
+    sample_pairs = utils.get_pairwise_comparisons(sample_labels)
     print "Running total of %d comparisons" %(len(sample_pairs))
 
     for sample1, sample2 in sample_pairs:

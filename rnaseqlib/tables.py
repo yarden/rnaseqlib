@@ -238,12 +238,16 @@ class GeneTable:
         # Add mapping from Ensembl to gene names
         self.ensembl_to_known = known_to_ensembl.set_index("name")
         self.raw_table = pandas.merge(main_table, ensGene_to_names,
+                                      # try left index
                                       how="left")
 #                                      how="outer")
         # Add mapping from Ensembl transcripts to UCSC transcripts
         self.table = pandas.merge(self.raw_table, known_to_ensembl,
+                                  # try left index
                                   how="left")
 #                                  how="outer")
+        # Output combined table
+        self.output_ensGene_combined()
         # Bring information from kgXref
         # Note that ensGene table keys are used only in the join,
         # to avoid introducing into the table entries that have
@@ -283,6 +287,20 @@ class GeneTable:
         # Parse table into actual gene objects if asked
         if not tables_only:
             self.genes = self.get_genes()
+
+        
+    def output_ensGene_combined(self):
+        """
+        Output combined ensGene table.
+        """
+        combined_filename = os.path.join(self.table_dir,
+                                         "ensGene.combined.txt")
+        print "Outputting combined ensGene table..."
+        print "  - Output file: %s" %(combined_filename)
+        self.table.to_csv(combined_filename,
+                          sep="\t",
+                          na_rep=self.na_val,
+                          index=False)
             
 
     def load_introns(self):
