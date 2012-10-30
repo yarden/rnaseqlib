@@ -699,6 +699,7 @@ class Pipeline:
             if rpkm_table is None: continue
             rpkm_table_filename = os.path.join(self.rpkm_dir,
                                                "%s.rpkm.txt" %(table_name))
+            print "OUTPUTTING: ", rpkm_table
             rpkm_table.to_csv(rpkm_table_filename,
                               cols=fieldnames,
                               sep="\t",
@@ -714,7 +715,8 @@ class Pipeline:
         rpkm_tables = rpkm_utils.output_rpkm(sample,
                                              sample_rpkm_outdir,
                                              self.settings_info,
-                                             self.rna_base)
+                                             self.rna_base,
+                                             self.logger)
         return sample
 
     

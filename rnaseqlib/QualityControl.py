@@ -43,7 +43,8 @@ class QualityControl:
                                 "percent_cds",     
                                 "percent_introns"]
         self.qc_header = ["num_reads", 
-                          "num_mapped"] + self.qc_stats_header + self.regions_header
+                          "num_mapped",
+                          "num_unique_mapped"] + self.qc_stats_header + self.regions_header
         # QC results
         self.na_val = "NA"
         self.qc_results = defaultdict(lambda: self.na_val)
@@ -111,20 +112,20 @@ class QualityControl:
             for entry in fastq_entries:
                 num_reads += 1
             return num_reads
-    
 
+            
     def get_num_mapped(self):
         """
         Get number of mapped reads, not counting duplicates, i.e.
         reads that have alignments in the BAM file.
         """
-        bam_read_ids = {}
-        bamfile = pysam.Samfile(self.sample.bam_filename, "rb")
-        for read in bamfile:
-            # Do not count duplicates twice
-            bam_read_ids[read.qname] = 1
-        num_mapped = len(bam_read_ids.keys())
+        num_mapped = count_nondup_reads(self.sample.bam_filename)
         return num_mapped
+
+
+    def get_num_unique_mapped(self):
+        num_unique_mapped = count_nondup_reads(self.sample.unique_bam_filename)
+        return num_unique_mapped
     
 
     def get_exon_intergenic_ratio(self):
@@ -150,12 +151,9 @@ class QualityControl:
         ribo_reads = bamfile.fetch(reference=chr_ribo,
                                    start=None,
                                    end=None)
-        bam_reads_ids = {}
         # Count reads (fetch returns an iterator)
         # Do not count duplicates
-        for read in ribo_reads:
-            bam_read_ids[read.qname] = 1
-        num_ribo = len(bam_read_ids.keys())
+        num_ribo = count_nondup_reads(ribo_reads)
         return num_ribo
 
 
@@ -179,7 +177,8 @@ class QualityControl:
                                                                merged_exons_map_fname)
         if result is None:
             self.logger.warning("Mapping to exons failed.")
-        num_exons_reads = result
+        else:
+            num_exons_reads = result
         return num_exons_reads
 
     
@@ -201,7 +200,8 @@ class QualityControl:
         if result is None:
             self.logger.warning("Mapping to introns failed.")
             return num_introns_reads
-        num_introns_reads = result
+        else:
+            num_introns_reads = result
         return num_introns_reads 
 
 
@@ -254,16 +254,22 @@ class QualityControl:
         """
         self.qc_results["num_reads"] = self.get_num_reads()
         self.qc_results["num_mapped"] = self.get_num_mapped()
+        self.qc_results["num_unique_mapped"] = self.get_num_unique_mapped()
 
 
     def get_percent_mapped(self):
-        return 0
+        percent_mapped = 0
+        if self.qc_results["num_mapped"] == self.na_val:
+            return percent_mapped
+        percent_mapped = self.qc_results["num_mapped"] / self.qc_results["num_reads"]
+        return percent_ribo
 
     
     def get_percent_ribo(self):
         percent_ribo = 0
         if self.qc_results["num_ribo"] == self.na_val:
-            return percent_ribo 
+            return percent_ribo
+        percent_ribo = self.qc_results["num_ribo"] / self.qc_results["num_mapped"]
         return 0
 
     
@@ -441,3 +447,27 @@ class QCStats:
                              sep="\t",
                              index=False,
                              cols=output_header)
+
+##
+## Misc. QC functions
+##
+def count_nondup_reads(bam_in):
+    """
+    Return number of BAM reads that appear in the file, excluding
+    duplicates (i.e. only count unique read ids/QNAMEs.)
+
+    Takes a filename or a stream.
+    """
+    bam_reads = bam_in
+    if isinstance(bam_in, basestring):
+        # We're passed a filename
+        if not os.path.isfile(bam_in):
+            print "WARNING: Could not find BAM file %s" %(bam_in)
+            return 0
+        else:
+            bam_reads = pysam.Samfile(bam_in, "rb")
+    bam_reads_ids = {}
+    for read in bam_reads:
+        bam_reads_ids[read.qname] = True
+    num_reads = len(bam_reads_ids.keys())
+    return num_reads

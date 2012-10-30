@@ -95,12 +95,9 @@ class RNABase:
         """
         const_exons_dir = self.get_const_exons_dir()
         for table_name in self.rpkm_table_names:
-            # Look for the table and its CDS version
-            tables_to_get = [table_name, "%s.cds_only" %(table_name)]
-            for curr_table in tables_to_get:
-                const_exons = tables.ConstExons(curr_table, from_dir=const_exons_dir)
-                if const_exons.found:
-                    self.tables_to_const_exons[curr_table] = const_exons
+            const_exons = tables.ConstExons(table_name, from_dir=const_exons_dir)
+            if const_exons.found:
+                self.tables_to_const_exons[table_name] = const_exons
 
 
     def load_qc_info(self):

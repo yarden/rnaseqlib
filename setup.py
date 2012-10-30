@@ -27,7 +27,7 @@ setup(name = 'rnaseqlib',
                   'rnaseqlib.genes', 'rnaseqlib.rpkm',
                   'rnaseqlib.mapping', 'rnaseqlib.cluster_utils',
                   'rnaseqlib.plotting', 'rnaseqlib.events',
-                  'rnaseqlib.clip', 'rnaseqlib.ribo'],
+                  'rnaseqlib.clip', 'rnaseqlib.ribo', 'scripts'],
       # distutils always uses forward slashes      
       scripts = ['scripts/rna_pipeline.py',
                  'scripts/gtf2gff3.pl',

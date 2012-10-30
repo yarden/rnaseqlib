@@ -297,6 +297,9 @@ class GeneTable:
                                          "ensGene.combined.txt")
         print "Outputting combined ensGene table..."
         print "  - Output file: %s" %(combined_filename)
+        if os.path.isfile(combined_filename):
+            print "Found combined file: skipping..."
+            return
         self.table.to_csv(combined_filename,
                           sep="\t",
                           na_rep=self.na_val,

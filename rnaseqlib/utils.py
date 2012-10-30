@@ -150,7 +150,14 @@ def get_pairwise_comparisons(samples):
     Return pairwise comparisons between samples.
     """
     return get_pairwise_from_sets(samples, samples)
-    
+
+
+def pathify(filename):
+    return os.path.abspath(os.path.expanduser(filename))
+
+
+
+
 
     
 

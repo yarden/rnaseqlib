@@ -56,7 +56,8 @@ def load_sample_rpkms(sample,
 def output_rpkm(sample,
                 output_dir,
                 settings_info,
-                rna_base):
+                rna_base,
+                logger):
     """
     Output RPKM tables for the sample.
 
@@ -76,6 +77,7 @@ def output_rpkm(sample,
                                                         table_name))
         rpkm_tables[table_name] = rpkm_output_filename
         if os.path.isfile(rpkm_output_filename):
+            logger.info("  - Skipping RPKM output, found %s" %(rpkm_output_filename))
             print "  - Skipping RPKM output, %s exists" %(rpkm_output_filename)
             continue
         # Directory where BAM containing mapping to constitutive
@@ -95,6 +97,7 @@ def output_rpkm(sample,
             sys.exit(1)
         print "Sample %s has %s mapped reads" %(sample.label, num_mapped)
         read_len = settings_info["readlen"]
+        logger.info("Outputting RPKM from GFF aligned BAM")
         output_rpkm_from_gff_aligned_bam(exons_bam_fname,
                                          num_mapped,
                                          read_len,

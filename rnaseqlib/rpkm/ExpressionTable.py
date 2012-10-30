@@ -27,6 +27,84 @@ def compute_fold_changes_table(table,
         fold_changes.append(list(pair_fc))
     fold_changes = np.array(fold_changes).T
     return fold_changes
+    
+
+class RiboExpressionTable:
+    """
+    Class for representing expression values
+    from Ribo-Seq.
+    """
+    def __init__(self, from_file=None, label=None,
+                 delimiter="\t", index_col="gene_id",
+                 comparison_pairs=None, na_val="NA"):
+        self.from_file = from_file
+        self.label = label
+        self.table = None
+        self.indexed_table = None
+        self.delimiter = delimiter
+        # Column to index by
+        self.index_col = index_col
+        # Samples to compare
+        self.comparison_pairs = comparison_pairs
+        # NA value to use
+        self.na_val = na_val
+
+        if self.from_file is not None:
+            self.load_table(from_file)
+
+            
+    def load_table(self, table_filename):
+        print "Loading table from: %s" %(table_filename)
+        self.table = pandas.read_table(table_filename,
+                                       sep=self.delimiter)
+        # Index the table
+        self.indexed_table = self.table.set_index(self.index_col)
+
+
+    def get_rpkm_sample_names(self, header, prefix="rpkm_"):
+        """
+        Return any sample beginning with RPKM prefix.
+        """
+        print "HEADER: ", header
+        sample_names = []
+        for col in header:
+            if col.startswith(prefix):
+                sample_names.append(col)
+        return sample_names
+
+
+    def get_expr_matrix(self, samples, table):
+        """
+        Get expression as matrix for the given samples.
+        """
+        expr_matrix = []
+        for sample in samples:
+            expr_matrix.append(table[sample].values)
+        expr_matrix = np.array(expr_matrix)
+        return expr_matrix
+        
+
+    def add_fold_changes(self, sample_pairs):
+        """
+        Add fold changes to the table in the form of
+        X_vs_Y fields, where X, Y are samples.
+
+        Takes a list of sample pairs.
+        """
+        if self.table is None:
+            raise Exception, "No data to compute foldchanges."
+        fold_changes = compute_fold_changes_table(self.table,
+                                                  sample_pairs)
+        for pair_num, pair in enumerate(sample_pairs):
+            label = "%s_vs_%s" %(pair[0],
+                                 pair[1])
+            fc_column = fold_changes[:, pair_num]
+            self.table[label] = fc_column
+        return self.table
+
+        
+    def __repr__(self):
+        return "RiboExpressionTable(from_file=%s)" %(self.from_file)
 
     
 class ExpressionTable:
