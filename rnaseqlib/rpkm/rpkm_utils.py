@@ -37,7 +37,10 @@ def load_sample_rpkms(sample,
             # Load each table as a DataFrame
             rpkm_table = pandas.read_csv(rpkm_filename,
                                          sep="\t",
-                                         names=fieldnames)
+                                         names=fieldnames,
+                                         # Skip the current header
+                                         skiprows=1)
+            print "rpkm_table: ", rpkm_table
             # Add gene_symbol and gene_desc columns
             # to RPKM DataFrame
             gene_table = rna_base.gene_tables[table_name.split(".")[0]]

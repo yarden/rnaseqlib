@@ -30,7 +30,8 @@ def run_on_sample(sample_label,
     Run pipeline on one particular sample.
     """
     pipeline = rna_pipeline.Pipeline(settings_filename,
-                                     output_dir)
+                                     output_dir,
+                                     curr_sample=sample_label)
     pipeline.run_on_sample(sample_label)
 
 
