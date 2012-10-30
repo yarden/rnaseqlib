@@ -67,6 +67,8 @@ class Gene:
             # Compare the first exon of the transcript
             # to all other transcripts' exons
             const_exon = True
+            # Whether we found the CDS or not
+            found_cds = False
             for curr_trans in self.transcripts[1:]:
                 if not cds_only:
                     # Consider all exons
@@ -74,8 +76,10 @@ class Gene:
                 else:
                     # Take only exons that fall in the CDS
                     trans_parts = curr_trans.get_cds_parts()
-                    if trans_parts == ():
+                    if len(trans_parts) == 0:
                         continue
+                    else:
+                        found_cds = True
                 # Compute the start coord difference and end coord difference
                 # between our exon and each exon in the current transcript
                 start_end_diffs = array([(abs(exon.start - curr_exon.start),
@@ -89,7 +93,14 @@ class Gene:
                     const_exon = False
                     # Determined exon is not constitutive, so skip to next exon
                     break
-            if const_exon:
+            if cds_only:
+                # If we're asked for CDS only exons, check that the CDS was
+                # found and that the exon is constitutive
+                if found_cds and const_exon:
+                    self.const_exons.append(exon)
+            elif const_exon:
+                # If not CDS only, just check that we have constitutive
+                # exons
                 self.const_exons.append(exon)
         return self.const_exons
         
@@ -122,8 +133,8 @@ class Transcript:
         self.cds_end = cds_end
         self.cds_coords = (self.cds_start,
                            self.cds_end)
-        self.cds_parts = self.get_cds_parts()
         self.parent = parent
+        self.cds_parts = self.get_cds_parts()
 
         
     def __repr__(self):
@@ -133,15 +144,20 @@ class Transcript:
                                                      self.strand,
                                                      self.parent)
 
-    def get_cds_parts(self):
+    def get_cds_parts(self, min_cds_len=10):
         """
         Compute the parts that are in the CDS.  Trim UTR containing
         exons to start/end at the CDS start/end, respectively.
+
+        If the CDS length is less than 'min_cds_len' nucleotides,
+        skip it altogether.
         """
-        # Compute the parts that are in the CDS
         self.cds_parts = []
-        if self.cds_start is None:
+        cds_len = self.cds_end - self.cds_start + 1
+        if (self.cds_start is None) or \
+           (cds_len < min_cds_len):
             return self.cds_parts
+        # Compute the parts that are in the CDS
         for part in self.parts:
             # Skip parts that end before the CDS or
             # start after the CDS
@@ -149,12 +165,21 @@ class Transcript:
                (part.start >= self.cds_end):
                 continue
             cds_part_label = "cds.%s" %(part.label)
-            # If the part is overlapping the CDS start make it
-            # start at the CDS
             cds_part = None
+            # Check for special case that CDS is entirely contained
+            # within the exon
             if (part.start <= self.cds_start) and \
-               (part.end > self.cds_start):
-                # Create CDS part
+               (part.end >= self.cds_end):
+                # If so, make the part be the CDS itself
+                cds_part = Part(self.cds_start, self.cds_end,
+                                chrom=part.chrom,
+                                strand=part.chrom,
+                                label=cds_part_label,
+                                parent=part.parent)
+            elif (part.start <= self.cds_start) and \
+                 (part.end > self.cds_start):
+                # If the part is overlapping the CDS start make it
+                # start at the CDS
                 cds_part = Part(self.cds_start, part.end,
                                 chrom=part.chrom,
                                 strand=part.chrom,
@@ -178,7 +203,8 @@ class Transcript:
                                 strand=part.chrom,
                                 label=cds_part_label,
                                 parent=part.parent)
-            self.cds_parts.append(cds_part)
+            if cds_part is not None:
+                self.cds_parts.append(cds_part)
         self.cds_parts = tuple(self.cds_parts)
         return self.cds_parts
         

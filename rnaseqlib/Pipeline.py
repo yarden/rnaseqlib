@@ -104,10 +104,13 @@ class Pipeline:
     """
     def __init__(self,
                  settings_filename,
-                 log_output_dir):
+                 log_output_dir,
+                 curr_sample=None):
         """
         Initialize pipeline.
         """
+        # If invoked to run on particular sample
+        self.curr_sample = curr_sample
         self.genome = None
         # Output directory for logging pipeline activity
         self.log_output_dir = log_output_dir
@@ -144,7 +147,10 @@ class Pipeline:
                               "analysis",
                               "logs"]
         self.init_outdirs()
-        self.logger = utils.get_logger("Pipeline",
+        pipeline_log_name = "Pipeline"
+        if self.curr_sample is not None:
+            pipeline_log_name = "Pipeline.%s" %(self.curr_sample)
+        self.logger = utils.get_logger(pipeline_log_name,
                                        self.pipeline_outdirs["logs"])
         self.load_cluster()
         ## Load RNA Base: object storing all the relevant

@@ -262,7 +262,7 @@ class QualityControl:
         if self.qc_results["num_mapped"] == self.na_val:
             return percent_mapped
         percent_mapped = self.qc_results["num_mapped"] / self.qc_results["num_reads"]
-        return percent_ribo
+        return percent_mapped
 
     
     def get_percent_ribo(self):
