@@ -33,7 +33,12 @@ def download_url(url, output_dir,
     """
     print "Downloading: %s" %(url)
     t1 = time.time()
-    url_in = urllib2.urlopen(url)
+    url_in = None
+    try:
+        url_in = urllib2.urlopen(url)
+    except urllib2.HTTPError:
+        print "Error in urllib2: Could not fetch %s" %(url)
+        sys.exit(1)
     url_name = posixpath.basename(url)
     if basename != None:
         url_name = basename

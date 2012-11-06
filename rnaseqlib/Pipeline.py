@@ -43,10 +43,14 @@ class Sample:
         self.bowtie_filename = None
         # Tophat mapping for sample
         self.tophat_filename = None
+        # Directory where processed BAM dirs are
+        self.processed_bam_dir = None
         # BAM filename
         self.bam_filename = None
         # Unique BAM filename
         self.unique_bam_filename = None
+        # rRNA subtracted BAM filename
+        self.ribosub_bam_filename = None
         # Sample's RPKM directory
         self.rpkm_dir = None
         # RPKM tables for the sample
@@ -564,12 +568,24 @@ class Pipeline:
         else:
             print "Error: unsupported mapper %s" %(mapper)
             sys.exit(1)
+        ##
+        ## Post processing of BAM reads
+        ##
+        # Create a directory for processed BAMs
+        sample.processed_bam_dir = os.path.join(self.pipeline_outdirs["mapping"],
+                                                sample.label,
+                                                "processed_bams")
+        utils.make_dir(sample.processed_bam_dir)
         # Get the uniquely mapping reads
         sample.unique_bam_filename = self.get_unique_reads(sample)
+        # Get the ribo-subtracted mapping reads
+        sample.ribosub_bam_filename = self.get_ribosub_bam_reads(sample)
         # Sort and index the mapped reads BAM
         sample.bam_filename = self.sort_and_index_bam(sample.bam_filename)
         # Sort and index the unique BAM reads
         sample.unique_bam_filename = self.sort_and_index_bam(sample.unique_bam_filename)
+        # Sort and index the ribosubtracted BAM reads
+        sample.ribosub_bam_filename = self.sort_and_index_bam(sample.ribosub_bam_filename)
         return sample
 
 
@@ -590,15 +606,61 @@ class Pipeline:
                                            sorted_bam_filename)
         job_name = "sorted_bam_%s" %(bam_basename)
         expected_bam_filename = "%s.bam" %(sorted_bam_filename)
-        self.my_cluster.launch_and_wait(sort_cmd, job_name,
-                                        unless_exists=expected_bam_filename)
-        index_cmd = "samtools index %s" %(bam_filename)
-        index_filename = "%s.bai" %(bam_filename)
-        print "Indexing %s" %(bam_filename)
-        self.my_cluster.launch_and_wait(index_cmd, job_name,
-                                        unless_exists=index_filename)
+        if not os.path.isfile(expected_bam_filename):
+            os.system(sort_cmd)
+#        self.my_cluster.launch_and_wait(sort_cmd, job_name,
+#                                        unless_exists=expected_bam_filename)
+#        index_cmd = "samtools index %s" %(bam_filename)
+        index_cmd = "samtools index %s" %(expected_bam_filename)            
+        index_filename = "%s.bai" %(expected_bam_filename)
+        print "Indexing %s" %(expected_bam_filename)
+        if not os.path.isfile(index_filename):
+            os.system(index_cmd)
+#        self.my_cluster.launch_and_wait(index_cmd, job_name,
+#                                        unless_exists=index_filename)
         return expected_bam_filename
 
+
+
+    def get_ribosub_bam_reads(self, sample, chr_ribo="chrRibo"):
+        """
+        Subtract the rRNA-mapping reads away from the BAM file
+        and create a new BAM file.
+        """
+        self.logger.info("Getting rRNA-subtracted BAM file for %s" \
+                         %(sample.label))
+        mapped_reads = pysam.Samfile(sample.bam_filename, "rb")
+        if not sample.bam_filename.endswith(".bam"):
+            self.logger.critical("BAM %s file does not end in .bam" \
+                                 %(sample.bam_filename))
+        bam_basename = os.path.basename(sample.bam_filename)
+        ribosub_bam_filename = os.path.join(sample.processed_bam_dir,
+                                           "%s.ribosub.bam" %(bam_basename[0:-4]))
+        print "Getting rRNA-subtracted reads for %s" %(sample.label)
+        print "  - Output file: %s" %(ribosub_bam_filename)
+        if not os.path.isfile(ribosub_bam_filename):
+            # Get the ribosomal rRNA mapping reads
+            ribo_read_ids = {}
+            ribo_reads = mapped_reads.fetch(reference=chr_ribo,
+                                            start=None,
+                                            end=None)
+            for ribo_read in ribo_reads:
+                ribo_read_ids[ribo_read.qname] = True
+            ribosub_bam = pysam.Samfile(ribosub_bam_filename, "wb",
+                                        # Use original file's headers
+                                        template=mapped_reads)
+            for read in mapped_reads:
+                # If the read has any mapping to rRNA, then
+                # skip it
+                if read.qname in ribosub_bam:
+                    continue
+                ribosub_bam.write(read)
+            ribosub_bam.close()
+        else:
+            print "Found %s. Skipping.." %(ribosub_bam_filename)
+        mapped_reads.close()
+        return ribosub_bam_filename
+        
 
     def get_unique_reads(self, sample):
         """
@@ -610,7 +672,9 @@ class Pipeline:
         if not sample.bam_filename.endswith(".bam"):
             self.logger.critical("BAM %s file does not end in .bam" \
                                  %(sample.bam_filename))
-        unique_bam_filename = "%s.unique.bam" %(sample.bam_filename[0:-4])
+        bam_basename = os.path.basename(sample.bam_filename)
+        unique_bam_filename = os.path.join(sample.processed_bam_dir,
+                                           "%s.unique.bam" %(bam_basename[0:-4]))
         print "Getting unique reads for %s" %(sample.label)
         print "  - Output file: %s" %(unique_bam_filename)
         if not os.path.isfile(unique_bam_filename):
@@ -705,7 +769,6 @@ class Pipeline:
             if rpkm_table is None: continue
             rpkm_table_filename = os.path.join(self.rpkm_dir,
                                                "%s.rpkm.txt" %(table_name))
-            print "OUTPUTTING: ", rpkm_table
             rpkm_table.to_csv(rpkm_table_filename,
                               cols=fieldnames,
                               sep="\t",

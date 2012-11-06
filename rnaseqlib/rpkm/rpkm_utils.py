@@ -89,7 +89,8 @@ def output_rpkm(sample,
                                       "bam2gff_const_exons")
         utils.make_dir(bam2gff_outdir)
         # Map reads to GFF of constitutive exons
-        exons_bam_fname = exon_utils.map_bam2gff(sample.bam_filename,
+        # Use the rRNA subtracted BAM file
+        exons_bam_fname = exon_utils.map_bam2gff(sample.ribosub_bam_filename,
                                                  const_exons.gff_filename,
                                                  bam2gff_outdir)
         # Compute RPKMs for sample
@@ -100,7 +101,7 @@ def output_rpkm(sample,
             sys.exit(1)
         print "Sample %s has %s mapped reads" %(sample.label, num_mapped)
         read_len = settings_info["readlen"]
-        logger.info("Outputting RPKM from GFF aligned BAM")
+        logger.info("Outputting RPKM from GFF aligned BAM (table %s)" %(table_name))
         output_rpkm_from_gff_aligned_bam(exons_bam_fname,
                                          num_mapped,
                                          read_len,

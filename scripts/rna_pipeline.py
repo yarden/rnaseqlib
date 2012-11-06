@@ -45,6 +45,7 @@ def check_requirements():
                          "tophat",
                          # Bedtools
                          "intersectBed",
+                         "subtractBed",
                          "sortBed",
                          "mergeBed",
                          "tagBam",

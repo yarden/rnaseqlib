@@ -42,10 +42,12 @@ UCSC_TABLE_LABELS = ["knownGene.txt.gz",
                      "knownIsoforms.txt.gz",
                      # Ensembl-tables
                      "ensGene.txt.gz",
-                     "ensemblToGeneName.txt.gz",
+#                     "ensemblToGeneName.txt.gz",
                      "ensGtp.txt.gz",
                      # Refseq-tables
-                     "refGene.txt.gz"]
+                     "refGene.txt.gz",
+                     # tRNA tables
+                     "tRNAs.txt.gz"]
 
 class GeneTable:
     """
@@ -151,8 +153,7 @@ class GeneTable:
             
     def load_ensGene_table(self, tables_only=False):
         """
-        Load ensGene table. Expects an 'ensGene.txt' and
-        the related 'ensemblToGeneName.txt' file.
+        Load ensGene table. Expects an 'ensGene.txt'
 
         ensGene.txt format:
         
@@ -172,11 +173,6 @@ class GeneTable:
           `cdsStartStat` enum('none','unk','incmpl','cmpl') NOT NULL,
           `cdsEndStat` enum('none','unk','incmpl','cmpl') NOT NULL,
           `exonFrames` longblob NOT NULL,
-
-        ensemblToGeneName.txt format:
-
-          `name` varchar(255) NOT NULL,
-          `value` varchar(255) NOT NULL,
 
         if tables_only is True, do not parse table into
         genes but only load tables.
@@ -199,22 +195,14 @@ class GeneTable:
                                "exonFrames"]
         self.knownToEnsembl_header = ["knownGene_name",
                                       "name"]
-        self.ensemblToGeneName_header = ["name",
-                                         "value"]
         ensGene_filename = os.path.join(self.table_dir,
                                         "ensGene.txt")
         if not os.path.isfile(ensGene_filename):
             print "Error: Cannot find ensGene table %s" \
                 %(ensGene_filename)
             sys.exit(1)
-        ensGene_name_filename = os.path.join(self.table_dir,
-                                             "ensemblToGeneName.txt")
         known_to_ensembl_filename = os.path.join(self.table_dir,
                                                  "knownToEnsembl.txt")
-        if not os.path.isfile(ensGene_name_filename):
-            print "Error: Cannot find ensemblToGeneName table %s" \
-                %(ensGene_name_filename)
-            sys.exit(1)
         if not os.path.isfile(known_to_ensembl_filename):
             print "Error: Cannot find knownToEnsembl table %s" \
                 %(known_to_ensembl_filename)
@@ -227,27 +215,20 @@ class GeneTable:
 #                                                   self.parse_string_int_list,
 #                                                   "exonEnds":
 #                                                   self.parse_string_int_list})
-        # Load ensemblToGeneName table and add this info to
-        # main table
-        ensGene_to_names = pandas.read_table(ensGene_name_filename,
-                                             sep=self.delimiter,
-                                             names=self.ensemblToGeneName_header)
         known_to_ensembl = pandas.read_table(known_to_ensembl_filename,
                                              sep=self.delimiter,
                                              names=self.knownToEnsembl_header)
         # Add mapping from Ensembl to gene names
         self.ensembl_to_known = known_to_ensembl.set_index("name")
-        self.raw_table = pandas.merge(main_table, ensGene_to_names,
-                                      # try left index
-                                      how="left")
-#                                      how="outer")
+        self.raw_table = main_table
         # Add mapping from Ensembl transcripts to UCSC transcripts
         self.table = pandas.merge(self.raw_table, known_to_ensembl,
                                   # try left index
                                   how="left")
 #                                  how="outer")
         # Output combined table
-        self.output_ensGene_combined()
+        self.output_ensGene_combined(self.table,
+                                     "ensGene.combined")
         # Bring information from kgXref
         # Note that ensGene table keys are used only in the join,
         # to avoid introducing into the table entries that have
@@ -259,6 +240,9 @@ class GeneTable:
                                   left_index=True,
                                   left_on=["knownGene_name"],
                                   right_on=["kgID"])
+        # Output combined table with kgXref
+        self.output_ensGene_combined(self.table,
+                                     "ensGene.kgXref.combined")
         self.table_by_trans = self.table.set_index("name")
         # Get mapping from transcripts to genes
         self.trans_to_genes = self.table.set_index("name")
@@ -280,7 +264,7 @@ class GeneTable:
                 self.genes_list.append(gene_id)
                 seen_genes[gene_id] = True
                 # Record mapping from gene to name via transcript
-                self.genes_to_names[gene_id] = gene_info["value"]
+                self.genes_to_names[gene_id] = gene_info["geneSymbol"]
                 # Get Ensembl transcript's UCSC name and from that get
                 # the gene description
                 self.genes_to_desc[gene_id] = gene_info["description"]
@@ -289,21 +273,21 @@ class GeneTable:
             self.genes = self.get_genes()
 
         
-    def output_ensGene_combined(self):
+    def output_ensGene_combined(self, table, basename):
         """
         Output combined ensGene table.
         """
         combined_filename = os.path.join(self.table_dir,
-                                         "ensGene.combined.txt")
+                                         "%s.txt" %(basename))
         print "Outputting combined ensGene table..."
         print "  - Output file: %s" %(combined_filename)
         if os.path.isfile(combined_filename):
             print "Found combined file: skipping..."
             return
-        self.table.to_csv(combined_filename,
-                          sep="\t",
-                          na_rep=self.na_val,
-                          index=False)
+        table.to_csv(combined_filename,
+                     sep="\t",
+                     na_rep=self.na_val,
+                     index=False)
             
 
     def load_introns(self):
@@ -769,7 +753,16 @@ def process_ucsc_tables(genome, output_dir):
     # Convert the various Ensembl tables to GFF3 format
     convert_tables_to_gff(tables_outdir)
     ##
-    ## Load tables into gene table object 
+    ## Process misc. tables
+    ##
+    # tRNA table
+    process_tRNA_table(tables_outdir)
+    # snoRNA table
+    # ...
+    # mitoRNA table
+    # ...
+    ##
+    ## Process gene tables
     ##
     table_names = ["ensGene"]#, "refGene"]
     for table_name in table_names:
@@ -790,6 +783,74 @@ def process_ucsc_tables(genome, output_dir):
         # Output introns
         table.output_introns()
 
+
+def process_tRNA_table(tables_outdir,
+                       delimiter="\t"):
+    """
+    Process tRNA table from UCSC.
+    
+        CREATE TABLE `tRNAs` (
+          `bin` smallint(5) unsigned NOT NULL,
+          `chrom` varchar(255) NOT NULL,
+          `chromStart` int(10) unsigned NOT NULL,
+          `chromEnd` int(10) unsigned NOT NULL,
+          `name` varchar(255) NOT NULL,
+          `score` int(10) unsigned NOT NULL,
+          `strand` char(1) NOT NULL,
+          `aa` varchar(255) NOT NULL,
+          `ac` varchar(255) NOT NULL,
+          `intron` varchar(255) NOT NULL,
+          `trnaScore` float NOT NULL,
+          `genomeUrl` varchar(255) NOT NULL,
+          `trnaUrl` varchar(255) NOT NULL,
+          PRIMARY KEY  (`chrom`,`chromStart`,`chromEnd`),
+          KEY `binChrom` (`chrom`,`bin`)
+        ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+        SET character_set_client = @saved_cs_client;
+    """
+    # Process tRNA table
+    tRNA_filename = os.path.join(tables_outdir, "tRNAs.txt")
+    tRNA_header = ["bin",
+                   "chrom",
+                   "chromStart",
+                   "chromEnd",
+                   "name",
+                   "score",
+                   "strand",
+                   "aa",
+                   "ac",
+                   "intron",
+                   "trnaScore",
+                   "genomeUrl",
+                   "trnaUrl"]
+    if not os.path.isfile(tRNA_filename):
+        print "WARNING: Could not find tRNA table %s" \
+            %(tRNA_filename)
+        return
+    tRNA_outdir = os.path.join(tables_outdir, "tRNAs")
+    utils.make_dir(tRNA_outdir)
+    tRNA_bed_filename = os.path.join(tRNA_outdir,
+                                     "tRNAs.bed")
+    print "Writing tRNA BED.."
+    print "  - Output file: %s" %(tRNA_bed_filename)
+    if os.path.isfile(tRNA_bed_filename):
+        print "Found %s. Skipping.." %(tRNA_bed_filename)
+        return
+    # Output tRNA table as BED
+    tRNA_table = csv.DictReader(open(tRNA_filename, "r"),
+                                delimiter=delimiter,
+                                fieldnames=tRNA_header)
+    tRNA_bed = open(tRNA_bed_filename, "w")
+    for entry in tRNA_table:
+        bed_fields = [entry["chrom"],
+                      entry["chromStart"],
+                      entry["chromEnd"],
+                      entry["name"],
+                      entry["trnaScore"],
+                      entry["strand"]]
+        bed_line = "%s\n" %("\t".join(bed_fields))
+        tRNA_bed.write(bed_line)
+    tRNA_bed.close()
     
 
 def convert_tables_to_gff(tables_outdir):

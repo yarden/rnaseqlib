@@ -172,12 +172,13 @@ class QualityControl:
         merged_exons_map_fname = os.path.join(self.regions_outdir,
                                               output_basename)
         num_exons_reads = 0
-        result = bedtools_utils.count_reads_matching_intervals(self.sample.bam_filename,
+        result = bedtools_utils.count_reads_matching_intervals(self.sample.ribosub_bam_filename,
                                                                merged_exons_filename,
                                                                merged_exons_map_fname)
         if result is None:
             self.logger.warning("Mapping to exons failed.")
         else:
+            self.logger.info("Found bedtools output file for exons.")
             num_exons_reads = result
         return num_exons_reads
 
@@ -194,13 +195,14 @@ class QualityControl:
         introns_map_fname = os.path.join(self.regions_outdir,
                                          output_basename)
         num_introns_reads = 0
-        result = bedtools_utils.count_reads_matching_intervals(self.sample.bam_filename,
+        result = bedtools_utils.count_reads_matching_intervals(self.sample.ribosub_bam_filename,
                                                                introns_filename,
                                                                introns_map_fname)
         if result is None:
             self.logger.warning("Mapping to introns failed.")
             return num_introns_reads
         else:
+            self.logger.info("Found bedtools output file for introns.")
             num_introns_reads = result
         return num_introns_reads 
 
@@ -264,6 +266,14 @@ class QualityControl:
         percent_mapped = self.qc_results["num_mapped"] / self.qc_results["num_reads"]
         return percent_mapped
 
+
+    def get_percent_unique(self):
+        percent_unique = 0
+        if self.qc_results["num_unique_mapped"] == self.na_val:
+            return percent_unique
+        percent_unique = self.qc_results["num_unique_mapped"] / self.qc_results["num_mapped"]
+        return percent_unique
+
     
     def get_percent_ribo(self):
         percent_ribo = 0
@@ -311,7 +321,8 @@ class QualityControl:
                                  "mapped is not available!")
             self.logger.critical("num_mapped = %s" %(str(self.qc_results["num_mapped"])))
             sys.exit(1)
-        self.qc_stat_funcs = [("percent_mapped", self.get_percent_mapped),
+        self.qc_stat_funcs = [("percent_unique", self.get_percent_unique),
+                              ("percent_mapped", self.get_percent_mapped),
                               ("percent_ribo", self.get_percent_ribo),
                               ("percent_exons", self.get_percent_exons),
                               ("percent_introns", self.get_percent_introns),

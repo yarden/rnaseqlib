@@ -28,7 +28,7 @@ def intersect_bam_with_bed(bam_filename,
         return output_filename
     # Intersect given BAM with given BED and write result
     # as a BED file
-    intersect_cmd = "intersectBed -abam %s -b %s -f %s -bed " \
+    intersect_cmd = "intersectBed -abam %s -b %s -f %s -bed -wb " \
         %(bam_filename,
           bed_filename,
           str(frac_overlap))
@@ -60,8 +60,7 @@ def count_reads_matching_intervals(bam_filename,
     # overlaps any region in the merged exons BED
     intersect_bam_with_bed(bam_filename,
                            intervals_filename,
-                           output_filename,
-                           unique=True)
+                           output_filename)
     if not os.path.isfile(output_filename):
         return None
     num_reads = utils.count_lines(output_filename)
