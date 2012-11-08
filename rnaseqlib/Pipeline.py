@@ -489,6 +489,8 @@ class Pipeline:
         self.compile_qc_output()
         # Compile all the analysis results
         self.compile_analysis_output()
+        # Signal completion
+        self.logger.info("Run completed!")
 
 
     def run_on_sample(self, label):

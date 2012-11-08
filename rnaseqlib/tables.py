@@ -150,6 +150,39 @@ class GeneTable:
     def load_refSeq_table(self, tables_only=False):
         raise Exception, "Not implemented."
 
+    
+    def get_ensembl_to_refseq(self):
+        """
+        Return mapping from Ensembl gene IDs
+        to RefSeq.
+        """
+        # Load the combined table with kgXref
+        combined_filename = os.path.join(self.table_dir,
+                                         "ensGene.kgXref.combined.txt")
+        if not os.path.isfile(combined_filename):
+            print "Error: cannot get Ensembl to RefSeq ID mapping since " \
+                  "%s does not exist." %(combined_filename)
+            return None
+        # Ensembl -> RefSeq mapping
+        ensembl_to_refseq = defaultdict(list)
+        # RefSeq -> Ensembl mapping
+        refseq_to_ensembl = defaultdict(list)
+        ensGene_table = csv.DictReader(open(combined_filename),
+                                       delimiter="\t")
+        for entry in ensGene_table:
+            ensembl_id = entry["name2"]
+            refseq_id = entry["refseq"]
+            # If one of the ids is not available, skip the entry
+            if (refseq_id == self.na_val) or (ensembl_id == self.na_val):
+                continue
+            # Add the entry mapping Ensembl -> Refseq and
+            # RefSeq -> Ensembl only if it doesn't already exist
+            if refseq_id not in ensembl_to_refseq[ensembl_id]:
+                ensembl_to_refseq[ensembl_id].append(refseq_id)
+            if ensembl_id not in refseq_to_ensembl[refseq_id]:
+                refseq_to_ensembl[refseq_id].append(ensembl_id)
+        return ensembl_to_refseq, refseq_to_ensembl
+
             
     def load_ensGene_table(self, tables_only=False):
         """

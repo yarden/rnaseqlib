@@ -52,6 +52,7 @@ class Gene:
         """
         Get constitutive exons.
         """
+        self.const_exons = []
         num_trans = len(self.transcripts)
         # If we have only one transcript then all
         # exons are constitutive
@@ -128,7 +129,7 @@ class Transcript:
         self.chrom = chrom
         self.strand = strand
         self.parts = parts
-        self.label = None
+        self.label = label
         self.cds_start = cds_start
         self.cds_end = cds_end
         self.cds_coords = (self.cds_start,
@@ -139,10 +140,11 @@ class Transcript:
         
     def __repr__(self):
         parts_str = ",".join(p.__str__() for p in self.parts)
-        return "Transcript(%s, %s, %s, parent=%s)" %(parts_str,
-                                                     self.chrom,
-                                                     self.strand,
-                                                     self.parent)
+        return "Transcript(%s, %s, %s, label=%s, parent=%s)" %(parts_str,
+                                                               self.chrom,
+                                                               self.strand,
+                                                               str(self.label),
+                                                               self.parent)
 
     def get_cds_parts(self, min_cds_len=10):
         """
@@ -176,6 +178,8 @@ class Transcript:
                                 strand=part.chrom,
                                 label=cds_part_label,
                                 parent=part.parent)
+                self.cds_parts = [cds_part]
+                break
             elif (part.start <= self.cds_start) and \
                  (part.end > self.cds_start):
                 # If the part is overlapping the CDS start make it
@@ -189,16 +193,19 @@ class Transcript:
                  (part.end > self.cds_end):
                 # If the part is overlapping the CDS end make it
                 # end at the CDS
+#                print "CDS PART IS OVERLAPPING THE END, so.."
                 cds_part = Part(part.start, self.cds_end,
                                 chrom=part.chrom,
                                 strand=part.chrom,
                                 label=cds_part_label,
                                 parent=part.parent)
+                print cds_part
             elif (part.start >= self.cds_start) and \
                  (part.end <= self.cds_end):
                 # If the part is totally contained within CDS,
                 # add it as is
-                cds_part = Part(part.start, self.cds_end,
+#                print "part totally within CDS, =>"
+                cds_part = Part(part.start, part.end,
                                 chrom=part.chrom,
                                 strand=part.chrom,
                                 label=cds_part_label,
