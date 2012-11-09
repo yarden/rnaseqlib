@@ -4,14 +4,23 @@ import rnaseqlib.utils as utils
 import os, os.path, subprocess, sys, time, getpass
 from optparse import OptionParser
 
+
 def waitUntilDone(jobID, sleep=60):
-    """ Waits until a job ID is no longer found in the bjobs output """
+    """
+    Waits until a job ID is no longer found in the bjobs output.
+    """
     while True:
-        output = subprocess.Popen("bjobs %i"%jobID, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
-        if len(output[0])>0:
+        output = subprocess.Popen("bjobs %i"%jobID,
+                                  shell=True,
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE).communicate()
+        if len(output[0]) > 0:
             status = output[0].split()[10]
-            if status=='DONE':
+            if status == "DONE":
                 break
+        else:
+            # No jobs available
+            break
         time.sleep(sleep)
     time.sleep(sleep)
 
@@ -29,8 +38,8 @@ def launchJob(cmd, job_name,
     verbose: output the job script
     test: don't actually submit the job script (usually used in conjunction with verbose)
 
-    Returns a job ID if the job was submitted properly """
-
+    Returns a job ID if the job was submitted properly
+    """
     if type(cmd) not in [type(list()), type(tuple())]:
         cmd = [cmd]
 
