@@ -13,10 +13,11 @@ import pandas
 import numpy as np
 from collections import defaultdict
 
-import yklib
-import yklib.utils as utils
-import yklib.GeneTable as gt
-from yklib.misowrap.miso import \
+import rnaseqlib
+import rnaseqlib.tables as tables
+import rnaseqlib.miso.miso_utils as miso_utils
+
+from miso_utils import \
      get_summary_filename, \
      get_comparisons_dirs, \
      get_bf_filename
@@ -104,7 +105,7 @@ class PsiTable:
             return
         # Load gene table based on settings info
         print "PsiTable::loading gene table..."
-        self.gene_table = gt.GeneTable(self.settings_info)
+        self.gene_table = tables.GeneTable(self.settings_info)
 
         
     def add_event_genes(self, use_tables=["ensembl_genes"]):
@@ -399,6 +400,7 @@ class PsiTable:
 
 
 def main():
+    # test
     sample_labels = [["KH2_NoDox_A", "KH2 -Dox (A)"],
                      ["MSI1_NoDox_A", "MSI1 -Dox (A)"],
                      ["MSI1_NoDox_B", "MSI1 -Dox (B)"],
