@@ -61,11 +61,67 @@ class RiboExpressionTable:
         self.indexed_table = self.table.set_index(self.index_col)
 
 
+    def get_counts_columns(self):
+        """
+        Return the counts columns.
+        """
+        counts_cols = []
+        for col in self.table.columns:
+            if col.startswith("counts_"):
+                counts_cols.append(col)
+        return counts_cols
+
+
+    def get_rpkm_columns(self):
+        rpkm_cols = []
+        for col in self.table.columns:
+            if col.startswith("rpkm_"):
+                rpkm_cols.append(col)
+        return rpkm_cols
+            
+
+    def filter_table(self, table,
+                     thresholds={'rpkm': {'mode': 'any',
+                                          'cutoff': 0},
+                                 'counts': {'mode': 'all',
+                                            'cutoff': 5}}):
+        """
+        Filter table.
+
+        Return filtered table.
+        """
+        ##
+        ## TODO: Add option to only filter on a subset of
+        ## samples
+        ##
+        counts_cols = self.get_counts_columns()
+        rpkm_cols = self.get_rpkm_columns()
+        filtered_data = None
+        # Apply RPKM cutoff: slice only relevant rows
+        # out of the RPKM index
+        rpkm_cutoff = thresholds["rpkm"]["cutoff"]
+        filtered_rpkm_index = self.table.ix[:, rpkm_cols].values > rpkm_cutoff
+        filtered_rpkm = None
+        if thresholds["rpkm"]["mode"] == "any":
+            filtered_rpkm = self.table[filtered_rpkm_index.any(1)]
+        elif thresholds["rpkm"]["mode"] == "all":
+            filtered_rpkm = self.table[filtered_rpkm_index.all(1)]
+        # Apply counts cutoff
+        # Get dataframe containing only counts column for each sample
+        counts_cutoff = thresholds["counts"]["cutoff"]
+        filtered_counts_index = filtered_rpkm.ix[:, counts_cols].values > counts_cutoff
+        if thresholds["counts"]["mode"] == "any":
+            filtered_data = filtered_rpkm[filtered_counts_index.any(1)]
+        elif thresholds["counts"]["mode"] == "all":
+            filtered_data = filtered_rpkm[filtered_counts_index.all(1)]
+        return filtered_data
+        
+
+
     def get_rpkm_sample_names(self, header, prefix="rpkm_"):
         """
         Return any sample beginning with RPKM prefix.
         """
-        print "HEADER: ", header
         sample_names = []
         for col in header:
             if col.startswith(prefix):

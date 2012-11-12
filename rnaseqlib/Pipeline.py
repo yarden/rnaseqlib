@@ -167,6 +167,7 @@ class Pipeline:
         # QC header: order of QC fields to be outputted
         self.qc_header = []
         self.init_qc()
+        self.na_val = "NA"
 
 
     def load_rna_base(self):
@@ -773,6 +774,7 @@ class Pipeline:
                                                "%s.rpkm.txt" %(table_name))
             rpkm_table.to_csv(rpkm_table_filename,
                               cols=fieldnames,
+                              na_rep=self.na_val,
                               sep="\t",
                               index=False)
 

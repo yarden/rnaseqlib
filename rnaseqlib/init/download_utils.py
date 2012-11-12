@@ -37,8 +37,8 @@ def download_url(url, output_dir,
     try:
         url_in = urllib2.urlopen(url)
     except urllib2.HTTPError:
-        print "Error in urllib2: Could not fetch %s" %(url)
-        sys.exit(1)
+        print "WARNING: Could not fetch %s" %(url)
+        return None
     url_name = posixpath.basename(url)
     if basename != None:
         url_name = basename

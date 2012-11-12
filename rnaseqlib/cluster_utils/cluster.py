@@ -28,7 +28,7 @@ class Cluster:
 
     def launch_and_wait(self, cmd, job_name,
                         unless_exists=None,
-                        extra_sleep=60):
+                        extra_sleep=20):
         """
         Launch job and wait until it's done.
         """

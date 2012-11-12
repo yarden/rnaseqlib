@@ -199,7 +199,6 @@ class Transcript:
                                 strand=part.chrom,
                                 label=cds_part_label,
                                 parent=part.parent)
-                print cds_part
             elif (part.start >= self.cds_start) and \
                  (part.end <= self.cds_end):
                 # If the part is totally contained within CDS,

@@ -42,7 +42,7 @@ UCSC_TABLE_LABELS = ["knownGene.txt.gz",
                      "knownIsoforms.txt.gz",
                      # Ensembl-tables
                      "ensGene.txt.gz",
-#                     "ensemblToGeneName.txt.gz",
+                     "ensemblToGeneName.txt.gz",
                      "ensGtp.txt.gz",
                      # Refseq-tables
                      "refGene.txt.gz",
@@ -244,16 +244,39 @@ class GeneTable:
         main_table = pandas.read_table(ensGene_filename,
                                        sep=self.delimiter,
                                        names=self.ensGene_header)
+        self.table = main_table
 #                                       converters={"exonStarts":
 #                                                   self.parse_string_int_list,
 #                                                   "exonEnds":
 #                                                   self.parse_string_int_list})
+        self.ensemblToGeneName_header = ["name",
+                                         "value"]
+        ensGene_name_filename = os.path.join(self.table_dir,
+                                             "ensemblToGeneName.txt")
+        self.ensGene_to_name_avail = True
+        # Column name to use for geneSymbol
+        self.gene_symbol_field = "geneSymbol"
+        if not os.path.isfile(ensGene_name_filename):
+            print "WARNING: Cannot find ensemblToGeneName table %s" \
+                %(ensGene_name_filename)
+            # Signal that ensGene to name table is unavailable
+            self.ensGene_to_name_avail = False
+        # If available, load ensemblToGeneName table and add this info to
+        # main table
+        if self.ensGene_to_name_avail:
+            ensGene_to_names = pandas.read_table(ensGene_name_filename,
+                                                 sep=self.delimiter,
+                                                 names=self.ensemblToGeneName_header)
+            # Merge names into table
+            self.table = pandas.merge(main_table, ensGene_to_names,
+                                      how="left")
+            self.gene_symbol_field = "value"
         known_to_ensembl = pandas.read_table(known_to_ensembl_filename,
                                              sep=self.delimiter,
                                              names=self.knownToEnsembl_header)
         # Add mapping from Ensembl to gene names
         self.ensembl_to_known = known_to_ensembl.set_index("name")
-        self.raw_table = main_table
+        self.raw_table = self.table
         # Add mapping from Ensembl transcripts to UCSC transcripts
         self.table = pandas.merge(self.raw_table, known_to_ensembl,
                                   # try left index
@@ -297,7 +320,7 @@ class GeneTable:
                 self.genes_list.append(gene_id)
                 seen_genes[gene_id] = True
                 # Record mapping from gene to name via transcript
-                self.genes_to_names[gene_id] = gene_info["geneSymbol"]
+                self.genes_to_names[gene_id] = gene_info[self.gene_symbol_field]
                 # Get Ensembl transcript's UCSC name and from that get
                 # the gene description
                 self.genes_to_desc[gene_id] = gene_info["description"]
@@ -770,8 +793,11 @@ def download_ucsc_tables(genome,
                 %(unzipped_table_fname)
             continue
         # Download table
-        download_utils.download_url(table_url,
-                                    tables_outdir)
+        download_status = download_utils.download_url(table_url,
+                                                      tables_outdir)
+        if download_status is None:
+            print "Failed to get %s, skipping.." %(table_label)
+            continue
         # Uncompress table
         utils.gunzip_file(table_filename, tables_outdir)
         
