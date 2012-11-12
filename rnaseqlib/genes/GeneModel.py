@@ -59,7 +59,12 @@ class Gene:
         if num_trans == 1:
             self.const_exons = self.transcripts[0].parts
             return self.transcripts[0].parts
-        first_trans_exons = self.transcripts[0].parts
+        # If we're asked to deal only with CDS exons, take
+        # only CDS exons if first transcript
+        if not cds_only:
+            first_trans_exons = self.transcripts[0].parts
+        else:
+            first_trans_exons = self.transcripts[0].get_cds_parts()
         # If there's no CDS-containing transcript, then
         # there are no constitutive CDS only exons
         if cds_only and (not self.has_cds):
@@ -103,6 +108,7 @@ class Gene:
                 # If not CDS only, just check that we have constitutive
                 # exons
                 self.const_exons.append(exon)
+        print "got: ", self.const_exons
         return self.const_exons
         
 
