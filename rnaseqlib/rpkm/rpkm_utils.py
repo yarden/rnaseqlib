@@ -95,6 +95,8 @@ def output_rpkm(sample,
         # Compute RPKMs for sample
         num_mapped = int(sample.qc.qc_results["num_mapped"])
         if num_mapped == 0:
+            logger.critical("Cannot compute RPKMs since sample %s has 0 mapped reads." \
+                            %(sample.label))
             print "Error: Cannot compute RPKMs since sample %s has 0 mapped reads." \
                 %(sample.label)
             sys.exit(1)
@@ -106,6 +108,8 @@ def output_rpkm(sample,
                                          read_len,
                                          const_exons,
                                          rpkm_output_filename)
+    logger.info("Finished outputting RPKM for %s to %s" %(sample.label,
+                                                          rpkm_output_filename))
     return rpkm_output_filename
     
     
@@ -167,7 +171,13 @@ def output_rpkm_from_gff_aligned_bam(bam_filename,
             continue
         parsed_exons = exons.split(",")
         # Strip the strand of the exons
-        strandless_exons = map(lambda x: x[0:-2], parsed_exons)
+        strandless_exons = []
+        for parsed_exon in parsed_exons:
+            curr_exon = parsed_exon[0:-2]
+            if "." in curr_exon:
+                # Strip off dot prefix if any is there
+                curr_exon = curr_exon.split(".")[1]
+            strandless_exons.append(curr_exon)
         curr_counts = [region_to_count[s_exon] for s_exon in strandless_exons]
         sum_counts = sum(curr_counts)
         curr_lens = [const_exons.exon_lens[exon] for exon in parsed_exons]

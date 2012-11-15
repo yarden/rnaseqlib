@@ -108,7 +108,6 @@ class Gene:
                 # If not CDS only, just check that we have constitutive
                 # exons
                 self.const_exons.append(exon)
-        print "got: ", self.const_exons
         return self.const_exons
         
 
