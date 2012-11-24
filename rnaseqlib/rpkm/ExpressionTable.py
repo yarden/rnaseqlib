@@ -177,7 +177,7 @@ class ExpressionTable:
         self.index_col = index_col
         self.counts_dir = counts_dir
         self.counts_panel = {}
-
+        self.indexed_data = None
         # Label to use when plotting
         self.plot_label = label
 
@@ -191,6 +191,10 @@ class ExpressionTable:
             if self.counts_dir != None:
                 self.load_counts_dir(counts_dir)
 
+        if (self.data is not None) and (self.index_col is not None):
+            self.indexed_data = self.data.set_index(self.index_col)
+            
+                
     def add_fold_changes(self, sample_pairs):
         """
         Add fold changes to the table in the form of
@@ -208,9 +212,8 @@ class ExpressionTable:
             fc_column = fold_changes[:, pair_num]
             self.data[label] = fc_column
         return self.data
+
         
-
-
     def filter_rpkm_table(self,
                           sample_labels,
                           thresholds={'rpkm': {'mode': 'any',
@@ -226,12 +229,12 @@ class ExpressionTable:
         
         # Slice only relevant columns and apply RPKM cutoff
         rpkm_cutoff = thresholds['rpkm']['cutoff']
-        filtered_rpkm_index = self.data.ix[:, selected_cols].values > rpkm_cutoff
+        filtered_rpkm_index = self.indexed_data.ix[:, selected_cols].values > rpkm_cutoff
         if thresholds['rpkm']['mode'] == 'any':
-            filtered_data = self.data[filtered_rpkm_index.any(1)]
+            filtered_data = self.indexed_data[filtered_rpkm_index.any(1)]
         elif thresholds['rpkm']['mode'] == 'all':
-            filtered_data = self.data[filtered_rpkm_index.all(1)]
-
+            filtered_data = self.indexed_data[filtered_rpkm_index.all(1)]
+            
         # Apply counts cutoff
         # Get dataframe containing only counts column for each sample
         counts_by_samples = self.counts_panel.minor_xs("counts")
@@ -243,6 +246,9 @@ class ExpressionTable:
             counts_met = reduce(lambda x, y: x | y,
                                 [col >= counts_threshold \
                                  for _, col in counts_by_samples.iteritems()])
+        else:
+            raise Exception, "Not implemented mode %s" \
+                %(thresholds["counts"]["mode"])
         filtered_data = filtered_data.reindex(counts_met.index).dropna()
         return filtered_data
         
@@ -304,24 +310,17 @@ class ExpressionTable:
     #     self.filtered_table_dictlist = filtered_rpkm_table
         
 
-    def load_rpkm_table(self, rpkm_filename, delimiter=None,
-                        index_col=None):
+    def load_rpkm_table(self, rpkm_filename, delimiter=None):
         """
         Load RPKM table.
         """
         if delimiter == None:
             delimiter = self.delimiter
-
-        if index_col == None:
-            index_col = self.index_col
-            
         print "Loading RPKM table from: %s" %(rpkm_filename)
 
         # Load table
         self.data = pandas.read_table(rpkm_filename,
                                       sep=delimiter)
-        if index_col is not None:
-            self.data = self.data.set_index(index_col)
 
     def load_counts_dir(self, counts_dir,
                         counts_index=['#Gene',

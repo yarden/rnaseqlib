@@ -9,6 +9,8 @@ import rnaseqlib
 import rnaseqlib.utils as utils
 import rnaseqlib.fastq_utils as fastq_utils
 
+from numpy import *
+
 def rstrip_stretch(s, letter):
     """
     Strip (from right) consecutive stretch of letters.
@@ -25,7 +27,35 @@ def rstrip_stretch(s, letter):
         else:
             stripped_s += l
     return stripped_s[::-1]
-            
+
+
+def compute_te(ribo_rpkms, rna_rpkms,
+               na_val=NaN):
+    """
+    Calculate translational efficiency (TE), i.e.
+
+      ribo_rpkm / rna_rpkms
+
+    Takes lists/vectors as input.
+
+    If rna_rpkm is 0 then TE is undefined.
+    """
+    if len(ribo_rpkms) != len(rna_rpkms):
+        raise Exception, "Error: compute_te requires same length " \
+                         "vectors as input."
+    te = []
+    for ribo, rna in zip(ribo_rpkms, rna_rpkms):
+        te_val = na_val
+        if rna != 0:
+            # If the RNA is detectable, define
+            # the TE
+            if ribo == 0:
+                te_val = 0
+            else:
+                te_val = ribo / float(rna)
+        te.append(te_val)
+    return te
+    
 
 def trim_polyA_ends(fastq_filename,
                     output_dir,

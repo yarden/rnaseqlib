@@ -46,69 +46,191 @@ class Gene:
         self.cds_parts = []
         for trans in self.transcripts:
             self.cds_parts.extend(trans.cds_parts)
-        
 
-    def compute_const_exons(self, base_diff=6, cds_only=False):
+
+    def get_cds_transcripts(self):
+        """
+        Return only transcripts with CDS regions.
+        """
+        cds_transcripts = []
+        for transcript in self.transcripts:
+            if transcript.has_cds:
+                cds_transcripts.append(transcript)
+        return cds_transcripts
+
+            
+    def get_parts(self, cds_only=False):
+        """
+        Get all parts from all transcripts.
+        """
+        seen_parts = {}
+        parts = []
+        for trans in self.transcripts:
+            if cds_only:
+                trans_parts = trans.get_cds_parts()
+            else:
+                trans_parts = trans.parts
+            for exon in trans_parts:
+                # Skip parts that we've collected
+                # already
+                if (exon.start, exon.end) in seen_parts:
+                    continue
+                parts.append(exon)
+                seen_parts[(exon.start, exon.end)] = True
+        return parts
+        
+        
+    def compute_const_exons(self,
+                            base_diff=6,
+                            cds_only=False,
+                            frac_const=.8):
         """
         Get constitutive exons.
+
+        - base_diff: the number of nucleotides by which
+          an exon can differ from exons in a transcript to
+          be considered as occurring in that transcript
+
+        - cds_only: use CDS only exons or not
+
+        - frac_const: the fraction of transcripts in which an exon
+          must occur to be considered constitutive.  If 1, then the
+          exon must occur in all transcripts.
         """
         self.const_exons = []
-        num_trans = len(self.transcripts)
+        transcripts = []
+        if cds_only:
+            # If asked for CDS-only but there's no CDS,
+            # then quit
+            if not self.has_cds:
+                return self.const_exons
+            transcripts = self.get_cds_transcripts()
+        else:
+            transcripts = self.transcripts
+        num_trans = len(transcripts)
         # If we have only one transcript then all
         # exons are constitutive
         if num_trans == 1:
-            self.const_exons = self.transcripts[0].parts
-            return self.transcripts[0].parts
-        # If we're asked to deal only with CDS exons, take
-        # only CDS exons if first transcript
-        if not cds_only:
-            first_trans_exons = self.transcripts[0].parts
-        else:
-            first_trans_exons = self.transcripts[0].get_cds_parts()
-        # If there's no CDS-containing transcript, then
-        # there are no constitutive CDS only exons
-        if cds_only and (not self.has_cds):
-            return self.const_exons
-        for exon in first_trans_exons:
-            # Compare the first exon of the transcript
-            # to all other transcripts' exons
-            const_exon = True
-            # Whether we found the CDS or not
-            found_cds = False
-            for curr_trans in self.transcripts[1:]:
-                if not cds_only:
-                    # Consider all exons
-                    trans_parts = curr_trans.parts
-                else:
-                    # Take only exons that fall in the CDS
-                    trans_parts = curr_trans.get_cds_parts()
-                    if len(trans_parts) == 0:
-                        continue
-                    else:
-                        found_cds = True
-                # Compute the start coord difference and end coord difference
-                # between our exon and each exon in the current transcript
-                start_end_diffs = array([(abs(exon.start - curr_exon.start),
-                                          abs(exon.end - curr_exon.end)) \
-                                          for curr_exon in trans_parts])
-                # The exon is NOT considered constitutive if there are no exons
-                # in the transcripts whose start/end diff with the current exon
-                # is less than or equal to 'base_diff'
-                status = all(start_end_diffs <= base_diff, axis=1)
-                if all(status == False):
-                    const_exon = False
-                    # Determined exon is not constitutive, so skip to next exon
-                    break
             if cds_only:
-                # If we're asked for CDS only exons, check that the CDS was
-                # found and that the exon is constitutive
-                if found_cds and const_exon:
-                    self.const_exons.append(exon)
-            elif const_exon:
-                # If not CDS only, just check that we have constitutive
-                # exons
+                self.const_exons = transcripts[0].get_cds_parts()
+            else:
+                self.const_exons = transcripts[0].parts
+            return self.const_exons
+        # Iterate through each exon and determine what fraction
+        # of the transcripts it appears in.
+        exons = self.get_parts(cds_only=cds_only)
+        for exon in exons:
+            # Calculate if the exon is in or out of each
+            # transcript
+            exon_status = array([trans.has_part(exon,
+                                                base_diff=base_diff,
+                                                cds_only=cds_only) \
+                                 for trans in transcripts])
+            # Compute the fraction of transcripts in which the exon
+            # occurs.
+            in_transcripts_frac = \
+                len(where(exon_status == True)[0]) / float(num_trans)
+            if in_transcripts_frac >= frac_const:
                 self.const_exons.append(exon)
         return self.const_exons
+
+#     def old_compute_const_exons(self,
+#                             base_diff=6,
+#                             cds_only=False,
+#                             frac_const=1):
+#         """
+#         Get constitutive exons.
+
+#         - base_diff: the number of nucleotides by which
+#           an exon can differ from exons in a transcript to
+#           be considered as occurring in that transcript
+
+#         - cds_only: use CDS only exons or not
+
+#         - frac_const: the fraction of transcripts in which an exon
+#           must occur to be considered constitutive.  If 1, then the
+#           exon must occur in all transcripts.
+#         """
+#         self.const_exons = []
+#         transcripts = []
+#         if cds_only:
+#             # If asked for CDS-only but there's no CDS,
+#             # then quit
+#             if not self.has_cds:
+#                 return self.const_exons
+#             transcripts = self.get_cds_transcripts()
+#         else:
+#             transcripts = self.transcripts
+#         num_trans = len(transcripts)
+#         # If we have only one transcript then all
+#         # exons are constitutive
+#         if num_trans == 1:
+#             if cds_only:
+#                 self.const_exons = transcripts[0].get_cds_parts()
+#             else:
+#                 self.const_exons = transcripts[0].parts
+#             return self.const_exons
+# #        print "CDS TRANSCRIPTS and their CDS PARTS: "
+# #        if cds_only:
+# #            for t in transcripts:
+# #                print "=> %s" %(t.label), t.get_cds_parts(), " n = %d" %(len(t.get_cds_parts()))
+# #            raise Exception
+#         # If we're asked to deal only with CDS exons, take
+#         # only CDS exons if first transcript
+#         if not cds_only:
+#             first_trans_exons = transcripts[0].parts
+#         else:
+#             first_trans_exons = transcripts[0].get_cds_parts()
+#         for exon in first_trans_exons:
+#             # Compare the first exon of the transcript
+#             # to all other transcripts' exons
+#             const_exon = True
+#             # Whether we found the CDS or not
+#             found_cds = False
+#             for curr_trans in transcripts[1:]:
+#                 if not cds_only:
+#                     # Consider all exons
+#                     trans_parts = curr_trans.parts
+#                 else:
+#                     # Take only exons that fall in the CDS
+#                     trans_parts = curr_trans.get_cds_parts()
+#                     if len(trans_parts) == 0:
+#                         continue
+#                     else:
+#                         found_cds = True
+#                 # Compute the start coord difference and end coord difference
+#                 # between our exon and each exon in the current transcript
+#                 start_end_diffs = array([(abs(exon.start - curr_exon.start),
+#                                           abs(exon.end - curr_exon.end)) \
+#                                           for curr_exon in trans_parts])
+#                 print "start_end_diffs: "
+#                 print start_end_diffs
+#                 # The exon is NOT considered constitutive if there are no exons
+#                 # in the transcripts whose start/end diff with the current exon
+#                 # is less than or equal to 'base_diff'
+#                 status = all(start_end_diffs <= base_diff, axis=1)
+#                 exons_in_transcripts.append(status)
+# #                if all(status == False):
+# #                    const_exon = False
+# #                    # Determined exon is not constitutive, so skip to next exon
+# #                    break
+#             # Compute the fraction of transcripts in which the exon
+#             # occurs.  Add 1 to account for the fact that the
+#             # exon occurs in the current transcript.
+#             in_transcripts_frac = \
+#                 (len(where(status == True)) + 1) / float(num_trans)
+#             print "in transcripts frac: ", in_transcripts_frac
+
+#             if cds_only:
+#                 # If we're asked for CDS only exons, check that the CDS was
+#                 # found and that the exon is constitutive
+#                 if found_cds and const_exon:
+#                     self.const_exons.append(exon)
+#             elif const_exon:
+#                 # If not CDS only, just check that we have constitutive
+#                 # exons
+#                 self.const_exons.append(exon)
+#         return self.const_exons
         
 
     def __repr__(self):
@@ -141,16 +263,58 @@ class Transcript:
                            self.cds_end)
         self.parent = parent
         self.cds_parts = self.get_cds_parts()
-
+        self.has_cds = False
+        if len(self.cds_parts) > 0:
+            self.has_cds = True
+            
         
     def __repr__(self):
         parts_str = ",".join(p.__str__() for p in self.parts)
-        return "Transcript(%s, %s, %s, label=%s, parent=%s)" %(parts_str,
-                                                               self.chrom,
-                                                               self.strand,
-                                                               str(self.label),
-                                                               self.parent)
+        return "Transcript(%s, %s, %s, label=%s, parent=%s, has_cds=%s)" \
+            %(parts_str,
+              self.chrom,
+              self.strand,
+              str(self.label),
+              self.parent,
+              str(self.has_cds))
 
+    
+    def has_part(self, part,
+                 cds_only=False,
+                 base_diff=0):
+        """
+        Return True if the part exists in the transcript.
+
+        - base_diff: the number of nucleotides by which
+          an exon can differ from exons in a transcript to
+          be considered as occurring in that transcript
+
+        - cds_only: whether to use CDS only parts of the
+          transcript
+        """
+        trans_parts = []
+        if cds_only:
+            trans_parts = self.get_cds_parts()
+        else:
+            trans_parts = self.parts
+        if len(trans_parts) == 0:
+            # If no parts found, assume that the exon
+            # is not present in the transcript
+            return False
+        # Compute the start coord difference and end coord difference
+        # between our exon and each exon in the current transcript
+        start_end_diffs = array([(abs(part.start - curr_exon.start),
+                                  abs(part.end - curr_exon.end)) \
+                                  for curr_exon in trans_parts])
+        # The exon is NOT considered constitutive if there are no exons
+        # in the transcripts whose start/end diff with the current exon
+        # is less than or equal to 'base_diff'
+        status = all(start_end_diffs <= base_diff, axis=1)
+        if all(status == False):
+            return False
+        return True
+
+    
     def get_cds_parts(self, min_cds_len=10):
         """
         Compute the parts that are in the CDS.  Trim UTR containing
@@ -198,7 +362,6 @@ class Transcript:
                  (part.end > self.cds_end):
                 # If the part is overlapping the CDS end make it
                 # end at the CDS
-#                print "CDS PART IS OVERLAPPING THE END, so.."
                 cds_part = Part(part.start, self.cds_end,
                                 chrom=part.chrom,
                                 strand=part.chrom,
@@ -208,7 +371,6 @@ class Transcript:
                  (part.end <= self.cds_end):
                 # If the part is totally contained within CDS,
                 # add it as is
-#                print "part totally within CDS, =>"
                 cds_part = Part(part.start, part.end,
                                 chrom=part.chrom,
                                 strand=part.chrom,
