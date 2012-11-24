@@ -78,7 +78,7 @@ def download_genome_seq(genome,
     #download_utils.wget(os.path.join(genome_url, "chr13_random.fa.gz"))
     # Remove random chromosome contigs
     for fname in glob.glob(os.path.join(output_dir, "*.fa.gz")):
-        if "_" in fname:
+        if "_" in os.path.basename(fname):
             print "Deleting: %s" %(fname)
             os.remove(fname)
     ##

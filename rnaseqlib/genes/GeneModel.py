@@ -95,7 +95,8 @@ class Gene:
 
         - frac_const: the fraction of transcripts in which an exon
           must occur to be considered constitutive.  If 1, then the
-          exon must occur in all transcripts.
+          exon must occur in all transcripts.  Only used
+          when no truly constitutive exons are available.
         """
         self.const_exons = []
         transcripts = []
@@ -119,6 +120,10 @@ class Gene:
         # Iterate through each exon and determine what fraction
         # of the transcripts it appears in.
         exons = self.get_parts(cds_only=cds_only)
+        # Exons that occur in at least a fraction of the transcripts
+        approx_const_exons = []
+        # Exons that occur in all transcripts
+        fully_const_exons = []
         for exon in exons:
             # Calculate if the exon is in or out of each
             # transcript
@@ -131,7 +136,18 @@ class Gene:
             in_transcripts_frac = \
                 len(where(exon_status == True)[0]) / float(num_trans)
             if in_transcripts_frac >= frac_const:
-                self.const_exons.append(exon)
+                # Track which exons are fully constitutive, i.e.
+                # occur in all exons
+                if in_transcripts_frac == 1:
+                    fully_const_exons.append(exon)
+                approx_const_exons.append(exon)
+        # If there's one or more fully constitutive exons, use these only
+        if len(fully_const_exons) >= 1:
+            self.const_exons = fully_const_exons
+        else:
+            # Otherwise use the nearly-constitutive exons (i.e. exons
+            # that occur in a high fraction of the transcripts)
+            self.const_exons = approx_const_exons
         return self.const_exons
 
 #     def old_compute_const_exons(self,
