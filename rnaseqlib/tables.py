@@ -710,7 +710,7 @@ class ConstExons:
                                                     %(self.table_name))
         if not os.path.isfile(self.genes_to_exons_filename):
             print "WARNING: Cannot find mapping from genes to constitutive " \
-                "exons for %s" %(table_to_get)
+                "exons for %s" %(self.table_name)
             return
         # Load genes to exons mapping
         self.load_genes_to_exons()

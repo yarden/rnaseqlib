@@ -89,6 +89,7 @@ def output_rpkm(sample,
         utils.make_dir(bam2gff_outdir)
         # Map reads to GFF of constitutive exons
         # Use the rRNA subtracted BAM file
+        print "Using constitutive exons GFF -> %s" %(const_exons.gff_filename)
         exons_bam_fname = exon_utils.map_bam2gff(sample.ribosub_bam_filename,
                                                  const_exons.gff_filename,
                                                  bam2gff_outdir)
@@ -143,24 +144,24 @@ def output_rpkm_from_gff_aligned_bam(bam_filename,
     # Map of gff region to read counts
     region_to_count = defaultdict(int)
     for bam_read in bam_file:
-        try:
-            # Read aligns to region of interest
-            gff_aligned_regions = bam_read.opt("YB")
-            parsed_regions = gff_aligned_regions.split("gff:")[1:]
-            # Compile region counts and lengths
-            for region in parsed_regions:
-                region_chrom, coord_field = region.split(",")[0].split(":")[0:2]
-                # Region internally converted to 0-based start, so we must add 1
-                # to get it back
-                region_start, region_end = map(int, coord_field.split("-"))
-                region_start += 1
-                region_str = "%s:%s-%s" %(region_chrom,
-                                          str(region_start),
-                                          str(region_end))
-                # Count reads in region
-                region_to_count[region_str] += 1
-        except KeyError:
-            gff_aligned_region = None
+#        try:
+        # Read aligns to region of interest
+        gff_aligned_regions = bam_read.opt("YB")
+        parsed_regions = gff_aligned_regions.split("gff:")[1:]
+        # Compile region counts and lengths
+        for region in parsed_regions:
+            region_chrom, coord_field = region.split(",")[0].split(":")[0:2]
+            # Region internally converted to 0-based start, so we must add 1
+            # to get it back
+            region_start, region_end = map(int, coord_field.split("-"))
+            region_start += 1
+            region_str = "%s:%s-%s" %(region_chrom,
+                                      str(region_start),
+                                      str(region_end))
+            # Count reads in region
+            region_to_count[region_str] += 1
+#        except KeyError:
+#            gff_aligned_region = None
     # For each gene, find its exons. Sum their counts
     # and length to compute RPKM
     rpkm_table = []
@@ -170,6 +171,9 @@ def output_rpkm_from_gff_aligned_bam(bam_filename,
         if exons == na_val:
             continue
         parsed_exons = exons.split(",")
+        if gene_id == "ENSMUSG00000074637":
+            print "LOOKING UP SOX2!"
+            print exons
         # Strip the strand of the exons
         strandless_exons = []
         for parsed_exon in parsed_exons:
@@ -182,6 +186,10 @@ def output_rpkm_from_gff_aligned_bam(bam_filename,
         sum_counts = sum(curr_counts)
         curr_lens = [const_exons.exon_lens[exon] for exon in parsed_exons]
         sum_lens = sum(curr_lens)
+        if gene_id == "ENSMUSG00000074637":
+            print "* ", region_to_count["chr3:34549338-34550297"], "<"
+            print strandless_exons, " strandless"
+            print curr_counts
         assert(len(curr_counts) == len(curr_lens)), \
             "Error: sum_counts != sum_lens in RPKM computation."
         gene_rpkm = compute_rpkm(sum_counts, sum_lens, num_mapped)

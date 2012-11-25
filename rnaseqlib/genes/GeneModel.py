@@ -351,7 +351,6 @@ class Transcript:
             if (part.end <= self.cds_start) or \
                (part.start >= self.cds_end):
                 continue
-            cds_part_label = "cds.%s" %(part.label)
             cds_part = None
             # Check for special case that CDS is entirely contained
             # within the exon
@@ -361,7 +360,6 @@ class Transcript:
                 cds_part = Part(self.cds_start, self.cds_end,
                                 chrom=part.chrom,
                                 strand=part.chrom,
-                                label=cds_part_label,
                                 parent=part.parent)
                 self.cds_parts = [cds_part]
                 break
@@ -372,7 +370,6 @@ class Transcript:
                 cds_part = Part(self.cds_start, part.end,
                                 chrom=part.chrom,
                                 strand=part.chrom,
-                                label=cds_part_label,
                                 parent=part.parent)
             elif (part.start <= self.cds_end) and \
                  (part.end > self.cds_end):
@@ -381,7 +378,6 @@ class Transcript:
                 cds_part = Part(part.start, self.cds_end,
                                 chrom=part.chrom,
                                 strand=part.chrom,
-                                label=cds_part_label,
                                 parent=part.parent)
             elif (part.start >= self.cds_start) and \
                  (part.end <= self.cds_end):
@@ -390,8 +386,11 @@ class Transcript:
                 cds_part = Part(part.start, part.end,
                                 chrom=part.chrom,
                                 strand=part.chrom,
-                                label=cds_part_label,
                                 parent=part.parent)
+            # Set label for CDS part to match CDS coordinates
+            cds_part.label = "cds.%s:%s-%s" %(cds_part.chrom,
+                                              cds_part.start,
+                                              cds_part.end)
             if cds_part is not None:
                 self.cds_parts.append(cds_part)
         self.cds_parts = tuple(self.cds_parts)
