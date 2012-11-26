@@ -359,8 +359,12 @@ class Transcript:
                 # If so, make the part be the CDS itself
                 cds_part = Part(self.cds_start, self.cds_end,
                                 chrom=part.chrom,
-                                strand=part.chrom,
+                                strand=part.strand,
                                 parent=part.parent)
+                cds_part.label = "cds.%s:%s-%s:%s" %(cds_part.chrom,
+                                                     str(cds_part.start),
+                                                     str(cds_part.end),
+                                                     part.strand)
                 self.cds_parts = [cds_part]
                 break
             elif (part.start <= self.cds_start) and \
@@ -369,7 +373,7 @@ class Transcript:
                 # start at the CDS
                 cds_part = Part(self.cds_start, part.end,
                                 chrom=part.chrom,
-                                strand=part.chrom,
+                                strand=part.strand,
                                 parent=part.parent)
             elif (part.start <= self.cds_end) and \
                  (part.end > self.cds_end):
@@ -377,7 +381,7 @@ class Transcript:
                 # end at the CDS
                 cds_part = Part(part.start, self.cds_end,
                                 chrom=part.chrom,
-                                strand=part.chrom,
+                                strand=part.strand,
                                 parent=part.parent)
             elif (part.start >= self.cds_start) and \
                  (part.end <= self.cds_end):
@@ -385,12 +389,13 @@ class Transcript:
                 # add it as is
                 cds_part = Part(part.start, part.end,
                                 chrom=part.chrom,
-                                strand=part.chrom,
+                                strand=part.strand,
                                 parent=part.parent)
             # Set label for CDS part to match CDS coordinates
-            cds_part.label = "cds.%s:%s-%s" %(cds_part.chrom,
-                                              cds_part.start,
-                                              cds_part.end)
+            cds_part.label = "cds.%s:%s-%s:%s" %(cds_part.chrom,
+                                                 str(cds_part.start),
+                                                 str(cds_part.end),
+                                                 part.strand)
             if cds_part is not None:
                 self.cds_parts.append(cds_part)
         self.cds_parts = tuple(self.cds_parts)
