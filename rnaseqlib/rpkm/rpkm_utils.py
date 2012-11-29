@@ -144,7 +144,6 @@ def output_rpkm_from_gff_aligned_bam(bam_filename,
     # Map of gff region to read counts
     region_to_count = defaultdict(int)
     for bam_read in bam_file:
-#        try:
         # Read aligns to region of interest
         gff_aligned_regions = bam_read.opt("YB")
         parsed_regions = gff_aligned_regions.split("gff:")[1:]
@@ -160,8 +159,6 @@ def output_rpkm_from_gff_aligned_bam(bam_filename,
                                       str(region_end))
             # Count reads in region
             region_to_count[region_str] += 1
-#        except KeyError:
-#            gff_aligned_region = None
     # For each gene, find its exons. Sum their counts
     # and length to compute RPKM
     rpkm_table = []
@@ -171,9 +168,6 @@ def output_rpkm_from_gff_aligned_bam(bam_filename,
         if exons == na_val:
             continue
         parsed_exons = exons.split(",")
-        if gene_id == "ENSMUSG00000074637":
-            print "LOOKING UP SOX2!"
-            print exons
         # Strip the strand of the exons
         strandless_exons = []
         for parsed_exon in parsed_exons:
@@ -186,10 +180,6 @@ def output_rpkm_from_gff_aligned_bam(bam_filename,
         sum_counts = sum(curr_counts)
         curr_lens = [const_exons.exon_lens[exon] for exon in parsed_exons]
         sum_lens = sum(curr_lens)
-        if gene_id == "ENSMUSG00000074637":
-            print "* ", region_to_count["chr3:34549338-34550297"], "<"
-            print strandless_exons, " strandless"
-            print curr_counts
         assert(len(curr_counts) == len(curr_lens)), \
             "Error: sum_counts != sum_lens in RPKM computation."
         gene_rpkm = compute_rpkm(sum_counts, sum_lens, num_mapped)

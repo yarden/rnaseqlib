@@ -4,13 +4,19 @@
 import os
 import time
 import glob
-
-import misopy
 import pandas
 
+import scipy
 import numpy as np
 
-import yklib
+from scipy import *
+
+import misopy
+
+from scipy.stats.stats import zscore
+
+import rnaseqlib
+import rnaseqlib.ribo.ribo_utils as ribo_utils
 
 def compute_fold_changes_table(table,
                                pairs_to_compare,
@@ -27,6 +33,22 @@ def compute_fold_changes_table(table,
         fold_changes.append(list(pair_fc))
     fold_changes = np.array(fold_changes).T
     return fold_changes
+
+
+def get_ribo_rpkm_table(rpkm_filename,
+                        ribo_sample_pairs,
+                        rna_expr_table=None,
+                        rna_to_ribo_samples={}):
+    """
+    Get ribo RPKM table with fold changes.
+    """
+    expr_table = RiboExpressionTable(from_file=rpkm_filename,
+                                     comparison_pairs=ribo_sample_pairs,
+                                     rna_expr_table=rna_expr_table,
+                                     rna_to_ribo_samples=rna_to_ribo_samples)
+    # Add fold changes
+    expr_table.add_fold_changes(ribo_sample_pairs)
+    return expr_table
     
 
 class RiboExpressionTable:
@@ -34,14 +56,25 @@ class RiboExpressionTable:
     Class for representing expression values
     from Ribo-Seq.
     """
-    def __init__(self, from_file=None, label=None,
-                 delimiter="\t", index_col="gene_id",
-                 comparison_pairs=None, na_val="NA"):
+    def __init__(self, from_file=None,
+                 label=None,
+                 delimiter="\t",
+                 index_col="gene_id",
+                 comparison_pairs=None,
+                 na_val="NA",
+                 ribo_comparison_pairs=[],
+                 rna_expr_table=None,
+                 rna_to_ribo_samples={},
+                 rna_comparison_pairs=[]):
         self.from_file = from_file
         self.label = label
         self.table = None
         self.indexed_table = None
         self.delimiter = delimiter
+        self.ribo_comparison_pairs = ribo_comparison_pairs
+        self.rna_expr_table = rna_expr_table
+        self.rna_to_ribo_samples = rna_to_ribo_samples
+        self.rna_comparison_pairs = rna_comparison_pairs
         # Column to index by
         self.index_col = index_col
         # Samples to compare
@@ -57,9 +90,31 @@ class RiboExpressionTable:
         print "Loading table from: %s" %(table_filename)
         self.table = pandas.read_table(table_filename,
                                        sep=self.delimiter)
+        self.add_normalized_te()
         # Index the table
         self.indexed_table = self.table.set_index(self.index_col)
+        # Add RNA expression to table if available
+        if self.rna_expr_table is not None:
+            self.add_rna_expr_table(self.rna_expr_table)
+            # Compute TEs
+            self.add_te(self.rna_to_ribo_samples)
 
+
+    def add_rna_expr_table(self, rna_expr_table):
+        """
+        Add RNA expression table to ribo table.
+        """
+        # Merge the tables using the left index
+        merged_rpkm_table = pandas.merge(self.table,
+                                         rna_expr_table.data,
+                                         left_on="gene_id",
+                                         right_on="#Gene",
+                                         # Merge on left index, the index of
+                                         # the Ribo RPKM
+                                         how="left")
+        self.table = merged_rpkm_table
+        return self.table
+    
 
     def get_counts_columns(self):
         """
@@ -78,6 +133,44 @@ class RiboExpressionTable:
             if col.startswith("rpkm_"):
                 rpkm_cols.append(col)
         return rpkm_cols
+
+
+    def add_te(self, rna_to_ribo_samples):
+        """
+        Add TE calculations to the given RPKM table
+        that contains merged RPKM and Ribo values.
+
+        - rna_to_ribo_samples: mapping from RNA sample names
+          to ribo sample names
+        Move me later to RiboExpressionTable class.
+        """
+        for rna_sample, ribo_sample in rna_to_ribo_samples.iteritems():
+            te_label = "TE_%s_%s" %(ribo_sample, rna_sample)
+            te = ribo_utils.compute_te(self.table[ribo_sample],
+                                       self.table[rna_sample])
+            # Add TE values to table
+            self.table[te_label] = te
+        # Normalize TE
+        self.add_normalized_te()
+        return self.table
+
+            
+    def add_normalized_te(self, normed_prefix="norm"):
+        """
+        z-score normalize the TE values.
+
+        Creates new columns corresponding to normed TEs,
+        beginning with 'normed_prefix'.
+
+        Normed TEs are first logged (base 2) and then z-score
+        normalized.
+        """
+        print "Normalizing TE..."
+        te_cols = [c for c in self.table.columns \
+                   if c.startswith("TE_")]
+        for col in te_cols:
+            normed_col = "%s_%s" %(normed_prefix, col)
+            self.table[normed_col] = zscore(self.table[col].apply(log2).dropna())
             
 
     def filter_table(self, table,
@@ -167,9 +260,12 @@ class ExpressionTable:
     """
     Class for representing gene expression values.
     """
-    def __init__(self, label=None, header_fields=None,
-                 from_file=None, delimiter='\t',
-                 counts_dir=None, index_col=None):
+    def __init__(self, label=None,
+                 header_fields=None,
+                 from_file=None,
+                 delimiter='\t',
+                 counts_dir=None,
+                 index_col=None):
         self.label = label
         self.header_fields = header_fields
         self.from_file = from_file

@@ -467,7 +467,6 @@ class Pipeline:
             self.logger.info("Job launched with ID %s" %(job_id))
             samples_job_ids.append(job_id)
         return samples_job_ids
-        
             
         
     def run(self, label=None):
@@ -574,6 +573,8 @@ class Pipeline:
         ##
         ## Post processing of BAM reads
         ##
+        # Index the main BAM file
+        self.index_bam(sample.bam_filename)
         # Create a directory for processed BAMs
         sample.processed_bam_dir = os.path.join(self.pipeline_outdirs["mapping"],
                                                 sample.label,
@@ -583,13 +584,24 @@ class Pipeline:
         sample.unique_bam_filename = self.get_unique_reads(sample)
         # Get the ribo-subtracted mapping reads
         sample.ribosub_bam_filename = self.get_ribosub_bam_reads(sample)
-        # Sort and index the mapped reads BAM
+        # Sort and index the ribo-subtracted mapped reads BAM
         sample.bam_filename = self.sort_and_index_bam(sample.bam_filename)
         # Sort and index the unique BAM reads
         sample.unique_bam_filename = self.sort_and_index_bam(sample.unique_bam_filename)
         # Sort and index the ribosubtracted BAM reads
         sample.ribosub_bam_filename = self.sort_and_index_bam(sample.ribosub_bam_filename)
         return sample
+
+
+    def index_bam(self, bam_filename):
+        """
+        Index a BAM filename if it's not already indexed.
+        """
+        index_cmd = "samtools index %s" %(bam_filename)            
+        index_filename = "%s.bai" %(bam_filename)
+        print "Indexing %s" %(bam_filename)
+        if not os.path.isfile(index_filename):
+            os.system(index_cmd)
 
 
     def sort_and_index_bam(self, bam_filename):
@@ -611,16 +623,8 @@ class Pipeline:
         expected_bam_filename = "%s.bam" %(sorted_bam_filename)
         if not os.path.isfile(expected_bam_filename):
             os.system(sort_cmd)
-#        self.my_cluster.launch_and_wait(sort_cmd, job_name,
-#                                        unless_exists=expected_bam_filename)
-#        index_cmd = "samtools index %s" %(bam_filename)
-        index_cmd = "samtools index %s" %(expected_bam_filename)            
-        index_filename = "%s.bai" %(expected_bam_filename)
-        print "Indexing %s" %(expected_bam_filename)
-        if not os.path.isfile(index_filename):
-            os.system(index_cmd)
-#        self.my_cluster.launch_and_wait(index_cmd, job_name,
-#                                        unless_exists=index_filename)
+        # Index the sorted BAM
+        self.index_bam(expected_bam_filename)
         return expected_bam_filename
 
 

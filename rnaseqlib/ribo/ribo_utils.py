@@ -9,6 +9,9 @@ import rnaseqlib
 import rnaseqlib.utils as utils
 import rnaseqlib.fastq_utils as fastq_utils
 
+import scipy
+from scipy.stats.stats import zscore
+
 from numpy import *
 
 def rstrip_stretch(s, letter):
@@ -28,7 +31,6 @@ def rstrip_stretch(s, letter):
             stripped_s += l
     return stripped_s[::-1]
 
-
 def compute_te(ribo_rpkms, rna_rpkms,
                na_val=NaN):
     """
@@ -39,6 +41,10 @@ def compute_te(ribo_rpkms, rna_rpkms,
     Takes lists/vectors as input.
 
     If rna_rpkm is 0 then TE is undefined.
+
+    - ribo_rpkms: ribo-seq RPKMs
+    - rna_rpkms: rna-seq RPKMs
+    - na_val: NA value to use
     """
     if len(ribo_rpkms) != len(rna_rpkms):
         raise Exception, "Error: compute_te requires same length " \
