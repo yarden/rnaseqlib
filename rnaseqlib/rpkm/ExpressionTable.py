@@ -90,7 +90,6 @@ class RiboExpressionTable:
         print "Loading table from: %s" %(table_filename)
         self.table = pandas.read_table(table_filename,
                                        sep=self.delimiter)
-        self.add_normalized_te()
         # Index the table
         self.indexed_table = self.table.set_index(self.index_col)
         # Add RNA expression to table if available
