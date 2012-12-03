@@ -19,11 +19,15 @@
 Features
 ========
 
-* Pipeline for analyzing RNA-Seq data:
+* Pipeline for analyzing RNA sequencing data:
   - Maps reads to genome and splice junctions
   - Computes basic quality control statistics
   - Outputs RPKM values for genes
-* Support for Ribosome Footprinting data (Ribo-Seq) and CLIP (CLIP-Seq)
+* Supports:
+  - mRNA sequencing (mRNA-Seq)
+  - Ribosome profiling data (Ribo-Seq)
+  - *CLIP for RNA-binding proteins (CLIP-Seq) [In progress]*
+  - *SELEX-Seq [In progress]*
 
 
 Updates
@@ -67,7 +71,14 @@ The first step is to create a set of files, called an *RNA Base*, required to ru
 
   rna_pipeline.py --init mm9 --output-dir pipeline_init
 
-This will create a directory called `mm9` in `pipeline_init` containing all the files.
+This will create a directory called `mm9` in `pipeline_init` containing the necessary files for running the pipeline on the ``mm9`` genome.
+The initialization procedure will, among other things, do the following:
+
+  * Download the genome sequence files from UCSC (in FASTA format)
+  * Download gene tables from UCSC for Ensembl genes, UCSC knownGenes, and RefSeq genes.
+  * Computate the coordinates for exons, introns, constitutive exons, constitutive exons in coding regions, and other 
+    useful features of gene tables
+  * Index the genome files using ``bowtie-build``
 
 
 Configuration
@@ -78,79 +89,57 @@ Configuration
 Configuration
 -------------
 
+The settings of the RNA-Seq pipeline are specified through a single settings file that contains four main sections:
+
+  * ``pipeline``: what data type is used (e.g. RNA-Seq, Ribo-Seq, etc.)
+  * ``pipeline-files``: where the pipeline initialization files are stored
+  * ``mapping``: parameters related to mapping of the data (e.g. what mapper to use, where the genome index is.)
+  * ``data``: where the input sequence files are and where the results should be outputted
+
+The following is an example settings file for a set of mRNA-Seq samples: ::
+
+  ##
+  ## Pipeline settings for RNA-Seq
+  ##
+  [pipeline]
+  # Data type to use (e.g. 'rnaseq' or 'riboseq')
+  data_type = rnaseq
+
+  [pipeline-files]
+  init_dir = ./mm9
+
+  [mapping]
+  mapper = tophat
+  bowtie_path = bowtie
+  tophat_path = tophat
+  tophat_index = mm9_index
+  cluster_type = bsub
+  genome = mm9
+  tophat_options = --bowtie1 --min-anchor-length 4 
+  tophat_gtf = ./mm9/ucsc/knownGene.gtf
+  readlen = 40
+  overhanglen = 4
+  paired = True
+  paired_end_frag = 300
+  stranded = fr-first
+
   [data]
-  # directory where BAM files are
-  bam_prefix = ./test-data/bam-data/
-  # directory where MISO output is
-  miso_prefix = ./test-data/miso-data/
+  indir = ./input_dir
+  outdir = ./results
 
-  bam_files = [
-      "heartWT1.sorted.bam",
-      "heartWT2.sorted.bam",
-      "heartKOa.sorted.bam",
-      "heartKOb.sorted.bam"]
+  sequence_files = [
+      ["sample1_p1.fastq.gz", "sample1_p1"],
+      ["sample1_p2.fastq.gz", "sample1_p2"],
+      ["sample2_p1.fastq.gz", "sample2_p1"],
+      ["sample2_p2.fastq.gz", "sample2_p2"]]
 
-  miso_files = [
-      "heartWT1",
-      "heartWT2",
-      "heartKOa",
-      "heartKOb"]
+  sample_groups = [["sample1", ["sample1_p1", "sample1_p2"]],
+                   ["sample2", ["sample2_p1", "sample2_p2"]]]
 
-  [plotting]
-  # Dimensions of figure to be plotted (in inches)
-  fig_width = 7
-  fig_height = 5 
-  # Factor to scale down introns and exons by
-  intron_scale = 30
-  exon_scale = 4
-  # Whether to use a log scale or not when plotting
-  logged = False 
-  font_size = 6
 
-  # Max y-axis
-  ymax = 150
-
-  # Whether to plot posterior distributions inferred by MISO
-  show_posteriors = True 
-
-  # Whether to show posterior distributions as bar summaries
-  bar_posteriors = False
-
-  # Whether to plot the number of reads in each junction
-  number_junctions = True
-
-  resolution = .5
-  posterior_bins = 40
-  gene_posterior_ratio = 5
-
-  # List of colors for read denisites of each sample
-  colors = [
-      "#CC0011",
-      "#CC0011",
-      "#FF8800",
-      "#FF8800"]
-
-  # Number of mapped reads in each sample
-  # (Used to normalize the read density for RPKM calculation)
-  coverages = [
-      6830944,
-      14039751,
-      4449737, 
-      6720151]
-
-  # Bar color for Bayes factor distribution
-  # plots (--plot-bf-dist)
-  # Paint them blue
-  bar_color = "b"
-
-  # Bayes factors thresholds to use for --plot-bf-dist
-  bf_thresholds = [0, 1, 2, 5, 10, 20]
-
-The above settings file specifies where the BAM files for each sample are (and their corresponding MISO output files) and also controls several useful plotting parameters. The parameters are:
 
 .. note::
   Some note here
-
  
 Command-line options
 --------------------

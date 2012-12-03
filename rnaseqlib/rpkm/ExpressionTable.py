@@ -20,16 +20,24 @@ import rnaseqlib.ribo.ribo_utils as ribo_utils
 
 def compute_fold_changes_table(table,
                                pairs_to_compare,
-                               c=0.01):
+                               c=0.01,
+                               logged=False):
     """
     Return matrix of pairs to compare fold changes.
+
+    - logged: if True, assume values are logged, so compute
+      fold change by subtraction.
     """
     fold_changes = []
     for pair in pairs_to_compare:
         label1, label2 = pair
         sample1 = table[label1].values + c
         sample2 = table[label2].values + c
-        pair_fc = sample1 / sample2
+        if logged:
+#            pair_fc = sample1 - sample2
+            pair_fc = 2**(sample1) / 2**(sample2)
+        else:
+            pair_fc = sample1 / sample2
         fold_changes.append(list(pair_fc))
     fold_changes = np.array(fold_changes).T
     return fold_changes
@@ -232,7 +240,8 @@ class RiboExpressionTable:
         return expr_matrix
         
 
-    def add_fold_changes(self, sample_pairs):
+    def add_fold_changes(self, sample_pairs,
+                         logged=False):
         """
         Add fold changes to the table in the form of
         X_vs_Y fields, where X, Y are samples.
@@ -242,7 +251,8 @@ class RiboExpressionTable:
         if self.table is None:
             raise Exception, "No data to compute foldchanges."
         fold_changes = compute_fold_changes_table(self.table,
-                                                  sample_pairs)
+                                                  sample_pairs,
+                                                  logged=logged)
         for pair_num, pair in enumerate(sample_pairs):
             label = "%s_vs_%s" %(pair[0],
                                  pair[1])

@@ -152,6 +152,16 @@ def get_pairwise_comparisons(samples):
     return get_pairwise_from_sets(samples, samples)
 
 
+def abs_fold_change(fold_changes):
+    """
+    Get the absolute fold change.
+    """
+    abs_fc = map(lambda v: \
+                 1/float(v) if v <= 1 else v,
+                 fold_changes)
+    return abs_fc
+    
+
 def pathify(filename):
     return os.path.abspath(os.path.expanduser(filename))
 
