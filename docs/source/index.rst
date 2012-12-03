@@ -53,11 +53,9 @@ If you don't have `easy_install`, install it as an ordinary Python package: ::
 
   python setup.py install 
 
-Or: ::
+Or for local installation with distribute: ::
 
   python setup.py install --prefix=/your/local/dir
-
-For local installation.
 
 
 Running ``rnaseqlib``
