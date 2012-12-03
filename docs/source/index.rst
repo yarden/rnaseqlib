@@ -23,11 +23,12 @@ Features
   - Maps reads to genome and splice junctions
   - Computes basic quality control statistics
   - Outputs RPKM values for genes
-* Supports:
+* Supports several sequencing experiments:
   - mRNA sequencing (mRNA-Seq)
   - Ribosome profiling data (Ribo-Seq)
   - *CLIP for RNA-binding proteins (CLIP-Seq) [In progress]*
   - *SELEX-Seq [In progress]*
+* Contains utilities for processing `MISO`_ output
 
 
 Updates
@@ -35,7 +36,7 @@ Updates
 
 **2012**
 
-* ...
+* Released ``rnaseqlib``
 
 
 Installation
