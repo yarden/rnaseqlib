@@ -76,9 +76,10 @@ class Cluster:
 
     def wait_on_job(self, job_id):
         if self.cluster_type == "bsub":
-            print "Waiting on %s.." %(job_id)
+            print "Waiting on %s.. (started wait @ %s)" %(job_id,
+                                                          time.strftime("%x, %X"))
             Mybsub.waitUntilDone(job_id)
-            print "  - Completed"
+            print "  - Completed at %s" %(time.strftime("%x, %X"))
             return True
         else:
             raise Exception, "Not implemented yet."
