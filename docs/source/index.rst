@@ -135,7 +135,11 @@ The following is an example settings file for a set of mRNA-Seq samples: ::
 Running the pipeline
 --------------------
 
-To run the pipeline, use the 
+To run the pipeline, use the ``--run`` option: ::
+
+  rna_pipeline.py --run --settings ./settings.txt --output-dir ./my_results
+
+where ``settings.txt`` is the pipeline settings file and ``my_results`` is a directory where the pipeline output should go.
 
  
 Command-line options
