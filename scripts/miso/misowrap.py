@@ -1,5 +1,5 @@
 ##
-## misowrap: a wrapper to rung MISO on a set of samples
+## misowrap: a wrapper to run MISO on a set of samples
 ## and processing its output.
 ##
 import os
@@ -12,81 +12,187 @@ from collections import defaultdict
 
 import rnaseqlib
 import rnaseqlib.utils as utils
+import rnaseqlib.miso.misowrap_settings as misowrap_settings
 import rnaseqlib.miso.miso_utils as miso_utils
+import rnaseqlib.cluster_utils.cluster as cluster
+
+
+##
+## Alternative event types to consider
+##
+EVENT_TYPES = ["A3SS",
+               "A5SS",
+               "AFE",
+               "ALE",
+               "MXE",
+               "RI",
+               "SE",
+               "SE_noAceView",
+               "SE_shortest_noAceView",
+               "MXE_shortest_noAceView",
+               "A3SS_shortest_noAceView",
+               "A5SS_shortest_noAceView",
+               "TandemUTR",
+               "TandemUTR_3pseq"]
 
 class MISOWrap:
     """
     Object containing information about a set of samples to be
     processed by MISO and their MISO output.
     """
-    def __init__(self, settings_filename):
+    def __init__(self, settings_filename, output_dir):
         self.settings_filename = settings_filename
+        self.settings_info = None
+        # Main output directory
+        self.output_dir = output_dir
+        # MISO output directory (where raw output is)
+        self.miso_outdir = None
+        # Comparisons output directory
+        self.comparisons_outdir = None
+        # BAM files to process
+        self.bam_files = None
+        # Sample labels
+        self.sample_labels = None
+        # Logs output directory
+        self.logs_outdir = None
+        # Logger object
+        self.logger = None
+        # Cluster submission object
+        self.my_cluster = None
+        # Event types to process
+        self.event_types = None
         # Load settings
-        # ...
+        self.load_settings(settings_filename)
 
 
-def summarize_miso_samples(settings_filename,
-                           miso_output_dir):
-    """
-    Summarize samples in MISO directory.
-    """
-    settings_info, parsed_settings = \
-        settings.load_settings(settings_filename)
-    miso_samples_dirs = os.listdir(miso_output_dir)
-    miso_dir = settings_info["settings"]["miso_dir"]
-    sample_labels = settings_info["data"]["sample_labels"]
-    print "Summarizing MISO output..."
-    summarize_cmd = os.path.join(miso_dir, "run_miso.py")
+    def check_settings(self):
+        """
+        Check that we were given the proper settings.
+        """
+        print "Checking the validity of settings file..."
+        print "  - Using settings loaded from: %s" \
+              %(self.settings_filename)
+        # Required parameters, indexed by section
+        required_params = {"settings": ["readlen",
+                                        "miso_events_dir",
+                                        "miso_settings_filename",
+                                        "miso_output_dir",
+                                        "pipeline_init_dir",
+                                        "cluster_type"],
+                           "pipeline-files": ["init_dir"],
+                           "data": ["bam_files"]}
+        for sect, params in required_params.iteritems():
+            if sect not in self.settings_info:
+                print "Error: Section %s not found in settings file %s" \
+                  %(self.settings_filename)
+                sys.exit(1)
+            for param in params:
+                if param not in self.settings_info[sect]:
+                    print "Error: %s is not set in section %s in " \
+                          "settings file %s" %(param,
+                                               sect,
+                                               self.settings_filename)
+                    sys.exit(1)
+        print "Settings appear valid."
+        
 
-    for sample_label in sample_labels:
-        sample_basename = sample_label[0]
-        sample_dir_path = os.path.abspath(os.path.join(miso_output_dir,
-                                                       sample_basename))
-        print "Processing: %s" %(sample_basename)
-        if not os.path.isdir(sample_dir_path):
-            print "Skipping non-directory: %s" %(sample_dir_path)
-        # List all event directories in the sample
-        event_dirs = os.listdir(sample_dir_path)
-        for event_dirname in event_dirs:
-            event_dir_path = os.path.abspath(os.path.join(sample_dir_path, event_dirname))
-            if not os.path.isdir(event_dir_path):
-                print "Skipping non-dir: %s" %(event_dir_path)
-            print "Processing event type: %s" %(event_dirname)
-            summary_cmd = "%s --summarize-samples %s %s --summary-label %s" \
-                %(summarize_cmd,
-                  event_dir_path,
-                  event_dir_path,
-                  sample_basename)
-            job_name = "summarize_%s_%s" %(sample_basename,
-                                           os.path.basename(event_dirname))
-            print "Executing: %s" %(summary_cmd)
-            print "event_dir_path: %s" %(event_dir_path)
-            cluster.run_on_cluster(summary_cmd, job_name,
-                                   event_dir_path)
+    def load_settings(self):
+        """
+        Load settings for misowrap.
+        """
+        settings_info, parsed_settings = \
+                  misowrap_settings.load_misowrap_settings(self.settings_filename)
+        self.settings_info = settings_info
+        # Validate the settings
+        self.check_settings()
+        # Set output directories
+        self.miso_outdir = \
+          utils.pathify(self.settings_info["settings"]["miso_output_dir"])
+        self.logs_outdir = os.path.join(self.output_dir,
+                                        "misowrap_logs")
+        # Create necessary directories
+        utils.make_dir(self.miso_outdir)
+        utils.make_dir(self.logs_outdir)
+        # Load cluster object 
+        self.load_cluster()
+        # Create a logger object 
+        self.logger = utils.get_logger("misowrap",
+                                       self.logs_outdir)
 
+
+    def load_event_types(self):
+        """
+        Read a list of event types that were defined in the 
+        events indexed directory.
+        """
+        if not os.path.isdir(self.miso_events_dir):
+            print "Error: %s is not a directory. Need a directory "
+                  "with indexed events."
+            sys.exit(1)
+        for fname in os.path.listdir(self.miso_events_dir):
+            if os.path.isdir(fname):
+            event_name = os.path.basename(dirname)
+        
+
+        
+    def load_cluster(self):
+        """
+        Load cluster submission object for the particular
+        pipeline settings we were given.
+        """
+        self.my_cluster = \
+          cluster.Cluster(self.settings_info["mapping"]["cluster_type"],
+                          self.output_dir,
+                          self.logger)
+        
+
+    def summarize_miso_samples(self):
+        """
+        Summarize samples in MISO directory.
+        """
+        miso_samples_dirs = os.listdir(miso_output_dir)
+        miso_dir = settings_info["settings"]["miso_bin_dir"]
+        sample_labels = settings_info["data"]["sample_labels"]
+        print "Summarizing MISO output..."
+        summarize_cmd = os.path.join(miso_dir, "run_miso.py")
+
+        for sample_label in sample_labels:
+            sample_basename = sample_label[0]
+            sample_dir_path = os.path.abspath(os.path.join(miso_output_dir,
+                                                           sample_basename))
+            print "Processing: %s" %(sample_basename)
+            if not os.path.isdir(sample_dir_path):
+                print "Skipping non-directory: %s" %(sample_dir_path)
+            # List all event directories in the sample
+            event_dirs = os.listdir(sample_dir_path)
+            for event_dirname in event_dirs:
+                event_dir_path = os.path.abspath(os.path.join(sample_dir_path, event_dirname))
+                if not os.path.isdir(event_dir_path):
+                    print "Skipping non-dir: %s" %(event_dir_path)
+                print "Processing event type: %s" %(event_dirname)
+                summary_cmd = "%s --summarize-samples %s %s --summary-label %s" \
+                    %(summarize_cmd,
+                      event_dir_path,
+                      event_dir_path,
+                      sample_basename)
+                job_name = "summarize_%s_%s" %(sample_basename,
+                                               os.path.basename(event_dirname))
+                print "Executing: %s" %(summary_cmd)
+                print "event_dir_path: %s" %(event_dir_path)
+                cluster.run_on_cluster(summary_cmd, job_name,
+                                       event_dir_path)
+
+            
 def compare_miso_samples(settings_filename,
                          miso_output_dir,
-                         event_types=["A3SS",
-                                      "A5SS",
-                                      "AFE",
-                                      "ALE",
-                                      "MXE",
-                                      "RI",
-                                      "SE",
-                                      "SE_noAceView",
-                                      "SE_shortest_noAceView",
-                                      "MXE_shortest_noAceView",
-                                      "A3SS_shortest_noAceView",
-                                      "A5SS_shortest_noAceView",
-                                      "TandemUTR",
-                                      "TandemUTR_3pseq"]):
+                         event_types=EVENT_TYPES):
     """
     Run a MISO samples comparison between all pairs of samples.
     """
     settings_info, parsed_settings = \
         settings.load_settings(settings_filename)
     miso_samples_dirs = os.listdir(miso_output_dir)
-    miso_dir = settings_info["settings"]["miso_dir"]
+    miso_dir = settings_info["settings"]["miso_bin_dir"]
     sample_labels = settings_info["data"]["sample_labels"]
     print "Running MISO comparisons..."
     run_miso_cmd = os.path.join(miso_dir, "run_miso.py")
@@ -155,8 +261,8 @@ def run_miso_on_samples(settings_filename, output_dir,
     settings_info, parsed_settings = \
                    settings.load_settings(settings_filename)
     bam_files = settings_info["data"]["bam_files"]
-    read_len = int(settings_info["settings"]["read_len"])
-#    overhang_len = int(settings_info["settings"]["overhang_len"])    
+    read_len = int(settings_info["settings"]["readlen"])
+    overhang_len = int(settings_info["settings"]["overhanglen"])    
     miso_dir = settings_info["settings"]["miso_dir"]
     events_dir = settings_info["settings"]["miso_events_dir"]
     single_end = False
