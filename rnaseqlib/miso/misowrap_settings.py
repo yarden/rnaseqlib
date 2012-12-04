@@ -1,9 +1,14 @@
+import os
+import sys
+import time
+
 import ConfigParser
 from collections import defaultdict
 import json
 
 
-def set_default_misowrap_settings(settings_info):
+def set_default_misowrap_settings(settings_info,
+                                  chunk_jobs=600):
     """
     Set default misowrap settings.
     """
@@ -11,43 +16,85 @@ def set_default_misowrap_settings(settings_info):
     # by default we look for MISO scripts already in path)
     settings_info["settings"]["miso_bin_dir"] = ""
     settings_info["settings"]["overhanglen"] = 1
+    # If given a cluster type, then assume we run on cluster
+    # and assign a default chunk_jobs parameter
+    if "cluster_type" in settings_info["settings"]:
+        if not "chunk_jobs" in settings_info["settings"]:
+            settings_info["settings"]["chunk_jobs"] = chunk_jobs
+    # If sample labels is not given, set default labels
+    if "sample_labels" not in settings_info["data"]:
+        # Set default sample labels
+        settings_info["settings"]["sample_labels"] = []
+        for bam_label, bam_file in settings_info["settings"]["bam_files"]:
+            settings_info["settings"]["sample_labels"].append([bam_label, 
+                                                               bam_label])
     return settings_info
+
+
+def check_misowrap_settings(settings_info):
+    """
+    Check that we were given the proper settings.
+    """
+    print "Checking the validity of misowrap settings..."
+    # Required parameters, indexed by section
+    required_params = {"settings": ["readlen",
+                                    "miso_events_dir",
+                                    "miso_settings_filename",
+                                    "miso_output_dir",
+                                    "cluster_type"],
+                       "pipeline-files": ["init_dir"],
+                       "data": ["bam_files"]}
+    for sect, params in required_params.iteritems():
+        if sect not in settings_info:
+            print "Error: Section %s not found in settings." %(sect)
+            sys.exit(1)
+        for param in params:
+            if param not in settings_info[sect]:
+                print "Error: %s is not set in section %s in " \
+                      "settings file." %(param, sect)
+                sys.exit(1)
+    print "Settings appear valid."
 
 
 def load_misowrap_settings(config_filename,
                            # Integer parameters
                            INT_PARAMS=["readlen",
-                                       "overhanglen"],
-                           # Boolean parameters
-                           BOOL_PARAMS=["paired"],
+                                       "overhanglen",
+                                       "chunk_jobs"],
+                           BOOL_PARAMS = [],
                            # Parameters to be interpreted as Python lists or
                            # data structures,
-                           STR_PARAMS=["indir",
-                                       "outdir",
-                                       "stranded",
-                                       "mapper"],
-                           DATA_PARAMS=["sequence_files",
-                                        "sample_groups"]):
+                           STR_PARAMS=["cluster_type",
+                                       "init_dir",
+                                       "miso_bin_dir",
+                                       "miso_events_dir",
+                                       "miso_settings_filename",
+                                       "miso_output_dir",
+                                       "insert_lens_dir"],
+                           DATA_PARAMS=["bam_files",
+                                        "sample_labels"]):
     config = ConfigParser.ConfigParser()
     print "Loading settings from: %s" %(config_filename)
+    if not os.path.isfile(config_filename):
+        print "Error: settings file %s not found." %(config_filename)
+        sys.exit(1)
     parsed_settings = config.read(config_filename)
     settings_info = defaultdict(dict)
     for section in config.sections():
         for option in config.options(section):
-            if option in FLOAT_PARAMS:
-                settings_info[section][option] = config.getfloat(section, option)
-            elif option in INT_PARAMS:
+            if option in INT_PARAMS:
                 settings_info[section][option] = config.getint(section, option)
             elif option in BOOL_PARAMS:
                 settings_info[section][option] = config.getboolean(section, option)
             elif option in STR_PARAMS:
                 settings_info[section][option] = str(config.get(section, option))
             elif option in DATA_PARAMS:
+                print "Loading %s" %(option)
                 settings_info[section][option] = json.loads(config.get(section, option))
             else:
                 settings_info[section][option] = config.get(section, option)
     # Error-check the existing settings
-    default_settings.check_settings(settings_info)
+    check_misowrap_settings(settings_info)
     # Set default values for settings 
     settings_info = set_default_misowrap_settings(settings_info)
     return settings_info, parsed_settings

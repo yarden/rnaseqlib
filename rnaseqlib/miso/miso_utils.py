@@ -1,6 +1,15 @@
 ##
 ## Utilities for processing MISO output
 ##
+import os
+import sys
+import time
+
+import pandas
+
+import rnaseqlib
+import rnaseqlib.utils as utils
+
 def read_pe_params(insert_len_filename):
     """
     Get paired-end parameters from .insert_len file.
@@ -35,7 +44,8 @@ def get_event_types_dirs(settings_info):
     """
     Return event types.
     """
-    miso_events_dir = os.path.abspath(os.path.expanduser(settings_info["settings"]["miso_events_dir"]))
+    miso_events_dir = \
+      utils.pathify(settings_info["settings"]["miso_events_dir"])
     event_types_dirs = [os.path.join(miso_events_dir, dirname) \
                         for dirname in os.listdir(miso_events_dir)]
     return event_types_dirs
