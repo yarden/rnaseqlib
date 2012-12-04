@@ -109,34 +109,7 @@ def get_events_to_genes(intersected_bed_filename,
             gff_event_id = gff_event_id_field.split("ID=")[1].split(";")[0]
             events_to_genes[gff_event_id].append(gene_id)
     return events_to_genes
-
     
-def get_events_to_transcripts(gene_bed_filename,
-                              # column corresponding to GFF attributes
-                              gff_attribs_col=8,
-                              # column corresponding to transcript name
-                              transcript_col=12):
-    """
-    Return dictionary mapping event IDs to transcript names.
-    """
-    events_to_transcripts = defaultdict(list)
-    bed_in = open(gene_bed_filename, "r")
-    for line in bed_in:
-        fields = line.strip().split("\t")
-        gff_attribs = fields[gff_attribs_col]
-        transcript = fields[transcript_col]
-        attribs = gff_attribs.split(";")
-        event_id = None
-        for attr in attribs:
-            if attr.startswith("ID="):
-                event_id = attr.split("ID=")[1]
-        if event_id == None:
-            raise Exception, "ID= less event %s" %(line)
-        # Mapping of GFF attributes to transcripts
-        events_to_transcripts[event_id].append(transcript)
-    bed_in.close()
-    return events_to_transcripts
-
         
 def output_inclusive_trans_coords(gene_table, output_dir):
     """
@@ -224,118 +197,6 @@ def intersect_events_with_genes(events_gff_fname,
             events_to_genes_out.write(output_line)
 
 
-# def intersect_events_with_gff(events_filename,
-#                               gene_table_filename,
-#                               gene_bed_filename,
-#                               output_dir,
-#                               settings_info,
-#                               table_sources=["ensembl_genes"],
-#                               gene_keys=["geneSymbol",
-#                                          "name2",
-#                                          "desc"],
-#                               # Key to resolve redundancies in entries with (e.g. ENSMG..)
-#                               name_key="name2"):
-#     """
-#     Intersect GFF events with gene tables.
-#     Return helpful fields from table.
-
-#     The gene table file contains information about genes
-#     (like symbol, desc, etc.)
-
-#     The gene BED file (obtained from Tables in UCSC Genome Browser)
-#     is just a BED format describing the transcripts of genes, which
-#     is used for fast intersection with GFF file of events,
-#     performed by bedtools.
-
-#     """
-#     print "Intersecting events with genes"
-#     print "  - Events GFF: %s" %(events_filename)
-#     print "  - Genes BED: %s" %(gene_bed_filename)
-#     if not os.path.isdir(output_dir):
-#         os.makedirs(output_dir)
-#     # First make a BED file corresponding to intersection of
-#     # GFF events with genes BED (transcripts)
-#     intersected_bed = intersect_events_with_genes_bed(events_filename,
-#                                                       gene_bed_filename,
-#                                                       output_dir)
-#     # Get events to transcripts
-#     events_to_transcripts = get_events_to_transcripts(intersected_bed)
-
-#     # Load genes table and supplement keys
-#     gene_table = gt.GeneTable(settings_info)
-#     num_events_with_multiples = 0
-#     for source in table_sources:
-#         table_keys = gene_table.table_fields[source]
-#         event_genes_info = []
-#         # Get genes from the current table source
-#         genes = gene_table.genes[source]
-#         # For each transcript, find its associated keys
-#         for event_name, transcripts in events_to_transcripts.iteritems():
-#             assert (len(transcripts) != 0), \
-#                 "No transcripts for %s" %(event_name)
-#             seen_name_values = {}
-#             # Make a dictionary mapping name keys (gene IDs) to
-#             # their values
-#             gene_values = defaultdict(lambda: defaultdict(list))
-#             for transcript in transcripts:
-#                 transcript_info = genes.ix[transcript]
-#                 # For each transcript, accumulate a list of all the
-#                 # desired fields
-#                 name_value = transcript_info[table_keys[name_key]]
-#                 for needed_key in gene_keys:
-#                     value = transcript_info[table_keys[needed_key]]
-#                     if (type(value) == str) and value.endswith(","):
-#                         value = value[:-1]
-#                     gene_values[name_value][needed_key].append(value)
-#             # Select best field value for each gene
-#             gene_values = select_gene_values(gene_values)
-#             all_gene_values = []
-#             if len(gene_values) > 1:
-#                 num_events_with_multiples += 1
-#             for gene, gene_info in gene_values.iteritems():
-#                 all_gene_values.append([gene_info[key] for key in gene_keys])
-#             all_gene_values = zip(*all_gene_values)
-#             # Converting fields to strings for entry in DataFrame later on
-#             df_entry = [",".join(map(str, all_gene_values[idx])) \
-#                         for idx in range(len(all_gene_values))]
-#             df_entry = [event_name] + df_entry
-#             event_genes_info.append(df_entry)
-#         df_columns = ["event_name"] + gene_keys
-#         event_genes_df = p.DataFrame(event_genes_info,
-#                                      columns=df_columns)
-#         ##
-#         ## Output mapping from events to genes
-#         ##
-#         events_basename = os.path.basename(events_filename)
-#         output_filename = "%s.%s.to_genes.txt" %(events_basename,
-#                                                  source)
-#         output_filename = os.path.join(output_dir,
-#                                        output_filename)
-#         print "Outputting to: %s" %(output_filename)
-#         event_genes_df.to_csv(output_filename,
-#                               sep="\t",
-#                               index=False)
-#         print "Total of %d events with multiple gene mappings." \
-#             %(num_events_with_multiples)
-        
-
-        
-def select_gene_values(gene_values):
-    """
-    Given a dictionary mapping genes to a dictionary of their
-    keys and a list of values, select a single value that is
-    best.  Usually pick the longest value (e.g. longest description of gene.)
-    """
-    selected_gene_values = defaultdict(dict)
-    for gene, gene_info in gene_values.iteritems():
-        for key, values in gene_info.iteritems():
-            # Get index of maximum string-length element
-            max_ind = utils.maxi(map(len, map(str, values)))
-            # Use it
-            selected_gene_values[gene][key] = values[max_ind]
-    return selected_gene_values
-
-
 def parse_query_region(region):
     if ":" not in region:
         print "Error: malformed query region %s" %(region)
@@ -418,19 +279,15 @@ def main():
     parser.add_option("--events-in-region", dest="events_in_region", default=None,
                       nargs=2,
                       help="Return all gene entries in a GFF that match a "
-                      "particular region.  Takes as input a GFF filename "
+                      "particular region. Takes as input a GFF filename "
                       "followed by a chromosome region, e.g.: "
                       "SE.mm9.gff   chr:start:end")
     parser.add_option("--output-dir", dest="output_dir", nargs=1, default=None,
                       help="Output directory.")
-#    parser.add_option("--settings", dest="settings", nargs=1, default=None,
-#                      help="Settings filename.")
     (options, args) = parser.parse_args()
 
     # Options that require output dir
     options_require_output_dir = [options.intersect]
-    # Options that require settings filename
-    #options_require_settings = [options.intersect]
 
     # Check that output dir is given if we're called with options
     # that need it
@@ -442,20 +299,6 @@ def main():
                 sys.exit(1)
             else:
                 output_dir = os.path.abspath(os.path.expanduser(options.output_dir))
-    # Same for settings option
-    #settings_info = None
-    #parsed_settings = None
-    # for given_opt in options_require_settings:
-    #     if given_opt != None:
-    #         if options.settings is None:
-    #             print "Error: need --settings"
-    #             sys.exit(1)
-    #         else:
-    #             settings_filename = os.path.abspath(os.path.expanduser(options.settings))
-    #             print "Loading settings from: %s" %(settings_filename)
-    #             # Parse settings
-    #             settings_info, parsed_settings = \
-    #                 settings.load_settings(settings_filename)
 
     if options.intersect != None:
         event_filename = os.path.abspath(os.path.expanduser(options.intersect[0]))
