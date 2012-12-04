@@ -98,11 +98,21 @@ def merge_bed(input_filename, output_filename,
         raise Exception, "Not implemented."
     return output_filename
 
+    
+def make_bed_line(chrom, start, end,
+                  name, score, strand,
+                  delimiter="\t"):
+    """
+    Return a BED formatted line.
+    """
+    bed_fields = map(str, [chrom, start, end, name, score, strand])
+    bed_line = delimiter.join(bed_fields)
+    return bed_line
+
 
 def output_intervals_as_bed(out_file, chrom, interval_coords, strand,
                             name="exon",
-                            score="1",
-                            delimiter="\t"):
+                            score="1"):
     """
     Output intervals as BED.
 
@@ -117,6 +127,7 @@ def output_intervals_as_bed(out_file, chrom, interval_coords, strand,
     """
     for part in interval_coords:
         start, end = part
-        bed_fields = map(str, [chrom, start, end, name, score, strand])
-        bed_line = delimiter.join(bed_fields)
+        bed_line = make_bed_line(chrom, start, end,
+                                 name, score, strand)
         out_file.write("%s\n" %(bed_line))
+        

@@ -6,19 +6,24 @@ import re
 import sys
 import time
 
-from collections import defaultdict
-
 import numpy as np
 import pandas as p
 
+from collections import defaultdict
+
 import misopy
 import misopy.gff_utils as gff_utils
+
+import rnaseqlib
+import rnaseqlib.utils as utils
+import rnaseqlib.tables as tables
+import rnaseqlib.mapping.bedtools_utils as bedtools_utils
 
 
 def gff_genes_from_events(gff_filename,
                           gene_field="gene"):
     """
-    Return pipe that only selects genes from events
+    Return command that only selects genes from events
     GFF filename.
     """
     cmd = "grep -w %s %s" %(gene_field,
@@ -26,25 +31,41 @@ def gff_genes_from_events(gff_filename,
     return cmd
 
 
-def intersect_events_with_genes_bed(events_filename,
-                                    bed_filename,
-                                    output_dir):
+def intersect_events_with_bed(events_filename,
+                              bed_filename,
+                              output_dir):
     """
-    Intersect events with gene table in BED format.
+    Intersect events with coordinates in BED format.
+    Return the output filename of bedtools intersectBed.
+
+    - events_filename: events filename (GFF)
+    - bed_filename: coordinates to intersect with (BED)
+    - output_dir: Output directory
     """
+    print "Intersecting events with BED coordinates..."
+    print "  - Events file: %s" %(events_filename)
+    print "  - BED file: %s" %(bed_filename)
     output_dir = os.path.join(output_dir, "intersected_bed")
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
-    # Read from stdin
-    intersect_bed_cmd = "intersectBed -a stdin -b %s -wb -s" \
-        %(bed_filename)
     # Pass only genes from events GFF
     just_genes_cmd = gff_genes_from_events(events_filename)
+    # Intersect the genes GFF with the BED file, taking only
+    # stranded hits. 
+    # use -wao: output also event features w/o overlaps
+    intersect_bed_cmd = "intersectBed -a stdin -b %s -wao -s" \
+      %(bed_filename)
+    #    intersect_bed_cmd = "intersectBed -a stdin -b %s -wb -s" \
+    #        %(bed_filename)
     basename = "%s_%s" %(os.path.basename(events_filename),
                          os.path.basename(bed_filename))
     basename = re.sub("[.]gff3?", "", basename)
     basename = basename.replace(".bed", "")
     output_filename = "%s.bed" %(os.path.join(output_dir, basename))
+    print "  - Output file: %s" %(output_filename)
+    if os.path.isfile(output_filename):
+        print "Found %s. Skipping.." %(output_filename)
+        return output_filename
     intersect_cmd = "%s | %s > %s" %(just_genes_cmd,
                                      intersect_bed_cmd,
                                      output_filename)
@@ -53,6 +74,43 @@ def intersect_events_with_genes_bed(events_filename,
     return output_filename
 
 
+def get_events_to_genes(intersected_bed_filename,
+                        gff_id_col=8,
+                        gene_id_col=12,
+                        na_val="NA"):
+    """
+    Parse the output file resulting from intersectBed
+    that mapped events to genes and parse its results.
+
+    Return a mapping from events to the genes they map to.
+
+    - intersected_bed_filename: filename outputted by 
+      intersectBed.
+
+    - gff_id_col: the column number encoding the GFF ID= for 
+      the event 
+    - gene_id_col: the column number encoding the gene ID for
+      the event
+    - na_val: NA value, used when an event does not map to gene
+    """
+    events_to_genes = defaultdict(list)
+    with open(intersected_bed_filename) as bed_in:
+        for line in bed_in:
+            fields = line.strip().split("\t")
+            gff_event_id_field = fields[gff_id_col]
+            gene_id = fields[gene_id_col]
+            if not gff_event_id_field.startswith("ID="):
+                raise Exception, "Malformed event line: %s" \
+                  %(line)
+            # If the event does not map to a gene, record its
+            # gene id as a missing value
+            if gene_id == ".":
+                gene_id = na_val
+            gff_event_id = gff_event_id_field.split("ID=")[1].split(";")[0]
+            events_to_genes[gff_event_id].append(gene_id)
+    return events_to_genes
+
+    
 def get_events_to_transcripts(gene_bed_filename,
                               # column corresponding to GFF attributes
                               gff_attribs_col=8,
@@ -87,21 +145,28 @@ def output_inclusive_trans_coords(gene_table, output_dir):
 
     Returns the output filename for the BED file.
     """
+    print "Outputting inclusive transcript coordinates..."
     bed_basename = "%s_trans_coords.bed" %(gene_table.source)
     bed_output_fname = os.path.join(output_dir, bed_basename)
-    with open(bed_output_fname) as bed_out:
+    print "  - Output file: %s" %(bed_output_fname)
+    if os.path.isfile(bed_output_fname):
+        print "Found %s. Skipping..." %(bed_output_fname)
+        return bed_output_fname
+    with open(bed_output_fname, "w") as bed_out:
         # Output the inclusive transcript coordinates for each gene
-        for gene in gene_table.genes:
+        for gene_id, gene in gene_table.genes.iteritems():
             chrom = gene.chrom
             start, end = gene.get_inclusive_trans_coords()
-            name = gene.label
+            name = gene_id
             score = "1"
             strand = gene.strand
-            bedtools_utils.make_bed_line(chrom, start, end,
-                                         name, score, strand)
+            bed_line = bedtools_utils.make_bed_line(chrom, start, end,
+                                                    name, score, strand)
+            bed_out.write("%s\n" %(bed_line))
     return bed_output_fname
         
         
+
 def intersect_events_with_genes(events_gff_fname,
                                 gene_tables_dir,
                                 output_dir,
@@ -123,13 +188,40 @@ def intersect_events_with_genes(events_gff_fname,
     - genes_source: source of genes table, e.g. ensGene or refGene.
       By default, assumes input is an Ensembl table.
     """
+    utils.make_dir(output_dir)
+    events_basename = os.path.basename(events_gff_fname)
+    events_to_genes_fname = \
+      os.path.join(output_dir, "%s_to_%s.txt" \
+                   %(events_basename, 
+                     genes_source))
+    print "Outputting events to genes..."
+    print "  - Output file: %s" %(events_to_genes_fname)
+    if os.path.isfile(events_to_genes_fname):
+        print "Found %s. Skipping.." 
+        return events_to_genes_fname
     # Load the gene table without parsing the individual genes
     gene_table = tables.GeneTable(gene_tables_dir, genes_source)
-    # First create a BED file containing the most inclusive txStart/txEnd
+    # Create a BED file containing the most inclusive txStart/txEnd
     # for each gene in the table
-    bed_coords_fname = output_inclusive_trans_coords(gene_table, output_dir)
-    
-    
+    bed_coords_fname = output_inclusive_trans_coords(gene_table, 
+                                                     output_dir)
+    # Intersect the GFF events with this BED file of coordinates 
+    # to determine what genes each event overlaps
+    intersected_bed_fname = \
+      intersect_events_with_bed(events_gff_fname,
+                                bed_coords_fname,
+                                output_dir)
+    # Parse the resulting intersectBed results to get a mapping
+    # from events to the genes they map to
+    events_to_genes = get_events_to_genes(intersected_bed_fname)
+    # Output the result to a file
+    with open(events_to_genes_fname, "w") as events_to_genes_out:
+        header = "event_id\tgene_id\n"
+        events_to_genes_out.write(header)
+        for event, genes in events_to_genes.iteritems():
+            genes_str = ",".join(genes)
+            output_line = "%s\t%s\n" %(event, genes_str)
+            events_to_genes_out.write(output_line)
 
 
 # def intersect_events_with_gff(events_filename,
@@ -319,24 +411,26 @@ def get_events_in_region(gff_filename, region,
 def main():
     from optparse import OptionParser
     parser = OptionParser()
-    parser.add_option("--intersect", dest="intersect", default=None, nargs=3,
-                      help="Intersect events with GFF. Takes an events filename (GFF), "
-                      "a gene table (with txStart/txEnd) and a corresponding genes BED.")
+    parser.add_option("--intersect", dest="intersect", default=None, nargs=2,
+                      help="Intersect events with GFF. Takes: (1) an events "
+                      "filename (GFF), and (2) a gene tables directory "
+                      "(produced by --init of rnaseqlib).")
     parser.add_option("--events-in-region", dest="events_in_region", default=None,
                       nargs=2,
-                      help="Return all gene entries in a GFF that match a particular region. "
-                      "Takes as input a GFF filename followed by a chromosome region, e.g. "
+                      help="Return all gene entries in a GFF that match a "
+                      "particular region.  Takes as input a GFF filename "
+                      "followed by a chromosome region, e.g.: "
                       "SE.mm9.gff   chr:start:end")
     parser.add_option("--output-dir", dest="output_dir", nargs=1, default=None,
                       help="Output directory.")
-    parser.add_option("--settings", dest="settings", nargs=1, default=None,
-                      help="Settings filename.")
+#    parser.add_option("--settings", dest="settings", nargs=1, default=None,
+#                      help="Settings filename.")
     (options, args) = parser.parse_args()
 
     # Options that require output dir
     options_require_output_dir = [options.intersect]
     # Options that require settings filename
-    options_require_settings = [options.intersect]
+    #options_require_settings = [options.intersect]
 
     # Check that output dir is given if we're called with options
     # that need it
@@ -349,29 +443,26 @@ def main():
             else:
                 output_dir = os.path.abspath(os.path.expanduser(options.output_dir))
     # Same for settings option
-    settings_info = None
-    parsed_settings = None
-    for given_opt in options_require_settings:
-        if given_opt != None:
-            if options.settings is None:
-                print "Error: need --settings"
-                sys.exit(1)
-            else:
-                settings_filename = os.path.abspath(os.path.expanduser(options.settings))
-                print "Loading settings from: %s" %(settings_filename)
-                # Parse settings
-                settings_info, parsed_settings = \
-                    settings.load_settings(settings_filename)
+    #settings_info = None
+    #parsed_settings = None
+    # for given_opt in options_require_settings:
+    #     if given_opt != None:
+    #         if options.settings is None:
+    #             print "Error: need --settings"
+    #             sys.exit(1)
+    #         else:
+    #             settings_filename = os.path.abspath(os.path.expanduser(options.settings))
+    #             print "Loading settings from: %s" %(settings_filename)
+    #             # Parse settings
+    #             settings_info, parsed_settings = \
+    #                 settings.load_settings(settings_filename)
 
     if options.intersect != None:
         event_filename = os.path.abspath(os.path.expanduser(options.intersect[0]))
-        gene_table_filename = os.path.abspath(os.path.expanduser(options.intersect[1]))        
-        bed_filename = os.path.abspath(os.path.expanduser(options.intersect[2]))       
-        intersect_events_with_gff(event_filename,
-                                  gene_table_filename,
-                                  bed_filename,
-                                  output_dir,
-                                  settings_info)
+        gene_tables_dir = os.path.abspath(os.path.expanduser(options.intersect[1]))        
+        intersect_events_with_genes(event_filename,
+                                    gene_tables_dir,
+                                    output_dir)
         
     if options.events_in_region != None:
         event_filename = os.path.abspath(os.path.expanduser(options.events_in_region[0]))

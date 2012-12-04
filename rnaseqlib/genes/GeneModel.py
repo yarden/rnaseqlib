@@ -47,6 +47,18 @@ class Gene:
         for trans in self.transcripts:
             self.cds_parts.extend(trans.cds_parts)
 
+            
+    def get_inclusive_trans_coords(self):
+        """
+        Return the most inclusive transcription start/end coordinates,
+        i.e. the lowest start coordinate across all transcripts and
+        the highest end coordinate across all transcripts.
+        """
+        trans_starts = [transcript.start for transcript in self.transcripts]
+        trans_ends = [transcript.end for transcript in self.transcripts]
+        inclusive_coords = [min(trans_starts), max(trans_ends)]
+        return inclusive_coords
+        
 
     def get_cds_transcripts(self):
         """
@@ -271,6 +283,10 @@ class Transcript:
         self.gene = None
         self.chrom = chrom
         self.strand = strand
+        # Start/end of transcript defined by start/end
+        # of first and last exons, respectively
+        self.start = parts[0].start
+        self.end = parts[-1].end
         self.parts = parts
         self.label = label
         self.cds_start = cds_start

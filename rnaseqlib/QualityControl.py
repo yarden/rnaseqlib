@@ -119,11 +119,13 @@ class QualityControl:
         Get number of mapped reads, not counting duplicates, i.e.
         reads that have alignments in the BAM file.
         """
+        self.logger.info("Getting number of mapped reads.")        
         num_mapped = count_nondup_reads(self.sample.bam_filename)
         return num_mapped
 
 
     def get_num_unique_mapped(self):
+        self.logger.info("Getting number of unique reads.")
         num_unique_mapped = count_nondup_reads(self.sample.unique_bam_filename)
         return num_unique_mapped
     

@@ -1,6 +1,6 @@
 ##
-## misowrap: a wrapper to running MISO on a set of samples
-## and processing its output
+## misowrap: a wrapper to rung MISO on a set of samples
+## and processing its output.
 ##
 import os
 import sys
