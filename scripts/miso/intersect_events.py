@@ -170,7 +170,7 @@ def intersect_events_with_genes(events_gff_fname,
     print "Outputting events to genes..."
     print "  - Output file: %s" %(events_to_genes_fname)
     if os.path.isfile(events_to_genes_fname):
-        print "Found %s. Skipping.." 
+        print "Found %s. Skipping.." %(events_to_genes_fname)
         return events_to_genes_fname
     # Load the gene table without parsing the individual genes
     gene_table = tables.GeneTable(gene_tables_dir, genes_source)

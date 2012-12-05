@@ -1,5 +1,6 @@
 ##
-## Psi Table
+## PsiTable: class for representing MISO results
+## from a set of samples and parsing their results
 ##
 import os
 import re
@@ -46,27 +47,13 @@ class PsiTable:
     """
     def __init__(self, sample_labels,
                  miso_samples_dir,
+                 misowrap_obj,
                  comparisons_dir=None,
-                 event_types=["A3SS",
-                              "A5SS",
-                              "AFE",
-                              "ALE",
-                              "MXE",
-                              "RI",
-                              "SE",
-                              "SE_noAceView",
-                              "TandemUTR",
-                              "TandemUTR_3pseq",
-                              # shortest, noAceView events
-                              "A3SS_shortest_noAceView",
-                              "A5SS_shortest_noAceView",
-                              "MXE_shortest_noAceView",
-                              "SE_shortest_noAceView"],
-                              verbose=False,
                  settings_info=None,
                  gene_table=None):
         self.filtered_events = {}
-        self.settings_info = settings_info
+        self.misowrap_obj = misowrap_obj
+        self.settings_info = self.misowrap_obj.settings_info
         # Load gene tables
         self.gene_table = gene_table
         self.load_gene_table()
@@ -74,11 +61,6 @@ class PsiTable:
         self.sample_labels = sample_labels
         # Directory where MISO output for samples are 
         self.miso_samples_dir = os.path.abspath(os.path.expanduser(miso_samples_dir))
-        if comparisons_dir == None:
-            self.comparisons_dir = os.path.join(self.miso_samples_dir,
-                                                "comparisons")
-        else:
-            self.comparisons_dir = comparisons_dir
         self.verbose = verbose
         self.event_types = event_types
         # Summaries dataframe
