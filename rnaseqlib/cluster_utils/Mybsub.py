@@ -30,6 +30,7 @@ def launchJob(cmd, job_name,
               output_dir,
               verbose=False,
               test=False,
+              ppn="4",
               queue_type="normal"):
     """
     Submits a job on the cluster which will run command 'cmd', with options 'scriptOptions'
@@ -44,7 +45,7 @@ def launchJob(cmd, job_name,
         cmd = [cmd]
 
     scriptOptions.setdefault("workingdir", os.getcwd())
-    scriptOptions.setdefault("ppn", "4")
+    scriptOptions.setdefault("ppn", str(ppn))
     scriptOptions.setdefault("scriptuser", getpass.getuser())
     scriptOptions.setdefault("jobname", job_name)
     # remove queue name option
@@ -87,10 +88,10 @@ def launchJob(cmd, job_name,
 
     if not test:
         try:
-            if verbose:
-                print "CALL:", call
-
-            qsub = subprocess.Popen(call, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+            qsub = subprocess.Popen(call, shell=True,
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE,
+                                    stdin=subprocess.PIPE)
 	    print "Executing: ", scriptOptions["command"]
             qsub.stdin.write(outtext)
             
@@ -108,8 +109,10 @@ def launchJob(cmd, job_name,
 
     
 if __name__ == "__main__":
-    usage = "%prog [options] command\n Automatically creates a job script for the command provided;"+\
-        "allows running a script with input arguments, as well as specifying various cluster options"
+    usage = "%prog [options] command\n Automatically creates a job " \
+            "script for the command provided; " \
+            "allows running a script with input arguments, " \
+            "as well as specifying various cluster options"
     
     parser = OptionParser(usage=usage)
 
@@ -150,7 +153,7 @@ if __name__ == "__main__":
             
     jobID = launchJob(args, scriptOptions, options.verbose, options.test)
 
-    if jobID!=None and options.wait:
+    if jobID != None and options.wait:
         waitUntilDone(jobID)
 
 

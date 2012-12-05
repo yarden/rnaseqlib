@@ -202,7 +202,8 @@ def summarize_miso_samples(settings_filename,
                                            os.path.basename(event_dirname))
             print "Executing: %s" %(summary_cmd)
             if misowrap_obj.use_cluster:
-                #misowrap_obj.my_cluster.launch_job(summary_cmd, job_name)
+                #misowrap_obj.my_cluster.launch_job(summary_cmd, job_name,
+                #ppn=1)
                 pass
             else:
                 #os.system(summary_cmd)
@@ -325,7 +326,8 @@ def run_miso_on_samples(settings_filename, output_dir,
             job_name = "%s_%s" %(sample_label, event_type)
             if use_cluster:
                 misowrap_obj.my_cluster.launch_job(miso_cmd,
-                                                   job_name)
+                                                   job_name,
+                                                   ppn=1)
             else:
                 os.system(miso_cmd)
 
@@ -362,7 +364,8 @@ def compute_insert_lengths(settings_filename, output_dir):
         print "Executing: %s" %(insert_len_cmd)
         sample_name = os.path.basename(bam_filename)
         job_name = sample_name.split(".bam")[0]
-        #misowrap_obj.launch_job(insert_len_cmd, job_name)
+        #misowrap_obj.launch_job(insert_len_cmd, job_name,
+        # ppn=1)
 
 
 def greeting(parser=None):

@@ -28,12 +28,14 @@ class Cluster:
 
     def launch_and_wait(self, cmd, job_name,
                         unless_exists=None,
-                        extra_sleep=20):
+                        extra_sleep=20,
+                        ppn=4):
         """
         Launch job and wait until it's done.
         """
         job_id = self.launch_job(cmd, job_name,
-                                 unless_exists=unless_exists)
+                                 unless_exists=unless_exists,
+                                 ppn=ppn)
         if job_id is None:
             # Job submission failed
             return None
@@ -45,6 +47,7 @@ class Cluster:
     
 
     def launch_job(self, cmd, job_name,
+                   ppn=4,
                    unless_exists=None):
         """
         Launch job on cluster and return a job id.
@@ -68,7 +71,8 @@ class Cluster:
             job_id = Mybsub.launchJob(cmd, job_name,
                                       script_options,
                                       self.output_dir,
-                                      queue_type="normal")
+                                      queue_type="normal",
+                                      ppn=ppn)
         if job_id is None:
             print "WARNING: Job %s not submitted." %(job_name)
         return job_id
