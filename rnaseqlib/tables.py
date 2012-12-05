@@ -285,14 +285,14 @@ class GeneTable:
         # Output combined table
         self.output_ensGene_combined(self.table,
                                      "ensGene.combined")
+        ## Note: it is critical to remove NA values from kgXref
+        ## to avoid excess memory consumption during merge (thanks to y-p)
+        self.kgXref_table = self.kgXref_table.dropna(subset=["kgID"])
         # Bring information from kgXref
         # Note that ensGene table keys are used only in the join,
         # to avoid introducing into the table entries that have
         # kgXref info and a UCSC transcript name but *do not*
         # have an Ensembl transcript ID
-        ## Note: it is critical to remove NA values from kgXref
-        ## to avoid excess memory consumption during merge (thanks to y-p)
-        self.kgXref_table = self.kgXref_table.dropna(subset=["kgID"])
         self.table = pandas.merge(self.table, self.kgXref_table,
                                   # use ensGene table keys 
                                   how="left",

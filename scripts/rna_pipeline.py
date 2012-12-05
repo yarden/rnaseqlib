@@ -99,10 +99,11 @@ def initialize_pipeline(genome,
     base_obj.initialize()
 
 
-def greeting():
+def greeting(parser=None):
     print "rnaseqlib: a lightweight pipeline for RNA-Seq analysis"
-    print "=" * 10 
-    print "For help, pass --help\n"
+    print "=" * 10
+    if parser is not None:
+        parser.print_help()
     
     
 def main():

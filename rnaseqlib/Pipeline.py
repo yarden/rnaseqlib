@@ -211,8 +211,9 @@ class Pipeline:
         """
         for sample_num, sample in enumerate(self.samples):
             # Get mapping from table names to loaded RPKM tables
-            self.samples[sample_num].rpkm_tables = rpkm_utils.load_sample_rpkms(sample,
-                                                                                self.rna_base)
+            self.samples[sample_num].rpkm_tables = \
+                rpkm_utils.load_sample_rpkms(sample,
+                                             self.rna_base)
         # Load RPKMs into combined RPKM tables for all samples
         # Create a mapping from table name to RPKM DataFrame
         # that includes all samples
@@ -224,7 +225,8 @@ class Pipeline:
             # If we have only one sample, make add it to the set of
             # RPKM tables by itself and continue to next table
             if len(self.samples) == 1:
-                self.rpkm_tables[table_name] = curr_sample.rpkm_tables[table_name]
+                self.rpkm_tables[table_name] \
+                    = curr_sample.rpkm_tables[table_name]
                 continue
             # For multiple samples: collect each sample's RPKM table
             # for the current table (e.g. ensGene)
@@ -232,12 +234,13 @@ class Pipeline:
             for next_sample in self.samples[1:]:
                 # Merge with next sample's RPKM table
                 next_sample_rpkm = next_sample.rpkm_tables[table_name]
-                combined_rpkm_table = pandas.merge(combined_rpkm_table,
-                                                   next_sample_rpkm,
-                                                   # Merge on common columns of
-                                                   # gene ID and exons
-                                                   on=["gene_id", "exons",
-                                                       "gene_symbol", "gene_desc"])
+                combined_rpkm_table = \
+                    pandas.merge(combined_rpkm_table,
+                                 next_sample_rpkm,
+                                 # Merge on common columns of
+                                 # gene ID and exons
+                                 on=["gene_id", "exons",
+                                     "gene_symbol", "gene_desc"])
             # Record the combined RPKM table
             self.rpkm_tables[table_name] = combined_rpkm_table
         
@@ -294,7 +297,8 @@ class Pipeline:
         print "Loaded pipeline settings (source: %s)." \
             %(self.settings_filename)
         # Pipeline init directory
-        self.init_dir = os.path.join(self.settings_info["pipeline-files"]["init_dir"])
+        self.init_dir = \
+            os.path.join(self.settings_info["pipeline-files"]["init_dir"])
         # Loading group information if there is any
         self.load_groups()
         
@@ -332,9 +336,10 @@ class Pipeline:
         Load cluster submission object for the particular
         pipeline settings we were given.
         """
-        self.my_cluster = cluster.Cluster(self.settings_info["mapping"]["cluster_type"],
-                                          self.output_dir,
-                                          self.logger)
+        self.my_cluster = \
+            cluster.Cluster(self.settings_info["mapping"]["cluster_type"],
+                            self.output_dir,
+                            self.logger)
         
 
     def load_sequence_files(self):

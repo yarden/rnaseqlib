@@ -293,8 +293,9 @@ def run_miso_on_samples(settings_filename, output_dir,
             miso_cmd += " --compute-genes-psi %s %s" %(event_type_dir,
                                                        bam_filename)
             if not single_end:
-                insert_len_filename = os.path.join(insert_lens_dir,
-                                                   "%s.insert_len" %(bam_basename))
+                insert_len_filename = \
+                    os.path.join(insert_lens_dir,
+                                 "%s.insert_len" %(bam_basename))
                 print "Reading paired-end parameters from file..."
                 pe_params = miso_utils.read_pe_params(insert_len_filename)
                 # Paired-end parameters
@@ -354,6 +355,12 @@ def compute_insert_lengths(settings_filename, output_dir):
         #                               insert_len_output_dir,
         #                               cmd_name="bsub")
 
+
+def greeting(parser=None):
+    print "misowrap: wrapper for running MISO and parsing its results.\n"
+    if parser is not None:
+        parser.print_help()
+            
         
 def main():
     from optparse import OptionParser
@@ -373,6 +380,8 @@ def main():
     parser.add_option("--output-dir", dest="output_dir", default=None,
                       help="Output directory.")
     (options, args) = parser.parse_args()
+
+    greeting()
 
     if options.output_dir == None:
         print "Error: need --output-dir."
