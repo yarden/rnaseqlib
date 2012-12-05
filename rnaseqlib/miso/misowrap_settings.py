@@ -14,8 +14,10 @@ def set_default_misowrap_settings(settings_info,
     """
     # Set default MISO binary dir to empty (so that 
     # by default we look for MISO scripts already in path)
-    settings_info["settings"]["miso_bin_dir"] = ""
-    settings_info["settings"]["overhanglen"] = 1
+    if "miso_bin_dir" not in settings_info["settings"]:
+        settings_info["settings"]["miso_bin_dir"] = ""
+    if "overhanglen" not in settings_info["settings"]:
+        settings_info["settings"]["overhanglen"] = 1
     # If given a cluster type, then assume we run on cluster
     # and assign a default chunk_jobs parameter
     if "cluster_type" in settings_info["settings"]:

@@ -69,7 +69,7 @@ def launchJob(cmd, job_name,
     outtext = """#!/bin/sh
 
     #BSUB -n %(ppn)s 
-    #BSUB -R "rusage[mem=5000]"
+    #BSUB -R "rusage[mem=2500]"
     #BSUB -o %(outf)s 
     #BSUB -J %(jobname)s
 

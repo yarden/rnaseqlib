@@ -113,6 +113,7 @@ class MISOWrap:
             self.cluster_type = self.settings_info["settings"]["cluster_type"]
             self.chunk_jobs = self.settings_info["settings"]["chunk_jobs"]
         if self.use_cluster:
+            print "Loading cluster information."
             # Load cluster object if given a cluster type
             self.load_cluster()
         # Create a logger object 
@@ -323,12 +324,10 @@ def run_miso_on_samples(settings_filename, output_dir,
             print "Executing: %s" %(miso_cmd)
             job_name = "%s_%s" %(sample_label, event_type)
             if use_cluster:
-                pass
-#                misowrap_obj.my_cluster.launch_job(miso_cmd,
-#                                                   job_name)
+                misowrap_obj.my_cluster.launch_job(miso_cmd,
+                                                   job_name)
             else:
-                #os.system(miso_cmd)
-                pass
+                os.system(miso_cmd)
 
                 
 def compute_insert_lengths(settings_filename, output_dir):
