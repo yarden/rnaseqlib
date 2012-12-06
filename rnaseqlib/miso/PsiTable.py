@@ -129,10 +129,6 @@ class PsiTable:
                     print "WARNING: %s not a summary file" \
                         %(summary_filename)
                     continue
-                if self.verbose:
-                    print "Processing event type %s" %(event_type)
-                    print "Loading %s summary" %(sample_name)
-                    print "Loading: %s" %(summary_filename)
                 summary_df = pandas.read_table(summary_filename,
                                                sep=self.delimiter)
                 summaries_dict[event_type][sample_name] = summary_df
@@ -176,26 +172,20 @@ class PsiTable:
         comparisons_dict = defaultdict(list)
         dataframe_dict = {}
         for event_type in self.event_types:
-            if self.verbose:
-                print "Processing event type %s" %(event_type)
             event_comparisons_dir = os.path.join(comparisons_dir,
                                                  event_type)
             comparisons_dirnames = get_comparisons_dirs(event_comparisons_dir)
             comparison_labels = []
             if len(comparisons_dirnames) == 0:
-                print "WARNING: No comparisons for event type %s" \
-                    %(event_type)
-                raise Exception
+                print "WARNING: No comparisons for event type %s in %s" \
+                    %(event_type, event_comparisons_dir)
+                continue
             for curr_comp_dir in comparisons_dirnames:
                 comparison_label = os.path.basename(curr_comp_dir)
                 comparison_labels.append(comparison_label)
                 bf_filename = get_bf_filename(curr_comp_dir)
                 if not os.path.isfile(bf_filename):
                     raise Exception, "No BF file: %s" %(bf_filename)
-                if self.verbose:
-                    print "Loading comparisons dir: %s" %(curr_comp_dir)
-                    print "  - Type: %s" %(event_type)
-                    print "  - Comparison: %s" %(comparison_label)
                 curr_df = pandas.read_table(bf_filename,
                                             sep=self.delimiter,
                                             index_col=[0])
@@ -209,6 +199,9 @@ class PsiTable:
                 pandas.concat(comparisons_dict[event_type],
                               keys=comparison_labels)
         self.comparisons_df = dataframe_dict
+        if not bool(self.comparisons_df):
+            print "WARNING: Could not find any comparisons in %s" \
+                %(comparisons_dir)
 
 
     def load_comparisons_counts_from_df(self, df,
@@ -218,6 +211,9 @@ class PsiTable:
         Return sample1 and sample2 counts from comparisons
         MISO file.
         """
+        # Don't process empty dfs
+        if not bool(df):
+            return
         # Get list of counts for each sample
         col1, col2 = counts_labels[0], counts_labels[1]
         sample1_col = "%s_int" %(col1)
@@ -235,12 +231,15 @@ class PsiTable:
         Filter events for coverage.
         """
         print "filter_coverage_events::Filtering..."
-        print "EVENT TYPES"
-        print self.event_types
         if comparisons_df == None:
             comparisons_df = self.comparisons_df
+        if not bool(comparisons_df):
+            print "Not filtering - no comparisons found."
+            return
         for event_type in self.event_types:
             print "Filtering event type: %s" %(event_type)
+            print "COMPARISONS DF: "
+            print comparisons_df
             comparison_counts = \
                 self.load_comparisons_counts_from_df(comparisons_df[event_type])
             # Get counts for each read class for sample 1 and sample 2

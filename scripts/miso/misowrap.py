@@ -202,7 +202,6 @@ class MISOWrap:
             fname = os.path.join(self.miso_events_dir, fname)
             if os.path.isdir(fname):
                 event_name = os.path.basename(fname)
-                print "event_name: %s" %(event_name)
                 self.event_types.append(event_name)
         if len(self.event_types) == 0:
             print "WARNING: Unable to load event types from %s" \
@@ -406,7 +405,6 @@ def filter_events(settings_filename,
                             output_dir)
     print "Filtering MISO events..."
     psi_table = pt.PsiTable(misowrap_obj)
-    
     
 
                 
