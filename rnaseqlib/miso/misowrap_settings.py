@@ -72,6 +72,7 @@ def load_misowrap_settings(config_filename,
                                        "miso_events_dir",
                                        "miso_settings_filename",
                                        "miso_output_dir",
+                                       "events_to_genes_dir",
                                        "insert_lens_dir"],
                            DATA_PARAMS=["bam_files",
                                         "sample_labels"]):

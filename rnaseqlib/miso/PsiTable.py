@@ -38,117 +38,81 @@ def parse_miso_counts(counts_str):
                               counts["(0,1)"],
                               counts["(1,1)"],
                               counts["(0,0)"]])
-    return np.array(counts_vector, dtype=np.int64)
+    return np.array(counts_vector,
+                    dtype=np.int64)
     
 
 class PsiTable:
     """
-    Class for representing Psi values.
+    Representation of Psi values from a set of samples.
+
+    Takes as input a MISOWrap object.
     """
-    def __init__(self, sample_labels,
-                 miso_samples_dir,
-                 misowrap_obj,
-                 comparisons_dir=None,
-                 settings_info=None,
-                 gene_table=None):
-        self.filtered_events = {}
+    def __init__(self, misowrap_obj,
+                 verbose=True):
+        self.delimiter = "\t"
         self.misowrap_obj = misowrap_obj
         self.settings_info = self.misowrap_obj.settings_info
+        self.sample_labels = self.misowrap_obj.sample_labels
+        # Where MISO output for samples is
+        self.miso_outdir = self.misowrap_obj.miso_outdir
+        # Where the MISO sample comparisons are
+        self.comparisons_dir = self.misowrap_obj.comparisons_dir
+        self.filtered_events = {}
         # Load gene tables
-        self.gene_table = gene_table
+        self.gene_table = None
         self.load_gene_table()
-        self.csv_output_dir = miso_samples_dir
-        self.sample_labels = sample_labels
-        # Directory where MISO output for samples are 
-        self.miso_samples_dir = os.path.abspath(os.path.expanduser(miso_samples_dir))
         self.verbose = verbose
-        self.event_types = event_types
+        # Event types to process
+        self.event_types = self.misowrap_obj.event_types
         # Summaries dataframe
         self.summaries_df = None
         # Comparisons dataframe
         self.comparisons_df = None
+        ##
+        ## Load annotation of events, like a map
+        ## events to genes.
+        ##
+        self.events_to_genes = {}
+        self.load_events_to_genes()
+        ## Load the MISO output
+        ##
         # Load summaries
-        self.load_summaries(self.miso_samples_dir)
+        self.load_summaries(self.miso_outdir)
         # Load comparisons
         self.load_comparisons(self.comparisons_dir)
+        # Filter events based on coverage
         self.filter_coverage_events()
-        # Add gene information to comparisons
-        self.add_event_genes()
+
+
+    def load_events_to_genes(self):
+        """
+        Load mapping from events to genes.
+        """
 
 
     def load_gene_table(self):
         """
         Try to load a gene table if one is given.
         """
-        if self.settings_info == None:
-            return
-        if self.gene_table != None:
-            # If given a table already, use it
-            return
         # Load gene table based on settings info
-        print "PsiTable::loading gene table..."
-        self.gene_table = tables.GeneTable(self.settings_info)
+        self.gene_table = tables.GeneTable(self.misowrap_obj.tables_dir,
+                                           "ensGene",
+                                           tables_only=True)
 
         
-    def add_event_genes(self, use_tables=["ensembl_genes"]):
+    def add_event_genes(self):
         """
         Add the gene information to each event.
         """
-        return
-        # Add gene information to comparisons
-        for event_type in self.event_types:
-            curr_df = self.filtered_events[event_type]
-            for table_source in self.gene_table.genes:
-                gene_names = []
-                gene_symbs = []
-                if table_source not in use_tables:
-                    continue
-                gene_table = self.gene_table.genes[table_source]
-                gene_keys = self.gene_table.table_fields[table_source]
-                for event_name, event_info in curr_df.T.iteritems():
-                    comparison_label, event_id = event_name
-                    same_chrom_events = gene_table[event_info["chrom"] == gene_table[gene_keys["chrom"]]]
-                    event_start = int(event_info["mRNA_starts"].split(",")[0])
-                    event_end = int(event_info["mRNA_ends"].split(",")[0])
-                    event_genes = same_chrom_events[same_chrom_events[gene_keys["strand"]] == event_info["strand"]]
-                    # Check if either start or end of event lies within txStart/txEnd
-                    #event_genes = event_genes[(event_start >= event_genes[gene_keys["txStart"]]) &\
-                    #                           (event_end <= event_genes[gene_keys["txEnd"]])]
-                    
-                    first_candidates = event_genes[(event_start >= event_genes[gene_keys["txStart"]]) &\
-                                                   (event_start <= event_genes[gene_keys["txEnd"]])]
-                    if len(first_candidates) == 0:
-                        first_candidates = event_genes[(event_end >= event_genes[gene_keys["txStart"]]) &\
-                                                       (event_end <= event_genes[gene_keys["txEnd"]])]
-                    event_genes = first_candidates
-                    gene_name_key = gene_keys["ensGene.name2"]
-                    candidate_genes = utils.unique_list(event_genes[gene_name_key])
-                    num_candidates = len(candidate_genes)
-                    # Event gene information
-                    if num_candidates == 0:
-                        print "WARNING: no gene for event %s" %(event_id)
-                        event_gene_name = "NA"
-                        event_gene_symbol = "NA"
-                    elif num_candidates >= 1:
-                        if num_candidates > 1:
-                            print "WARNING: there are %d candidate genes for event %s" \
-                                %(num_candidates,
-                                  event_id)
-                        # If there's one only gene or more, take first
-                        event_gene_name = event_genes[gene_name_key].values[0]
-                        event_gene_symbol = event_genes[gene_keys["geneSymbol"]].values[0]
-                    gene_names.append(event_gene_name)
-                    gene_symbs.append(event_gene_symbol)
+        pass
+    
 
-                self.filtered_events[event_type][gene_keys["ensGene.name2"]] = gene_names
-                self.filtered_events[event_type][gene_keys["geneSymbol"]] = gene_symbs
-
-
-    def load_summaries(self, miso_samples_dir,
-                       delimiter='\t'):
+    def load_summaries(self, miso_samples_dir):
         """
         Load MISO summary files.
         """
+        print "Loading summary files.."
         summaries_dict = defaultdict(dict)
         for sample in self.sample_labels:
             for event_type in self.event_types:
@@ -170,7 +134,7 @@ class PsiTable:
                     print "Loading %s summary" %(sample_name)
                     print "Loading: %s" %(summary_filename)
                 summary_df = pandas.read_table(summary_filename,
-                                               sep=delimiter)
+                                               sep=self.delimiter)
                 summaries_dict[event_type][sample_name] = summary_df
         self.summaries_df = pandas.DataFrame(summaries_dict)
 
@@ -204,11 +168,11 @@ class PsiTable:
 
 
     def load_comparisons(self, comparisons_dir,
-                         delimiter='\t',
                          only_two_isoform=True):
         """
-        Load comparisons files.
+        Load MISO comparisons files.
         """
+        print "Loading comparisons.."
         comparisons_dict = defaultdict(list)
         dataframe_dict = {}
         for event_type in self.event_types:
@@ -233,7 +197,7 @@ class PsiTable:
                     print "  - Type: %s" %(event_type)
                     print "  - Comparison: %s" %(comparison_label)
                 curr_df = pandas.read_table(bf_filename,
-                                            sep=delimiter,
+                                            sep=self.delimiter,
                                             index_col=[0])
                 # Keep only events for which we have two isoforms
                 if only_two_isoform:
@@ -241,12 +205,10 @@ class PsiTable:
                         curr_df = self.filter_only_two_isoform(curr_df)
                 comparisons_dict[event_type].append(curr_df)
             # Concatenate all the DataFrames for each comparison together
-            dataframe_dict[event_type] = pandas.concat(comparisons_dict[event_type],
-                                                       keys=comparison_labels)
-            # Add gene information
-#        self.comparisons_df = pandas.DataFrame(dataframe_dict)
+            dataframe_dict[event_type] = \
+                pandas.concat(comparisons_dict[event_type],
+                              keys=comparison_labels)
         self.comparisons_df = dataframe_dict
-
 
 
     def load_comparisons_counts_from_df(self, df,
@@ -273,38 +235,63 @@ class PsiTable:
         Filter events for coverage.
         """
         print "filter_coverage_events::Filtering..."
+        print "EVENT TYPES"
+        print self.event_types
         if comparisons_df == None:
             comparisons_df = self.comparisons_df
         for event_type in self.event_types:
             print "Filtering event type: %s" %(event_type)
-            comparison_counts = self.load_comparisons_counts_from_df(comparisons_df[event_type])
+            comparison_counts = \
+                self.load_comparisons_counts_from_df(comparisons_df[event_type])
             # Get counts for each read class for sample 1 and sample 2
-            comparison_counts = self.get_counts_by_class("sample1_counts_int", "sample1",
+            comparison_counts = self.get_counts_by_class("sample1_counts_int",
+                                                         "sample1",
                                                          comparison_counts)
-            comparison_counts = self.get_counts_by_class("sample2_counts_int", "sample2",
+            comparison_counts = self.get_counts_by_class("sample2_counts_int",
+                                                         "sample2",
                                                          comparison_counts)
             filtered_df = comparison_counts
             # Filter exclusion reads
             # Only apply this to events other than TandemUTRs!
             if "TandemUTR" in event_type:
                 # For tandem UTRs, apply a filter on the (1,1) reads instead
-                filtered_df = filtered_df[filtered_df["sample1_const_counts"] | filtered_df["sample2_const_counts"] >= atleast_exc]
+                filtered_df = \
+                    filtered_df[filtered_df["sample1_const_counts"] \
+                                | filtered_df["sample2_const_counts"] \
+                                >= atleast_exc]
             elif "AFE" == event_type:
                 # Use more aggressive filtering for AFEs
                 AFE_atleast_inc = 10
                 AFE_atleast_exc = 10
                 # Filter inclusion reads
-                filtered_df = filtered_df[filtered_df["sample1_inc_counts"] | filtered_df["sample2_inc_counts"] >= AFE_atleast_inc]
-                filtered_df = filtered_df[filtered_df["sample1_exc_counts"] | filtered_df["sample2_exc_counts"] >= AFE_atleast_exc]
+                filtered_df = \
+                    filtered_df[filtered_df["sample1_inc_counts"] \
+                                | filtered_df["sample2_inc_counts"] \
+                                >= AFE_atleast_inc]
+                filtered_df = \
+                    filtered_df[filtered_df["sample1_exc_counts"] \
+                                | filtered_df["sample2_exc_counts"] \
+                                >= AFE_atleast_exc]
             else:
                 # Filter inclusion reads
-                filtered_df = filtered_df[filtered_df["sample1_inc_counts"] | filtered_df["sample2_inc_counts"] >= atleast_inc]
-                filtered_df = filtered_df[filtered_df["sample1_exc_counts"] | filtered_df["sample2_exc_counts"] >= atleast_exc]
+                filtered_df = \
+                    filtered_df[filtered_df["sample1_inc_counts"] \
+                                | filtered_df["sample2_inc_counts"] \
+                                >= atleast_inc]
+                filtered_df = \
+                    filtered_df[filtered_df["sample1_exc_counts"] \
+                                | filtered_df["sample2_exc_counts"] \
+                                >= atleast_exc]
                 
             # Filter the sum of inclusion and exclusion
-            sample1_sum = filtered_df["sample1_inc_counts"] + filtered_df["sample1_exc_counts"]
-            sample2_sum = filtered_df["sample2_inc_counts"] + filtered_df["sample2_exc_counts"]
-            filtered_df = filtered_df[sample1_sum | sample2_sum >= atleast_sum_inc_exc]
+            sample1_sum = \
+                filtered_df["sample1_inc_counts"] + \
+                filtered_df["sample1_exc_counts"]
+            sample2_sum = \
+                filtered_df["sample2_inc_counts"] + \
+                filtered_df["sample2_exc_counts"]
+            filtered_df = \
+                filtered_df[sample1_sum | sample2_sum >= atleast_sum_inc_exc]
             self.filtered_events[event_type] = filtered_df
 
         
@@ -312,16 +299,19 @@ class PsiTable:
         """
         Return counts for each MISO read class.
         """
-        df["%s_inc_counts" %(df_col)] = np.array(map(lambda x: x[0], df[col_label].values))
-        df["%s_exc_counts" %(df_col)] = np.array(map(lambda x: x[1], df[col_label].values))
-        df["%s_const_counts" %(df_col)] = np.array(map(lambda x: x[2], df[col_label].values))
-        df["%s_neither_counts" %(df_col)] = np.array(map(lambda x: x[3], df[col_label].values))
+        df["%s_inc_counts" %(df_col)] = \
+            np.array(map(lambda x: x[0], df[col_label].values))
+        df["%s_exc_counts" %(df_col)] = \
+            np.array(map(lambda x: x[1], df[col_label].values))
+        df["%s_const_counts" %(df_col)] = \
+            np.array(map(lambda x: x[2], df[col_label].values))
+        df["%s_neither_counts" %(df_col)] = \
+            np.array(map(lambda x: x[3], df[col_label].values))
         return df
 
 
     def output_filtered_comparisons(self, output_dir=None,
                                     sort_column="bayes_factor",
-                                    delimiter='\t',
                                     columns_to_write=[#"event_name",
                                                       "sample1_posterior_mean",
                                                       "sample1_ci_low",
@@ -345,7 +335,7 @@ class PsiTable:
         Output filtered comparisons table to.
         """
         if output_dir == None:
-            output_dir = self.csv_output_dir
+            output_dir = self.output_dir
         # Output each file by event type
         output_dir = os.path.join(output_dir, "filtered_events")
         print "output_filtered_comparisons::writing to dir: %s" %(output_dir)
@@ -353,7 +343,8 @@ class PsiTable:
             curr_output_dir = os.path.join(output_dir, event_type)
             print "Event type: %s" %(event_type)
             # View by comparison
-            comparison_labels = utils.unique_list(filtered_df.index.get_level_values(0))
+            comparison_labels = \
+                utils.unique_list(filtered_df.index.get_level_values(0))
             print "Outputting %d comparisons" %(len(comparison_labels))
             for label in comparison_labels:
                 print "Comparison: %s" %(label)
@@ -368,7 +359,8 @@ class PsiTable:
                 print "Outputting to: %s" %(output_filename)
                 curr_df = filtered_df.ix[label].sort_index(by=sort_column,
                                                            ascending=False)
-                curr_df.to_csv(output_filename, sep=delimiter,
+                curr_df.to_csv(output_filename,
+                               sep=self.delimiter,
                                cols=columns_to_write)
 #                print filtered_df.ix[label].to_csv(output_filename)
             
@@ -382,14 +374,7 @@ class PsiTable:
 
 
 def main():
-    # test
-    sample_labels = [["KH2_NoDox_A", "KH2 -Dox (A)"],
-                     ["MSI1_NoDox_A", "MSI1 -Dox (A)"],
-                     ["MSI1_NoDox_B", "MSI1 -Dox (B)"],
-                     ["MSI1_DOX_A", "MSI1 +DOX (A)"]]
-    miso_samples_dir = os.path.expanduser("~/jaen/Musashi/rna-seq/miso_output/")
-    psi_table = PsiTable(sample_labels,
-                         miso_samples_dir)
+    pass
 
 
 if __name__ == '__main__':
