@@ -201,7 +201,8 @@ class MISOWrap:
         for fname in os.listdir(self.miso_events_dir):
             fname = os.path.join(self.miso_events_dir, fname)
             if os.path.isdir(fname):
-                event_name = os.path.basename(dirname)
+                event_name = os.path.basename(fname)
+                print "event_name: %s" %(event_name)
                 self.event_types.append(event_name)
         if len(self.event_types) == 0:
             print "WARNING: Unable to load event types from %s" \
