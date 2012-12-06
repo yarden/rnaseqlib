@@ -206,6 +206,32 @@ class MISOWrap:
         if len(self.event_types) == 0:
             print "WARNING: Unable to load event types from %s" \
                 %(self.miso_events_dir)
+        # Load MISO event filters
+        self.load_event_filters()
+        
+
+    def load_event_filters(self,
+                           filter_types=["atleast_inc",
+                                         "atleast_exc",
+                                         "atleast_sum",
+                                         "atleast_const"]):
+        """
+        Load event type count filters.
+        """
+        self.event_filters = defaultdict(lambda: defaultdict(int))
+        if "filters" not in self.settings_info:
+            return
+        # Load filter settings if they are present
+        filter_settings = self.settings_info["filters"]
+        for event_type in self.event_types:
+            if event_type in filter_settings:
+                event_settings = filter_settings[event_type]
+                for filter_type in filter_types:
+                    if filter_type not in event_settings:
+                        continue
+                    # Record the filter count
+                    count_filter = int(event_settings[filter_type])
+                    self.event_filters[event_type][filter_type] = count_filter
 
         
     def load_cluster(self):

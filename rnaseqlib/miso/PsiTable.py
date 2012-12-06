@@ -199,9 +199,6 @@ class PsiTable:
                 pandas.concat(comparisons_dict[event_type],
                               keys=comparison_labels)
         self.comparisons_df = dataframe_dict
-        if not bool(self.comparisons_df):
-            print "WARNING: Could not find any comparisons in %s" \
-                %(comparisons_dir)
 
 
     def load_comparisons_counts_from_df(self, df,
@@ -212,7 +209,7 @@ class PsiTable:
         MISO file.
         """
         # Don't process empty dfs
-        if not bool(df):
+        if df.empty:
             return
         # Get list of counts for each sample
         col1, col2 = counts_labels[0], counts_labels[1]
@@ -226,20 +223,34 @@ class PsiTable:
     def filter_coverage_events(self, comparisons_df=None,
                                atleast_inc=1,
                                atleast_exc=5,
-                               atleast_sum_inc_exc=20):
+                               atleast_sum=20,
+                               atleast_const=1):
         """
         Filter events for coverage.
         """
         print "filter_coverage_events::Filtering..."
         if comparisons_df == None:
             comparisons_df = self.comparisons_df
-        if not bool(comparisons_df):
+        if len(comparisons_df.keys()) == 0:
             print "Not filtering - no comparisons found."
             return
         for event_type in self.event_types:
+            if event_type not in comparisons_df:
+                continue
+            ##
+            ## Load read count filters from the settings
+            ##
+            if event_type in self.misowrap_obj.event_filters:
+                event_filters = self.misowrap_obj.event_filters[event_tyoe]
+                if "atleast_inc" in event_filters:
+                    atleast_inc = event_filters["atleast_inc"]
+                if "atleast_exc" in event_filters:
+                    atleast_exc = event_filters["atleast_exc"]
+                if "atleast_sum" in event_filters:
+                    atleast_sum = event_filters["atleast_sum"]
+                if "atleast_const" in event_filters["atleast_const"]:
+                    atleast_const = event_filters["atleast_const"]
             print "Filtering event type: %s" %(event_type)
-            print "COMPARISONS DF: "
-            print comparisons_df
             comparison_counts = \
                 self.load_comparisons_counts_from_df(comparisons_df[event_type])
             # Get counts for each read class for sample 1 and sample 2
@@ -253,36 +264,19 @@ class PsiTable:
             # Filter exclusion reads
             # Only apply this to events other than TandemUTRs!
             if "TandemUTR" in event_type:
-                # For tandem UTRs, apply a filter on the (1,1) reads instead
-                filtered_df = \
-                    filtered_df[filtered_df["sample1_const_counts"] \
-                                | filtered_df["sample2_const_counts"] \
-                                >= atleast_exc]
-            elif "AFE" == event_type:
-                # Use more aggressive filtering for AFEs
-                AFE_atleast_inc = 10
-                AFE_atleast_exc = 10
-                # Filter inclusion reads
-                filtered_df = \
-                    filtered_df[filtered_df["sample1_inc_counts"] \
-                                | filtered_df["sample2_inc_counts"] \
-                                >= AFE_atleast_inc]
-                filtered_df = \
-                    filtered_df[filtered_df["sample1_exc_counts"] \
-                                | filtered_df["sample2_exc_counts"] \
-                                >= AFE_atleast_exc]
-            else:
-                # Filter inclusion reads
-                filtered_df = \
-                    filtered_df[filtered_df["sample1_inc_counts"] \
-                                | filtered_df["sample2_inc_counts"] \
-                                >= atleast_inc]
-                filtered_df = \
-                    filtered_df[filtered_df["sample1_exc_counts"] \
-                                | filtered_df["sample2_exc_counts"] \
-                                >= atleast_exc]
-                
-            # Filter the sum of inclusion and exclusion
+                atleast_exc = 0
+                atleast_const = 5
+            # Filter inclusion reads
+            filtered_df = \
+                filtered_df[filtered_df["sample1_inc_counts"] \
+                            | filtered_df["sample2_inc_counts"] \
+                            >= atleast_inc]
+            # Filter exclusion reads
+            filtered_df = \
+                filtered_df[filtered_df["sample1_exc_counts"] \
+                            | filtered_df["sample2_exc_counts"] \
+                            >= atleast_exc]
+            # Filter the sum of inclusion and exclusion reads
             sample1_sum = \
                 filtered_df["sample1_inc_counts"] + \
                 filtered_df["sample1_exc_counts"]
@@ -290,7 +284,12 @@ class PsiTable:
                 filtered_df["sample2_inc_counts"] + \
                 filtered_df["sample2_exc_counts"]
             filtered_df = \
-                filtered_df[sample1_sum | sample2_sum >= atleast_sum_inc_exc]
+                filtered_df[sample1_sum | sample2_sum >= atleast_sum]
+            # Filter constitutive reads
+            filtered_df = \
+                filtered_df[filtered_df["sample1_const_counts"] \
+                            | filtered_df["sample2_const_counts"] \
+                            >= atleast_const]
             self.filtered_events[event_type] = filtered_df
 
         
@@ -336,7 +335,7 @@ class PsiTable:
         if output_dir == None:
             output_dir = self.output_dir
         # Output each file by event type
-        output_dir = os.path.join(output_dir, "filtered_events")
+        output_dir = os.path.join(output_dir, "test_filtered_events")
         print "output_filtered_comparisons::writing to dir: %s" %(output_dir)
         for event_type, filtered_df in self.filtered_events.iteritems():
             curr_output_dir = os.path.join(output_dir, event_type)

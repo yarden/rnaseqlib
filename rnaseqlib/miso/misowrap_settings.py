@@ -62,7 +62,12 @@ def load_misowrap_settings(config_filename,
                            # Integer parameters
                            INT_PARAMS=["readlen",
                                        "overhanglen",
-                                       "chunk_jobs"],
+                                       "chunk_jobs",
+                                       # Filters for events
+                                       "atleast_inc",
+                                       "atleast_exc",
+                                       "atleast_sum",
+                                       "atleast_const"],
                            BOOL_PARAMS = [],
                            # Parameters to be interpreted as Python lists or
                            # data structures,
