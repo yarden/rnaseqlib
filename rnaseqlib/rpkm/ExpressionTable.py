@@ -18,6 +18,7 @@ from scipy.stats.stats import zscore
 import rnaseqlib
 import rnaseqlib.ribo.ribo_utils as ribo_utils
 
+
 def compute_fold_changes_table(table,
                                pairs_to_compare,
                                c=0.01,
@@ -295,7 +296,10 @@ class ExpressionTable:
             # Load counts information if given
             if self.counts_dir != None:
                 self.load_counts_dir(counts_dir)
+        self.index_data()
 
+
+    def index_data(self):
         if (self.data is not None) and (self.index_col is not None):
             self.indexed_data = self.data.set_index(self.index_col)
             
@@ -321,98 +325,54 @@ class ExpressionTable:
         
     def filter_rpkm_table(self,
                           sample_labels,
-                          thresholds={'rpkm': {'mode': 'any',
-                                               'cutoff': 0.3},
-                                      'counts': {'mode': 'any',
-                                                 'cutoff': 5}}):
+                          thresholds={'rpkm': [{'mode': 'any',
+                                                'cutoff': 0.3}],
+                                      'counts': [{'mode': 'any',
+                                                  'cutoff': 5}]}):
+        """
+        Filter RNA RPKM table.
+
+        - thresholds: Describes a set of filters to apply to
+          RPKM values and or count values.
+        """
+        self.index_data()
         column_names = list(self.data.columns.values)
         # Get columns corresponding to selected labels
         selected_cols = [column_names.index(label) \
                          for label in sample_labels]
-
         filtered_data = None
-        
-        # Slice only relevant columns and apply RPKM cutoff
-        rpkm_cutoff = thresholds['rpkm']['cutoff']
-        filtered_rpkm_index = self.indexed_data.ix[:, selected_cols].values > rpkm_cutoff
-        if thresholds['rpkm']['mode'] == 'any':
-            filtered_data = self.indexed_data[filtered_rpkm_index.any(1)]
-        elif thresholds['rpkm']['mode'] == 'all':
-            filtered_data = self.indexed_data[filtered_rpkm_index.all(1)]
-            
-        # Apply counts cutoff
+        ##
+        ## Apply RPKM value filters
+        ##
+        for rpkm_filter in thresholds["rpkm"]:
+            print "RPKM FILTER: ", rpkm_filter
+            # Slice only relevant columns and apply RPKM cutoff
+            rpkm_cutoff = rpkm_filter["cutoff"]
+            filtered_rpkm_index = \
+                self.indexed_data.ix[:, selected_cols].values > rpkm_cutoff
+            if rpkm_filter["mode"] == "any":
+                filtered_data = self.indexed_data[filtered_rpkm_index.any(1)]
+            elif rpkm_filter["mode"] == "all":
+                filtered_data = self.indexed_data[filtered_rpkm_index.all(1)]
+        ##
+        ## Apply counts filters
+        ##
         # Get dataframe containing only counts column for each sample
         counts_by_samples = self.counts_panel.minor_xs("counts")
-        counts_threshold = thresholds["counts"]["cutoff"]
-
-        # Apply threshold disjunctively in any sample
-        counts_met = None
-        if thresholds["counts"]["mode"] == "any":
-            counts_met = reduce(lambda x, y: x | y,
-                                [col >= counts_threshold \
-                                 for _, col in counts_by_samples.iteritems()])
-        else:
-            raise Exception, "Not implemented mode %s" \
-                %(thresholds["counts"]["mode"])
-        filtered_data = filtered_data.reindex(counts_met.index).dropna()
+        for counts_filter in thresholds["counts"]:
+            counts_threshold = counts_filter["cutoff"]
+            # Apply threshold disjunctively in any sample
+            counts_met = None
+            if counts_filter["mode"] == "any":
+                counts_met = \
+                    reduce(lambda x, y: x | y,
+                           [col >= counts_threshold \
+                            for _, col in counts_by_samples.iteritems()])
+            else:
+                raise Exception, "Not implemented mode %s" \
+                    %(counts_filter["mode"])
+            filtered_data = filtered_data.reindex(counts_met.index).dropna()
         return filtered_data
-        
-                        
-    # def filter_rpkm_table(self, rpkm_cutoff=0.3,
-    #                       cutoff_mode='any',
-    #                       min_read_count=None,
-    #                       sample_rpkm_files=None,
-    #                       entry_id_header='#Gene'):
-    #     """
-    #     Filter RPKM table.
-    #     """
-    #     filtered_rpkm_table = []
-    #     genes_to_sample_counts = {}
-        
-    #     if min_read_count != None:
-    #         if sample_rpkm_files == None:
-    #             raise Exception, "Sample RPKM files must be given to " \
-    #                   "use read count cutoff."
-    #         genes_to_sample_counts = load_rpkm_read_counts(sample_rpkm_files,
-    #                                                        column_labels_to_use)
-
-    #     rpkm_table = self.table_dictlist
-
-    #     for gene in rpkm_table:
-    #         # Convert fields
-    #         gene = evalDict(gene)
-
-    #         # Filter based on read counts
-    #         counts_profile = None
-    #         if min_read_count != None:
-    #             gene_id = gene[entry_id_header]
-    #             counts_profile = array(genes_to_sample_counts[gene_id].values())
-
-    #             if cutoff_mode == 'any':
-    #                 if not (any(counts_profile >= min_read_count)):
-    #                     continue
-    #             elif cutoff_mode == 'all':
-    #                 if not (all(counts_profile >= min_read_count)):
-    #                     continue
-
-    #         # Filter based on expression
-    #         expression_profile = array([gene[label] \
-    #                                     for label in column_labels_to_use])
-
-    #         # enforce all samples to have RPKM >= 0.3
-    #         if any(expression_profile < rpkm_cutoff):
-    #             continue
-
-    #         if cutoff_mode == 'any':
-    #             if any(expression_profile >= rpkm_cutoff):
-    #                 filtered_rpkm_table.append(gene)
-    #         elif cutoff_mode == 'all':
-    #             if all(expression_profile >= rpkm_cutoff):
-    #                 filtered_rpkm_table.append(gene)
-
-    #     print "Filtering resulted in total of %d genes." \
-    #         %(len(filtered_rpkm_table))
-    #     self.filtered_table_dictlist = filtered_rpkm_table
         
 
     def load_rpkm_table(self, rpkm_filename, delimiter=None):

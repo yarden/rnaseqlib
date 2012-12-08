@@ -219,13 +219,10 @@ class MISOWrap:
         Load event type count filters.
         """
         self.event_filters = defaultdict(lambda: defaultdict(int))
-        if "filters" not in self.settings_info:
-            return
         # Load filter settings if they are present
-        filter_settings = self.settings_info["filters"]
         for event_type in self.event_types:
-            if event_type in filter_settings:
-                event_settings = filter_settings[event_type]
+            if event_type in self.settings_info:
+                event_settings = self.settings_info[event_type]
                 for filter_type in filter_types:
                     if filter_type not in event_settings:
                         continue
@@ -243,6 +240,7 @@ class MISOWrap:
           cluster.Cluster(self.cluster_type,
                           self.output_dir,
                           self.logger)
+
 
     def __repr__(self):
         repr_str = "MISOWrap(settings=%s, output_dir=%s)" \
@@ -292,12 +290,10 @@ def summarize_miso_samples(settings_filename,
                                            os.path.basename(event_dirname))
             print "Executing: %s" %(summary_cmd)
             if misowrap_obj.use_cluster:
-                #misowrap_obj.my_cluster.launch_job(summary_cmd, job_name,
-                #ppn=1)
-                pass
+                misowrap_obj.my_cluster.launch_job(summary_cmd, job_name,
+                                                   ppn=1)
             else:
-                #os.system(summary_cmd)
-                pass
+                os.system(summary_cmd)
             
 
 def compare_miso_samples(settings_filename,
@@ -347,12 +343,11 @@ def compare_miso_samples(settings_filename,
                                               sample2_name)
             print "Executing: %s" %(compare_cmd)
             if misowrap_obj.use_cluster:
-                #cluster.run_on_cluster(compare_cmd, job_name,
-                #                       event_comparisons_dir)
-                pass
+                misowrap_obj.my_cluster.launch_job(compare_cmd,
+                                                   job_name,
+                                                   ppn=1)
             else:
-                #os.system(compare_cmd)
-                pass
+                os.system(compare_cmd)
             
 
 def run_miso_on_samples(settings_filename, output_dir,

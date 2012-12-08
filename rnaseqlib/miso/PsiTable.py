@@ -240,8 +240,9 @@ class PsiTable:
             ##
             ## Load read count filters from the settings
             ##
+            print "misowrap_obj: ", self.misowrap_obj.event_filters
             if event_type in self.misowrap_obj.event_filters:
-                event_filters = self.misowrap_obj.event_filters[event_tyoe]
+                event_filters = self.misowrap_obj.event_filters[event_type]
                 if "atleast_inc" in event_filters:
                     atleast_inc = event_filters["atleast_inc"]
                 if "atleast_exc" in event_filters:
@@ -291,6 +292,7 @@ class PsiTable:
                             | filtered_df["sample2_const_counts"] \
                             >= atleast_const]
             self.filtered_events[event_type] = filtered_df
+            print filtered_df
 
         
     def get_counts_by_class(self, col_label, df_col, df):
@@ -336,6 +338,7 @@ class PsiTable:
             output_dir = self.output_dir
         # Output each file by event type
         output_dir = os.path.join(output_dir, "test_filtered_events")
+        utils.make_dir(output_dir)
         print "output_filtered_comparisons::writing to dir: %s" %(output_dir)
         for event_type, filtered_df in self.filtered_events.iteritems():
             curr_output_dir = os.path.join(output_dir, event_type)
@@ -348,8 +351,7 @@ class PsiTable:
                 print "Comparison: %s" %(label)
                 comparison_output_dir = os.path.join(curr_output_dir,
                                                      label)
-                if not os.path.isdir(comparison_output_dir):
-                    os.makedirs(comparison_output_dir)
+                utils.make_dir(comparison_output_dir)
                 output_filename = os.path.join(comparison_output_dir,
                                                "%s.%s.filtered.miso_bf" \
                                                %(label,
