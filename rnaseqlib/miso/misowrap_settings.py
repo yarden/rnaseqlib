@@ -30,6 +30,13 @@ def set_default_misowrap_settings(settings_info,
         for bam_label, bam_file in settings_info["settings"]["bam_files"]:
             settings_info["settings"]["sample_labels"].append([bam_label, 
                                                                bam_label])
+    # If no comparison groups are given, treat the entire
+    # sample set as a group (i.e. compute all pairwise
+    # comparisons between samples)
+    if "comparison_groups" not in settings_info["data"]:
+        sample_labels = [label[0] for label in \
+                         settings_info["settings"]["sample_labels"]]
+        settings_info["data"]["comparison_groups"] = sample_labels
     return settings_info
 
 
@@ -80,7 +87,8 @@ def load_misowrap_settings(config_filename,
                                        "events_to_genes_dir",
                                        "insert_lens_dir"],
                            DATA_PARAMS=["bam_files",
-                                        "sample_labels"]):
+                                        "sample_labels",
+                                        "comparison_groups"]):
     config = ConfigParser.ConfigParser()
     print "Loading settings from: %s" %(config_filename)
     if not os.path.isfile(config_filename):

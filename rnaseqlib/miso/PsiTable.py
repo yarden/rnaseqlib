@@ -15,6 +15,7 @@ import numpy as np
 from collections import defaultdict
 
 import rnaseqlib
+import rnaseqlib.utils as utils
 import rnaseqlib.tables as tables
 import rnaseqlib.miso.miso_utils as miso_utils
 
@@ -51,6 +52,7 @@ class PsiTable:
     def __init__(self, misowrap_obj,
                  verbose=True):
         self.delimiter = "\t"
+        self.na_val = "NA"
         self.misowrap_obj = misowrap_obj
         self.settings_info = self.misowrap_obj.settings_info
         self.sample_labels = self.misowrap_obj.sample_labels
@@ -61,6 +63,7 @@ class PsiTable:
         self.filtered_events = {}
         # Load gene tables
         self.gene_table = None
+        self.genes_to_descs = defaultdict(list)
         self.load_gene_table()
         self.verbose = verbose
         # Event types to process
@@ -70,11 +73,6 @@ class PsiTable:
         # Comparisons dataframe
         self.comparisons_df = None
         ##
-        ## Load annotation of events, like a map
-        ## events to genes.
-        ##
-        self.events_to_genes = {}
-        self.load_events_to_genes()
         ## Load the MISO output
         ##
         # Load summaries
@@ -85,12 +83,6 @@ class PsiTable:
         self.filter_coverage_events()
 
 
-    def load_events_to_genes(self):
-        """
-        Load mapping from events to genes.
-        """
-
-
     def load_gene_table(self):
         """
         Try to load a gene table if one is given.
@@ -99,14 +91,34 @@ class PsiTable:
         self.gene_table = tables.GeneTable(self.misowrap_obj.tables_dir,
                                            "ensGene",
                                            tables_only=True)
+            
 
         
-    def add_event_genes(self):
+    def add_genes_to_events(self, df, event_type):
         """
-        Add the gene information to each event.
+        Add the gene information to each event in the filtered table.
         """
-        pass
-    
+        events_to_genes = self.misowrap_obj.events_to_genes[event_type]
+        if len(events_to_genes) == 0:
+            print "WARNING: Could not find genes info for event type %s" \
+                %(event_type)
+        # Add the genes related to each event
+        all_genes_values = []
+        all_genes_symbols = []
+        for event_id in df.index:
+            genes_str = self.na_val
+            genes_symbols_str = self.na_val
+            if event_id in events_to_genes:
+                genes = events_to_genes[event_id]
+                genes_symbols = [self.gene_table.genes_to_names[g] \
+                                 for g in genes]
+                genes_str = ",".join(genes)
+                genes_symbols_str = ",".join(genes_symbols)
+            all_genes_values.append(genes_str)
+            all_genes_symbols.append(genes_symbols_str)
+        df["gene_id"] = all_genes_values
+        df["gene_symbol"] = all_genes_symbols
+
 
     def load_summaries(self, miso_samples_dir):
         """
@@ -186,6 +198,7 @@ class PsiTable:
                 bf_filename = get_bf_filename(curr_comp_dir)
                 if not os.path.isfile(bf_filename):
                     raise Exception, "No BF file: %s" %(bf_filename)
+                print "Loading: %s" %(bf_filename)
                 curr_df = pandas.read_table(bf_filename,
                                             sep=self.delimiter,
                                             index_col=[0])
@@ -193,6 +206,8 @@ class PsiTable:
                 if only_two_isoform:
                     if event_type == "TandemUTR_3pseq":
                         curr_df = self.filter_only_two_isoform(curr_df)
+                # Add gene information
+                self.add_genes_to_events(curr_df, event_type)
                 comparisons_dict[event_type].append(curr_df)
             # Concatenate all the DataFrames for each comparison together
             dataframe_dict[event_type] = \
@@ -222,7 +237,7 @@ class PsiTable:
 
     def filter_coverage_events(self, comparisons_df=None,
                                atleast_inc=1,
-                               atleast_exc=5,
+                               atleast_exc=1,
                                atleast_sum=20,
                                atleast_const=1):
         """
@@ -240,7 +255,6 @@ class PsiTable:
             ##
             ## Load read count filters from the settings
             ##
-            print "misowrap_obj: ", self.misowrap_obj.event_filters
             if event_type in self.misowrap_obj.event_filters:
                 event_filters = self.misowrap_obj.event_filters[event_type]
                 if "atleast_inc" in event_filters:
@@ -249,7 +263,7 @@ class PsiTable:
                     atleast_exc = event_filters["atleast_exc"]
                 if "atleast_sum" in event_filters:
                     atleast_sum = event_filters["atleast_sum"]
-                if "atleast_const" in event_filters["atleast_const"]:
+                if "atleast_const" in event_filters:
                     atleast_const = event_filters["atleast_const"]
             print "Filtering event type: %s" %(event_type)
             comparison_counts = \
@@ -292,7 +306,6 @@ class PsiTable:
                             | filtered_df["sample2_const_counts"] \
                             >= atleast_const]
             self.filtered_events[event_type] = filtered_df
-            print filtered_df
 
         
     def get_counts_by_class(self, col_label, df_col, df):
@@ -313,6 +326,8 @@ class PsiTable:
     def output_filtered_comparisons(self, output_dir=None,
                                     sort_column="bayes_factor",
                                     columns_to_write=[#"event_name",
+                                                      "gene_id",
+                                                      "gene_symbol",
                                                       "sample1_posterior_mean",
                                                       "sample1_ci_low",
                                                       "sample1_ci_high",
@@ -329,17 +344,17 @@ class PsiTable:
                                                       "chrom",
                                                       "strand",
                                                       "mRNA_starts",
-                                                      "mRNA_ends"],
-                                    with_gene_table=True):
+                                                      "mRNA_ends"]):
         """
         Output filtered comparisons table to.
         """
         if output_dir == None:
-            output_dir = self.output_dir
+            output_dir = self.misowrap_obj.comparisons_dir
         # Output each file by event type
-        output_dir = os.path.join(output_dir, "test_filtered_events")
+        output_dir = os.path.join(output_dir, "filtered_events")
+        print "Outputting filtered events..."
+        print "  - Output dir: %s" %(output_dir)
         utils.make_dir(output_dir)
-        print "output_filtered_comparisons::writing to dir: %s" %(output_dir)
         for event_type, filtered_df in self.filtered_events.iteritems():
             curr_output_dir = os.path.join(output_dir, event_type)
             print "Event type: %s" %(event_type)
@@ -359,11 +374,10 @@ class PsiTable:
                 print "Outputting to: %s" %(output_filename)
                 curr_df = filtered_df.ix[label].sort_index(by=sort_column,
                                                            ascending=False)
+                # Add genes information to df
                 curr_df.to_csv(output_filename,
                                sep=self.delimiter,
                                cols=columns_to_write)
-#                print filtered_df.ix[label].to_csv(output_filename)
-            
             
     
     def get_differential_events(self):
@@ -371,6 +385,15 @@ class PsiTable:
         Get differential events.
         """
         pass
+
+
+    def __repr__(self):
+        settings_fname = self.misowrap_obj.settings_filename
+        return "PsiTable(settings=%s)" %(settings_fname)
+
+
+    def __str__(self):
+        return self.__repr__()
 
 
 def main():

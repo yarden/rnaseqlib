@@ -39,6 +39,7 @@ class MISOWrap:
         self.bam_files = None
         # Sample labels
         self.sample_labels = None
+        self.comparison_groups = None
         # Insert length directory (for paired-end samples)
         self.insert_lens_dir = None
         # Logs output directory
@@ -144,6 +145,7 @@ class MISOWrap:
         # Set output directories
         self.comparisons_dir = os.path.join(self.output_dir, 
                                             "comparisons")
+        self.comparison_groups = self.settings_info["data"]["comparison_groups"]
         self.logs_outdir = os.path.join(self.output_dir,
                                         "misowrap_logs")
         # Create necessary directories
@@ -261,10 +263,12 @@ def summarize_miso_samples(settings_filename,
     misowrap_obj = MISOWrap(settings_filename,
                             output_dir)
     bam_files = misowrap_obj.bam_files
-    sample_labels = misowrap_obj.sample_labels,
+    sample_labels = misowrap_obj.sample_labels
     print "Summarizing MISO output..."
+    print "  - Output dir: %s" %(output_dir)
     run_miso_cmd = misowrap_obj.run_miso_cmd
     for sample_label in sample_labels:
+        print "sample label: ", sample_label
         sample_basename = sample_label[0]
         sample_dir_path = \
             utils.pathify(os.path.join(misowrap_obj.miso_outdir,
@@ -309,46 +313,55 @@ def compare_miso_samples(settings_filename,
     overhang_len = misowrap_obj.overhang_len
     miso_bin_dir = misowrap_obj.miso_bin_dir
     miso_output_dir = misowrap_obj.miso_outdir
-    print "Running MISO comparisons..."
+    comparison_groups = misowrap_obj.comparison_groups
     comparisons_dir = misowrap_obj.comparisons_dir
-    if not os.path.isdir(comparisons_dir):
-        os.makedirs(comparisons_dir)
-    sample_pairs = utils.get_pairwise_comparisons(sample_labels)
-    print "  - Total of %d comparisons" %(len(sample_pairs))
-    for sample1, sample2 in sample_pairs:
-        # For each pair of samples, compare their output
-        # along each event type
-        sample1_name = sample1[0]
-        sample2_name = sample2[0]
-        print "Comparing %s %s" %(sample1_name,
-                                  sample2_name)
-        # Directories for each sample
-        sample1_dir = os.path.join(miso_output_dir, sample1_name)
-        sample2_dir = os.path.join(miso_output_dir, sample2_name)
-        for event_type in misowrap_obj.event_types:
-            print "Processing %s..." %(event_type)
-            sample1_event_dir = os.path.join(sample1_dir, event_type)
-            sample2_event_dir = os.path.join(sample2_dir, event_type)
-            job_name = "compare_%s_%s_%s" %(sample1_name,
-                                            sample2_name,
-                                            event_type)
-            event_comparisons_dir = os.path.join(comparisons_dir,
+    utils.make_dir(comparisons_dir)
+    print "Running MISO comparisons..."
+    ##
+    ## Compute comparisons between all pairs
+    ## in a sample group
+    ##
+    for comp_group in comparison_groups:
+        sample_pairs = utils.get_pairwise_comparisons(comp_group)
+        print "  - Total of %d comparisons" %(len(sample_pairs))
+        for sample1, sample2 in sample_pairs:
+            # For each pair of samples, compare their output
+            # along each event type
+            print "Comparing %s %s" %(sample1,
+                                      sample2)
+            # Directories for each sample
+            sample1_dir = os.path.join(miso_output_dir,
+                                       sample1)
+            sample2_dir = os.path.join(miso_output_dir,
+                                       sample2)
+            for event_type in misowrap_obj.event_types:
+                print "Processing %s..." %(event_type)
+                sample1_event_dir = os.path.join(sample1_dir,
                                                  event_type)
-            compare_cmd = "%s --compare-samples %s %s %s " \
-                "--comparison-labels %s %s" %(misowrap_obj.run_miso_cmd,
-                                              sample1_event_dir,
-                                              sample2_event_dir,
-                                              event_comparisons_dir,
-                                              sample1_name,
-                                              sample2_name)
-            print "Executing: %s" %(compare_cmd)
-            if misowrap_obj.use_cluster:
-                misowrap_obj.my_cluster.launch_job(compare_cmd,
-                                                   job_name,
-                                                   ppn=1)
-            else:
-                os.system(compare_cmd)
-            
+                sample2_event_dir = os.path.join(sample2_dir,
+                                                 event_type)
+                job_name = "compare_%s_%s_%s" %(sample1,
+                                                sample2,
+                                                event_type)
+                event_comparisons_dir = \
+                    os.path.join(comparisons_dir,
+                                 event_type)
+                compare_cmd = "%s --compare-samples %s %s %s " \
+                    "--comparison-labels %s %s" \
+                    %(misowrap_obj.run_miso_cmd,
+                      sample1_event_dir,
+                      sample2_event_dir,
+                      event_comparisons_dir,
+                      sample1,
+                      sample2)
+                print "Executing: %s" %(compare_cmd)
+                if misowrap_obj.use_cluster:
+                    misowrap_obj.my_cluster.launch_job(compare_cmd,
+                                                       job_name,
+                                                       ppn=1)
+                else:
+                    os.system(compare_cmd)
+
 
 def run_miso_on_samples(settings_filename, output_dir,
                         use_cluster=True):
@@ -426,7 +439,7 @@ def filter_events(settings_filename,
                             output_dir)
     print "Filtering MISO events..."
     psi_table = pt.PsiTable(misowrap_obj)
-    
+    psi_table.output_filtered_comparisons()
 
                 
 def compute_insert_lens(settings_filename,

@@ -133,6 +133,19 @@ def iter_by_pair(l, step=2):
     return itertools.izip(l, l[1::step])
 
 
+def unique_list(l):
+    """
+    Return unique list, with consistent ordering.
+    """
+    seen = {}
+    uniq_l = []
+    for elt in l:
+        if elt in seen: continue
+        uniq_l.append(elt)
+        seen[elt] = True
+    return uniq_l
+
+
 def get_pairwise_from_sets(first_samples, second_samples):
     seen_pairs = []
     for sample_pair in itertools.product(first_samples,

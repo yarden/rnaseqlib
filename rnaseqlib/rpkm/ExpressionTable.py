@@ -345,7 +345,6 @@ class ExpressionTable:
         ## Apply RPKM value filters
         ##
         for rpkm_filter in thresholds["rpkm"]:
-            print "RPKM FILTER: ", rpkm_filter
             # Slice only relevant columns and apply RPKM cutoff
             rpkm_cutoff = rpkm_filter["cutoff"]
             filtered_rpkm_index = \
