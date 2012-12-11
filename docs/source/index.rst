@@ -20,13 +20,21 @@ Features
 ========
 
 * Pipeline for analyzing RNA sequencing data:
+
   - Maps reads to genome and splice junctions
+
   - Computes basic quality control statistics
+
   - Outputs RPKM values for genes
+
 * Supports several sequencing experiments:
+
   - mRNA sequencing (mRNA-Seq)
+
   - Ribosome profiling data (Ribo-Seq)
+
   - *CLIP for RNA-binding proteins (CLIP-Seq) [In progress]*
+
   - *SELEX-Seq [In progress]*
 * Contains utilities for processing `MISO`_ output
 
