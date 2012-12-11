@@ -172,6 +172,8 @@ class MISOWrap:
                                          "run_miso.py")
         self.run_events_cmd = os.path.join(self.miso_bin_dir,
                                            "run_events_analysis.py")
+        self.pe_utils_cmd = os.path.join(self.miso_bin_dir,
+                                         "pe_utils.py")
         # Files related to gene tables
         self.tables_dir = \
             os.path.join(self.settings_info["pipeline-files"]["init_dir"],
@@ -455,13 +457,12 @@ def compute_insert_lens(settings_filename,
             %(const_exons_gff)
         sys.exit(1)
 
-    miso_dir = os.path.abspath(os.path.expanduser(miso_dir))
-    pe_utils_path = os.path.join(miso_dir, "pe_utils.py")
+    pe_utils_path = misowrap_obj.pe_utils_cmd 
     insert_len_output_dir = os.path.join(output_dir, "insert_lens")
-    num_bams = len(bam_files)
+    num_bams = len(misowrap_obj.bam_files)
     
     print "Computing insert lengths for %d files" %(num_bams)
-    for bam_filename in bam_files:
+    for bam_filename in misowrap_obj.bam_files:
         print "Processing: %s" %(bam_filename)
         insert_len_cmd = "%s --compute-insert-len %s %s --output-dir %s" \
             %(pe_utils_path,
@@ -471,8 +472,11 @@ def compute_insert_lens(settings_filename,
         print "Executing: %s" %(insert_len_cmd)
         sample_name = os.path.basename(bam_filename)
         job_name = sample_name.split(".bam")[0]
-        #misowrap_obj.launch_job(insert_len_cmd, job_name,
-        # ppn=1)
+        if misowrap_obj.use_cluster:
+            misowrap_obj.launch_job(insert_len_cmd, job_name,
+                                    ppn=1)
+        else:
+            os.system(insert_len_cmd)
 
 
 def greeting(parser=None):
