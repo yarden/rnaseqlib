@@ -78,7 +78,7 @@ The first step is to create a set of files, called an *RNA Base*, required to ru
 
   rna_pipeline.py --init mm9 --output-dir pipeline_init
 
-This will create a directory called ``mm9`` in ``pipeline_init`` containing the necessary files for running the pipeline on the ``mm9`` genome.
+This will create a directory called ``mm9`` in ``pipeline_init`` containing the necessary files for running the pipeline on the mm9 genome.
 The initialization procedure will, among other things, do the following:
 
   * Download the genome sequence files from UCSC (in FASTA format)
