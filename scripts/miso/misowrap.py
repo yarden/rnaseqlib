@@ -473,8 +473,8 @@ def compute_insert_lens(settings_filename,
         sample_name = os.path.basename(bam_filename)
         job_name = sample_name.split(".bam")[0]
         if misowrap_obj.use_cluster:
-            misowrap_obj.launch_job(insert_len_cmd, job_name,
-                                    ppn=1)
+            misowrap_obj.my_cluster.launch_job(insert_len_cmd, job_name,
+                                               ppn=1)
         else:
             os.system(insert_len_cmd)
 

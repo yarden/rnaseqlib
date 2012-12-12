@@ -73,6 +73,12 @@ class Cluster:
                                       self.output_dir,
                                       queue_type="normal",
                                       ppn=ppn)
+        elif self.cluster_type == "qsub":
+            job_id = Mypbm.launchJob(cmd, job_name,
+                                     scritps_options,
+                                     self.output_dir,
+                                     queue_type="long",
+                                     ppn=ppn)
         if job_id is None:
             print "WARNING: Job %s not submitted." %(job_name)
         return job_id
@@ -83,6 +89,12 @@ class Cluster:
             print "Waiting on %s.. (started wait @ %s)" %(job_id,
                                                           time.strftime("%x, %X"))
             Mybsub.waitUntilDone(job_id)
+            print "  - Completed at %s" %(time.strftime("%x, %X"))
+            return True
+        elif self.cluster_type == "qsub":
+            print "Waiting on %s.. (started wait @ %s)" %(job_id,
+                                                          time.strftime("%x, %X"))
+            Mypbm.waitUntilDone(job_id)
             print "  - Completed at %s" %(time.strftime("%x, %X"))
             return True
         else:
