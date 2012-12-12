@@ -6,7 +6,7 @@
 data_type = rnaseq
 
 [pipeline-files]
-#init_dir = /lab/solexa_jaenisch/solexa_jaenisch2/yarden/pipeline_init/
+# Place your init directory here 
 init_dir = /lab/solexa_jaenisch/solexa_jaenisch2/yarden/test/mm9
 
 [mapping]
