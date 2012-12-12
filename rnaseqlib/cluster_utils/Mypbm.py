@@ -22,7 +22,8 @@ def launchJob(cmd, scriptOptions,
               verbose=True,
               test=False,
               fast=False,
-              queue_type="quick"):
+              queue_type="quick",
+              ppn="4"):
     """
     Submits a job on the cluster which will run command 'cmd',
     with options 'scriptOptions'
@@ -41,7 +42,7 @@ def launchJob(cmd, scriptOptions,
 
     scriptOptions.setdefault("workingdir", os.getcwd())
     scriptOptions.setdefault("nodes", "1")
-    scriptOptions.setdefault("ppn", "1")
+    scriptOptions.setdefault("ppn", str(ppn))
     scriptOptions.setdefault("jobname", os.path.basename(sys.argv[0]))
     scriptOptions.setdefault("scriptuser", getpass.getuser())
     scriptOptions.setdefault("queue", queue_type)
