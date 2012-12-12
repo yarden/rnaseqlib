@@ -18,7 +18,7 @@ def waitUntilDone(jobID,
     time.sleep(sleep)
 
         
-def launchJob(cmd, scriptOptions,
+def launchJob(cmd, scriptOptions, job_name,
               verbose=True,
               test=False,
               fast=False,
@@ -43,7 +43,7 @@ def launchJob(cmd, scriptOptions,
     scriptOptions.setdefault("workingdir", os.getcwd())
     scriptOptions.setdefault("nodes", "1")
     scriptOptions.setdefault("ppn", str(ppn))
-    scriptOptions.setdefault("jobname", os.path.basename(sys.argv[0]))
+    scriptOptions.setdefault("jobname", job_name)    
     scriptOptions.setdefault("scriptuser", getpass.getuser())
     scriptOptions.setdefault("queue", queue_type)
     scriptOptions.setdefault("outdir", "")
