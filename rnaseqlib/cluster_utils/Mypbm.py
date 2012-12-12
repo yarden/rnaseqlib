@@ -18,7 +18,7 @@ def waitUntilDone(jobID,
     time.sleep(sleep)
 
         
-def launchJob(cmd, scriptOptions, job_name,
+def launchJob(cmd, job_name, scriptOptions,
               verbose=True,
               test=False,
               fast=False,
