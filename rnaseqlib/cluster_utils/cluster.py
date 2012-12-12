@@ -75,7 +75,7 @@ class Cluster:
                                       ppn=ppn)
         elif self.cluster_type == "qsub":
             job_id = Mypbm.launchJob(cmd, job_name,
-                                     scripts_options,
+                                     script_options,
                                      self.output_dir,
                                      queue_type="long",
                                      ppn=ppn)
