@@ -1,4 +1,7 @@
-import os, os.path, subprocess, sys, time, getpass
+import rnaseqlib
+import rnaseqlib.utils as utils
+
+import os, subprocess, sys, time, getpass
 from optparse import OptionParser
 
 def waitUntilDone(jobID,
@@ -19,7 +22,7 @@ def waitUntilDone(jobID,
 
         
 def launchJob(cmd, job_name, scriptOptions,
-              verbose=True,
+              verbose=False,
               test=False,
               fast=False,
               queue_type="quick",
@@ -36,7 +39,6 @@ def launchJob(cmd, job_name, scriptOptions,
 
     Returns a job ID if the job was submitted properly
     """
-    print "scriptOptions: ", scriptOptions
     if type(cmd) not in [type(list()), type(tuple())]:
         cmd = [cmd]
 
@@ -59,9 +61,8 @@ def launchJob(cmd, job_name, scriptOptions,
     outscriptName = "%s.%i"%(scriptOptions["jobname"], pid)
     
     scriptOptions["outf"] = \
-        os.path.abspath(os.path.join(scriptOptions["outdir"],
-                                     outscriptName+".out"))
-    print "Dumping script to: %s" %(scriptOptions["outf"])
+        utils.pathify(os.path.join(scriptOptions["outdir"],
+                                   outscriptName+".out"))
 
     if fast:
         assert scriptOptions["nodes"] == "1", \
