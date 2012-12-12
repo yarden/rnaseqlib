@@ -36,7 +36,7 @@ def launchJob(cmd, scriptOptions,
 
     Returns a job ID if the job was submitted properly
     """
-
+    print "scriptOptions: ", scriptOptions
     if type(cmd) not in [type(list()), type(tuple())]:
         cmd = [cmd]
 
