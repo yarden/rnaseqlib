@@ -16,7 +16,6 @@ for scheme in INSTALL_SCHEMES.values():
 setup(name = 'rnaseqlib',
       version = '0.1',
       description = 'RNA-Seq analysis pipeline',
-      license = 'GNU License',
       author = 'Yarden Katz,Eric T. Wang,Noah Spies',
       data_files = [('examples/rnaseq',
                      ['examples/rnaseq/rnaseq_settings.txt']),
