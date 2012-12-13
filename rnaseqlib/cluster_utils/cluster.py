@@ -2,6 +2,7 @@
 ## Utilities for running on cluster
 ##
 import os
+import subprocess
 import sys
 import time
 
@@ -16,10 +17,14 @@ class Cluster:
                  cluster_type,
                  output_dir,
                  logger,
-                 supported_types=["bsub", "qsub"]):
+                 supported_types=["bsub", "qsub", "none"]):
         self.logger = logger
-        self.cluster_type = cluster_type
+        self.cluster_type = cluster_type.lower()
         self.output_dir = output_dir
+
+        self._curjobid = 0
+        self.jobs = {}
+        
         if self.cluster_type not in supported_types:
             self.logger.critical("Unsupported cluster type: %s" %(self.cluster_type))
             print "Error: unsupported cluster type %s" %(self.cluster_type)
@@ -79,6 +84,11 @@ class Cluster:
                                      self.output_dir,
                                      queue_type="long",
                                      ppn=ppn)
+        elif self.cluster_type == "none":
+            p = subprocess.Popen(cmd, shell=True)
+            self.jobs[self._curjobid] = p
+            job_id = self._curjobid
+            self._curjobid += 1
         if job_id is None:
             print "WARNING: Job %s not submitted." %(job_name)
         return job_id
@@ -97,6 +107,8 @@ class Cluster:
             Mypbm.waitUntilDone(job_id)
             print "  - Completed at %s" %(time.strftime("%x, %X"))
             return True
+        elif self.cluster_type == "none":
+            self.jobs[job_id].wait()
         else:
             raise Exception, "Not implemented yet."
         
