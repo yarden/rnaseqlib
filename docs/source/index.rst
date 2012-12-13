@@ -50,7 +50,7 @@ Updates
 Installation
 ============
 
-Get ``rnaseqlib`` from the GitHub repository (http://github.com/yarden/rnaseqlib). To install with `distribute`'s `easy_install`: ::
+Get ``rnaseqlib`` from the GitHub repository (http://github.com/yarden/rnaseqlib). To install with ``distribute``'s ``easy_install``: ::
 
   easy_install rnaseqlib
 
