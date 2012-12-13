@@ -62,9 +62,6 @@ class Cluster:
         
         Wrapper to Mysge/Mypbm/Mybsub.
         """
-        ##
-        ## TODO: add wrapper for Python multiprocess for local running
-        ##
         job_id = None
         script_options = {}
         if (unless_exists is not None) and \
@@ -73,18 +70,21 @@ class Cluster:
                 %(cmd, unless_exists)
             return job_id
         if self.cluster_type == "bsub":
+            # Use bsub for submission
             job_id = Mybsub.launchJob(cmd, job_name,
                                       script_options,
                                       self.output_dir,
                                       queue_type="normal",
                                       ppn=ppn)
         elif self.cluster_type == "qsub":
+            # Use qsub for submission
             job_id = Mypbm.launchJob(cmd, job_name,
                                      script_options,
                                      self.output_dir,
                                      queue_type="long",
                                      ppn=ppn)
         elif self.cluster_type == "none":
+            # Use local machine (multi-cores)
             p = subprocess.Popen(cmd, shell=True)
             self.jobs[self._curjobid] = p
             job_id = self._curjobid
