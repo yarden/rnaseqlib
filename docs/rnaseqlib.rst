@@ -67,9 +67,11 @@ Or for local installation with distribute: ::
   python setup.py install --prefix=/your/local/dir
 
 
+
+
 Running ``rnaseqlib``
 =====================
-.. _Running rnaseqlib
+
 
 Initializing an RNA base for your genome
 ----------------------------------------
