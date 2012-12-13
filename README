@@ -1,1 +1,5 @@
 rnaseqlib is a simple, lightweight pipeline for RNA-Seq analysis. 
+
+Supports mRNA-Seq, Ribo-Seq, and CLIP-Seq analyses.
+
+rnaseqlib is UNPUBLISHED SOFTWARE. It comes with NO support, guarantees, promises or warranties of any sort. It is a work in progress. 
