@@ -98,7 +98,8 @@ class QualityControl:
             mate_reads = []
             for mate_rawdata in self.sample.rawdata:
                 num_reads = 0
-                fastq_entries = fastq_utils.get_fastq_entries(mate_rawdata.reads_filename)
+                fastq_entries = \
+                    fastq_utils.get_fastq_entries(mate_rawdata.reads_filename)
                 for entry in fastq_entries:
                     num_reads += 1
                 mate_reads.append(num_reads)
@@ -108,7 +109,8 @@ class QualityControl:
             self.logger.info("Getting number of single-end reads.")
             num_reads = 0
             # Single-end
-            fastq_entries = fastq_utils.get_fastq_entries(self.sample.rawdata.reads_filename)
+            fastq_entries = \
+                fastq_utils.get_fastq_entries(self.sample.rawdata.reads_filename)
             for entry in fastq_entries:
                 num_reads += 1
             return num_reads
@@ -126,7 +128,8 @@ class QualityControl:
 
     def get_num_unique_mapped(self):
         self.logger.info("Getting number of unique reads.")
-        num_unique_mapped = count_nondup_reads(self.sample.unique_bam_filename)
+        num_unique_mapped = \
+            count_nondup_reads(self.sample.unique_bam_filename)
         return num_unique_mapped
     
 
@@ -174,9 +177,10 @@ class QualityControl:
         merged_exons_map_fname = os.path.join(self.regions_outdir,
                                               output_basename)
         num_exons_reads = 0
-        result = bedtools_utils.count_reads_matching_intervals(self.sample.ribosub_bam_filename,
-                                                               merged_exons_filename,
-                                                               merged_exons_map_fname)
+        result = \
+            bedtools_utils.count_reads_matching_intervals(self.sample.ribosub_bam_filename,
+                                                          merged_exons_filename,
+                                                          merged_exons_map_fname)
         if result is None:
             self.logger.warning("Mapping to exons failed.")
         else:
@@ -197,9 +201,10 @@ class QualityControl:
         introns_map_fname = os.path.join(self.regions_outdir,
                                          output_basename)
         num_introns_reads = 0
-        result = bedtools_utils.count_reads_matching_intervals(self.sample.ribosub_bam_filename,
-                                                               introns_filename,
-                                                               introns_map_fname)
+        result = \
+            bedtools_utils.count_reads_matching_intervals(self.sample.ribosub_bam_filename,
+                                                          introns_filename,
+                                                          introns_map_fname)
         if result is None:
             self.logger.warning("Mapping to introns failed.")
             return num_introns_reads
