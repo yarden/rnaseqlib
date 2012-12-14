@@ -499,28 +499,31 @@ class Pipeline:
 
 
     def run_on_sample(self, label):
-        self.logger.info("Running on sample: %s" %(label))
-        self.logger.info("Retrieving sample...")
-        # Fetch the sample by its label
-        sample = self.get_sample_by_label(label)
-        if sample is None:
-            self.logger.info("Cannot find sample %s! Exiting.." \
-                             %(label))
-            print "Error: Cannot find sample %s" %(label)
-            sys.exit(1)
-        # Pre-process the data if needed
-        self.logger.info("Preprocessing reads")
-        sample = self.preprocess_reads(sample)
-        # Map the data
-        self.logger.info("Mapping reads")
-        sample = self.map_reads(sample)
-        # Perform QC
-        self.logger.info("Running QC")
-        sample = self.run_qc(sample)
-        # Run gene expression analysis
-        self.logger.info("Running analysis")
-        sample = self.run_analysis(sample)
-
+        try:
+            self.logger.info("Running on sample: %s" %(label))
+            self.logger.info("Retrieving sample...")
+            # Fetch the sample by its label
+            sample = self.get_sample_by_label(label)
+            if sample is None:
+                self.logger.info("Cannot find sample %s! Exiting.." \
+                                 %(label))
+                print "Error: Cannot find sample %s" %(label)
+                sys.exit(1)
+            # Pre-process the data if needed
+            self.logger.info("Preprocessing reads")
+            sample = self.preprocess_reads(sample)
+            # Map the data
+            self.logger.info("Mapping reads")
+            sample = self.map_reads(sample)
+            # Perform QC
+            self.logger.info("Running QC")
+            sample = self.run_qc(sample)
+            # Run gene expression analysis
+            self.logger.info("Running analysis")
+            sample = self.run_analysis(sample)
+        except:
+            self.logger.exception("Failed while running on sample %s"%label)
+            raise
             
     def map_reads(self, sample):
         """
