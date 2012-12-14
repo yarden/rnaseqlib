@@ -467,7 +467,6 @@ class Pipeline:
                   self.settings_filename,
                   self.output_dir)
             self.logger.info("Executing: %s" %(sample_cmd))
-            print "Executing: %s" %(sample_cmd)
             job_id = self.my_cluster.launch_job(sample_cmd, job_name)
             self.logger.info("Job launched with ID %s" %(job_id))
             samples_job_ids.append(job_id)

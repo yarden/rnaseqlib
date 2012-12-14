@@ -88,8 +88,8 @@ class QualityControl:
 
         For single-end samples, returns a single number.
 
-        For paired-end samples, return pair of comma-separated
-        numbers: 'left_mate,right_mate'.
+        For paired-end samples, return a comma-separated
+        pair of numbers: 'num_left_mate,num_right_mate'
         """
         self.logger.info("Getting number of reads.")
         if self.sample.paired:
@@ -265,7 +265,17 @@ class QualityControl:
         percent_mapped = 0
         if self.qc_results["num_mapped"] == self.na_val:
             return percent_mapped
-        percent_mapped = self.qc_results["num_mapped"] / self.qc_results["num_reads"]
+        if self.sample.paired:
+            # For paired-end samples, divide the number of mapped
+            # reads by the smaller of the two numbers of left mate
+            # and right mates
+            pair_denom = min(map(int,
+                                 self.qc_results["num_reads"].split(",")))
+            percent_mapped = \
+                self.qc_results["num_mapped"] / pair_denom
+        else:
+            percent_mapped = \
+                self.qc_results["num_mapped"] / self.qc_results["num_reads"]
         return percent_mapped
 
 
@@ -273,7 +283,8 @@ class QualityControl:
         percent_unique = 0
         if self.qc_results["num_unique_mapped"] == self.na_val:
             return percent_unique
-        percent_unique = self.qc_results["num_unique_mapped"] / self.qc_results["num_mapped"]
+        percent_unique = \
+            self.qc_results["num_unique_mapped"] / self.qc_results["num_mapped"]
         return percent_unique
 
     
@@ -281,7 +292,8 @@ class QualityControl:
         percent_ribo = 0
         if self.qc_results["num_ribo"] == self.na_val:
             return percent_ribo
-        percent_ribo = self.qc_results["num_ribo"] / self.qc_results["num_mapped"]
+        percent_ribo = \
+            self.qc_results["num_ribo"] / self.qc_results["num_mapped"]
         return 0
 
     
@@ -321,7 +333,8 @@ class QualityControl:
            (self.qc_results["num_mapped"] == 0):
             self.logger.critical("Cannot compute QC stats since number of reads "
                                  "mapped is not available!")
-            self.logger.critical("num_mapped = %s" %(str(self.qc_results["num_mapped"])))
+            self.logger.critical("num_mapped = %s" \
+                                 %(str(self.qc_results["num_mapped"])))
             sys.exit(1)
         self.qc_stat_funcs = [("percent_unique", self.get_percent_unique),
                               ("percent_mapped", self.get_percent_mapped),
