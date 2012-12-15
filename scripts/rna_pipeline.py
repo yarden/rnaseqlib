@@ -129,6 +129,7 @@ def main():
 
     if options.output_dir == None:
         print "Error: need --output-dir"
+        parser.print_help()
         sys.exit(1)
         
     output_dir = utils.pathify(options.output_dir)
@@ -140,6 +141,7 @@ def main():
         if options.settings == None:
             # Running of pipeline requires settings filename
             print "Error: need --settings"
+            parser.print_help()
             sys.exit(1)
         settings_filename = utils.pathify(options.settings)
         run_pipeline(settings_filename,
@@ -149,6 +151,7 @@ def main():
         if options.settings == None:
             # Running of pipeline requires settings filename
             print "Error: need --settings"
+            parser.print_help()
             sys.exit(1)
         settings_filename = utils.pathify(options.settings)
         sample_label = options.run_on_sample
