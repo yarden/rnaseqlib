@@ -414,6 +414,8 @@ def run_miso_on_samples(settings_filename, output_dir,
                                                         pe_params["sdev"])
             # Read length
             miso_cmd += " --read-len %d" %(read_len)
+            # Overhang length
+            miso_cmd += " --overhang-len %d" %(overhang_len)
             # Output directory
             miso_cmd += " --output-dir %s" %(sample_output_dir)
             # Use cluster
