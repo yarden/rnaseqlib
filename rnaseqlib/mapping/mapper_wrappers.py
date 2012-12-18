@@ -30,14 +30,19 @@ def get_tophat_mapping_cmd(tophat_path,
         mapper_cmd += " --GTF %s" %(tophat_gtf)
     # If paired-end, get a pair of files for the sample
     if sample.paired:
+        ##
+        ## Ensure that arguments are first to Tophat, prior
+        ## to FASTQ input files since older versions of
+        ## Tophat fail if this is violated.
+        ##
+        # Specify the inner mate distance
+        mapper_cmd += " --mate-inner-dist %d" \
+            %(settings_info["mapping"]["mate_inner_dist"])
         input_files = " ".join([sample.rawdata[0].reads_filename,
                                 sample.rawdata[1].reads_filename])
         mapper_cmd += " --output-dir %s %s %s" %(output_dir,
                                                  index_filename,
                                                  input_files)
-        # Specify the inner mate distance
-        mapper_cmd += " --mate-inner-dist %d" \
-            %(settings_info["mapping"]["mate_inner_dist"])
     else:
         input_files = sample.rawdata.reads_filename
         mapper_cmd += " --output-dir %s %s %s" %(output_dir,
