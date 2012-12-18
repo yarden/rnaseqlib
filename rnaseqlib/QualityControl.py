@@ -478,7 +478,8 @@ class QCStats:
             if col not in self.qc_stats.columns:
                 print "WARNING: Could not find column %s in QC stats. " \
                       "Something probably went wrong in a previous " \
-                      "step. Were your BAMs created successfully?"
+                      "step. Were your BAMs created successfully?" \
+                      %(col)
         self.qc_stats.to_csv(output_filename,
                              sep="\t",
                              index=False,
