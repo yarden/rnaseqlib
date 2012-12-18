@@ -474,6 +474,11 @@ class QCStats:
         # Fetch QC header of first sample. Add to its
         # beginning a field for the sample name
         output_header = [self.sample_header] + self.qc_header
+        for col in output_header:
+            if col not in self.qc_stats.columns:
+                print "WARNING: Could not find column %s in QC stats. " \
+                      "Something probably went wrong in a previous " \
+                      "step. Were your BAMs created successfully?"
         self.qc_stats.to_csv(output_filename,
                              sep="\t",
                              index=False,

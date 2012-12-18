@@ -51,11 +51,6 @@ def launchJob(cmd, job_name, scriptOptions,
     scriptOptions.setdefault("outdir", "")
 
     scriptOptions["command"] = " ".join(cmd)
-
-    if verbose:
-        print "==SUBMITTING TO CLUSTER=="
-        print cmd
-        print scriptOptions
         
     pid = os.getpid()
     outscriptName = "%s.%i"%(scriptOptions["jobname"], pid)
@@ -100,9 +95,6 @@ def launchJob(cmd, job_name, scriptOptions,
 
     if not test:
         try:
-            if verbose:
-                print "CALL:", call
-
             qsub = subprocess.Popen(call,
                                     shell=True,
                                     stdout=subprocess.PIPE,
@@ -121,8 +113,9 @@ def launchJob(cmd, job_name, scriptOptions,
 
                 return jobID
             else:
-                raise Exception("Failed to launch job '%s': %s"%(outscriptName,
-                                                                 str(output)))
+                raise Exception("Failed to launch job '%s': %s" \
+                                %(outscriptName,
+                                  str(output)))
         except:
             print "failing..."
             raise
