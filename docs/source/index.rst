@@ -58,7 +58,7 @@ For local installation with `distribute`_, use: ::
 
   easy_install --user -U rnaseqlib
 
-If you don't have `easy_install`, install it as an ordinary Python package: ::
+If you don't have ``easy_install``, install it as an ordinary Python package: ::
 
   python setup.py install 
 
