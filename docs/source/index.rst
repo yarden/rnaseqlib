@@ -218,49 +218,35 @@ from the file.
 
 * ``mapper``: The mapper to use (currently, only ``tophat`` is supported.)
 
-* ``bowtie_path``: Path to ``bowtie`` program (optional). Default is ``"bowtie"``, meaning
-``bowtie`` must be on your path.
+* ``bowtie_path``: Path to ``bowtie`` program (optional). Default is ``"bowtie"``, meaning ``bowtie`` must be on your path.
 
-* ``tophat_path``: Path to ``tophat`` program (optional). Default is ``"tophat"``, meaning 
-``tophat`` must be on your path.
+* ``tophat_path``: Path to ``tophat`` program (optional). Default is ``"tophat"``, meaning ``tophat`` must be on your path.
 
-* ``tophat_index``: Path to genome index that should be used by ``tophat`` mapping. This 
-index is typically built by ``bowtie-build`` and is automatically made as part of the 
-RNA Base using the ``--init`` option. 
+* ``tophat_index``: Path to genome index that should be used by ``tophat`` mapping. This index is typically built by ``bowtie-build`` and is automatically made as part of the RNA Base using the ``--init`` option. 
 
-* ``cluster_type``: The ``cluster_type`` settings under the ``[mapping]`` section of the settings 
-file specifies how distinct samples should be processed. It can be set to one of three values:
+* ``cluster_type``: The ``cluster_type`` settings under the ``[mapping]`` section of the settings file specifies how distinct samples should be processed. It can be set to one of three values:
 
   * ``bsub``: Run distinct samples as separate jobs on a cluster using ``bsub``
   
   * ``qsub``: Same as ``bsub``, but using the ``qsub`` submission system
 
-  * ``none``: Run the pipeline using multiple cores on the local computer (does not make
-    use of a cluster.)
+  * ``none``: Run the pipeline using multiple cores on the local computer (does not make use of a cluster.)
 
 * ``genome``: Genome to be used, e.g. ``mm9`` or ``hg18``
 
-* ``tophat_options``: String of command-line options to be passed to ``tophat`` when it is 
-invoked for mapping. E.g. ``--bowtie1 --min-anchor-length 4``, to signal to Tophat to use 
-``bowtie1`` for mapping and use a minimum of 4 base overhang for junction reads. This string 
-is appended to the Tophat call and so must contain valid Tophat arguments for the 
-call to succeed.
+* ``tophat_options``: String of command-line options to be passed to ``tophat`` when it is invoked for mapping. E.g. ``--bowtie1 --min-anchor-length 4``, to signal to Tophat to use ``bowtie1`` for mapping and use a minimum of 4 base overhang for junction reads. This string is appended to the Tophat call and so must contain valid Tophat arguments for the call to succeed.
 
-* ``tophat_gtf``: GTF file of known gene models to be used with Tophat (optional). Used to
-tell Tophat about known junctions.
+* ``tophat_gtf``: GTF file of known gene models to be used with Tophat (optional). Used to tell Tophat about known junctions.
 
 * ``readlen``: Read length of input BAM files.
 
 * ``overhanglen``: Overhang restriction on junctions (optional). Default is 1.
 
-* ``paired``: Whether the data is paired-end or not. If paired-end, specify ``True``, if 
-single-end, specify ``False``.
+* ``paired``: Whether the data is paired-end or not. If paired-end, specify ``True``, if single-end, specify ``False``.
 
-* ``paired_end_frag``: Average fragment length (optional). Only used for paired-end
-runs. Used internally as an argument to Tophat to specify the expected fragment length.
+* ``paired_end_frag``: Average fragment length (optional). Only used for paired-end runs. Used internally as an argument to Tophat to specify the expected fragment length.
 
-* ``stranded``: If data set is strand-specific, specify the strand convention (optional).
-Uses the same strand conventions as Tophat (e.g. ``fr-first``).
+* ``stranded``: If data set is strand-specific, specify the strand convention (optional). Uses the same strand conventions as Tophat (e.g. ``fr-first``).
 
 Creating and processing MISO output with ``misowrap``
 =====================================================
