@@ -72,12 +72,17 @@ Design principles
 
 ``rnaseqlib`` is intended to be:
 
-1. Simple: provides minimalistic support for RNA-Seq. Only simple computations that are relevant to nearly all
-experiments are performed by the pipeline -- complexities are left to the user as post-processing steps.
+  1. Simple: provides minimalistic support for RNA-Seq. Performs only simple computations that 
+     are applicable to nearly all experiments -- complexities that are specific to certain
+     experiments/libraries are left as post-processing steps for the user.
 
-2. Lightweight: minimal dependencies. Relies mostly on Python and commonly available genomic packages (such as Bedtools).
 
-3. Compact: produces and consumes compressed files, so that it can be used in projects with hundreds of samples.
+  2. Lightweight: minimal dependencies. Relies mostly on Python and commonly available 
+     genomic packages (such as Bedtools).
+
+
+  3. Compact: produces and consumes compressed files, so that it can be used in projects 
+     with hundreds of samples.
 
 
 Running ``rnaseqlib``
