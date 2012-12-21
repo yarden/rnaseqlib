@@ -70,7 +70,7 @@ Or for local installation with distribute: ::
 Design principles
 =================
 
-``rnaseqlib`` is intended to be:
+``rnaseqlib`` follows three simple design principles. It is intended to be:
 
   1. Simple: provides minimalistic support for RNA-Seq. Performs only simple computations that 
      are applicable to nearly all experiments -- complexities that are specific to certain
@@ -78,7 +78,7 @@ Design principles
 
 
   2. Lightweight: minimal dependencies. Relies mostly on Python and commonly available 
-     genomic packages (such as Bedtools).
+     genomic packages (such as Bedtools), to avoid software bloat and complex installation.
 
 
   3. Compact: produces and consumes compressed files, so that it can be used in projects 
@@ -88,15 +88,21 @@ Design principles
 Running ``rnaseqlib``
 =====================
 
+There are two steps to running ``rnaseqlib``: First, creating a set of initialization
+files for your genome (called an *RNA Base*) -- this is done once per genome.
+Second, writing a configuration file that describes your samples and library parameters,
+which can then be used to run the pipeline.
 
 Initializing an RNA base for your genome
 ----------------------------------------
 
-The first step is to create a set of files, called an *RNA Base*, required to run ``rnaseqlib`` for a particular genome. For example, ::
+The first step is to create a set of files, called an *RNA Base*, 
+required to run ``rnaseqlib`` for a particular genome. For example, ::
 
   rna_pipeline.py --init mm9 --output-dir pipeline_init
 
-This will create a directory called ``mm9`` in ``pipeline_init`` containing the necessary files for running the pipeline on the mm9 genome.
+This will create a directory called ``mm9`` in ``pipeline_init`` containing the 
+necessary files for running the pipeline on the mm9 genome.
 The initialization procedure will, among other things, do the following:
 
   * Download the genome sequence files from UCSC (in FASTA format)
@@ -105,16 +111,23 @@ The initialization procedure will, among other things, do the following:
     useful features of gene tables
   * Index the genome files using ``bowtie-build``
 
+For the mouse and human genomes, sequences of ribosomal RNA (rRNA) are automatically
+downloaded from NCBI and built into the Bowtie index as ``chrRibo``. The pipeline
+relies on ``chrRibo`` in later steps to filter out rRNA reads and measure the level
+of rRNA contamination in samples.
+
 
 Configuration: specifying your data and mapping parameters
 ----------------------------------------------------------
 .. _config:
 
-The settings of the RNA-Seq pipeline are specified through a single settings file that contains four main sections:
+The settings of the RNA-Seq pipeline are specified through a single settings file 
+that contains four main sections:
 
   * ``pipeline``: what data type is used (e.g. RNA-Seq, Ribo-Seq, etc.)
   * ``pipeline-files``: where the pipeline initialization files are stored
-  * ``mapping``: parameters related to mapping of the data (e.g. what mapper to use, where the genome index is.)
+  * ``mapping``: parameters related to mapping of the data (e.g. what mapper to use, 
+    where the genome index is.)
   * ``data``: where the input sequence files are and where the results should be outputted
 
 The following is an example settings file for a set of mRNA-Seq samples: ::
@@ -164,18 +177,21 @@ To run the pipeline, use the ``--run`` option: ::
 
   rna_pipeline.py --run --settings ./settings.txt --output-dir ./my_results
 
-where ``settings.txt`` is the pipeline settings file and ``my_results`` is a directory where the pipeline output should go.
+where ``settings.txt`` is the pipeline settings file and ``my_results`` is a 
+directory where the pipeline output should go.
 
-An example settings file and small FASTQ files for an mRNA-Seq dataset are available in the ``examples/rnaseq``
-directory of the pipeline. The paths in the settings file ``examples/rnaseq/rnaseq_settings.txt`` need to be
-edited to reflect the paths of various files on your own filesystem (e.g. ``init_dir`` needs to be set
-to the location of your RNA base.) The rawdata files for the examples are two paired-end mRNA-Seq samples are 
-available in the ``examples/rnaseq/fastq`` directory.
+An example settings file and small FASTQ files for an mRNA-Seq dataset are available 
+in the ``examples/rnaseq`` directory of the pipeline. The paths in the settings 
+file ``examples/rnaseq/rnaseq_settings.txt`` need to be edited to reflect the paths of 
+various files on your own filesystem (e.g. ``init_dir`` needs to be set to the 
+location of your RNA base.) The rawdata files for the examples are two paired-end 
+mRNA-Seq samples are available in the ``examples/rnaseq/fastq`` directory.
  
 Command-line options
 --------------------
 
-``run_pipeline.py`` is the main driver script of the pipeline. It takes the following main arguments: ::
+``run_pipeline.py`` is the main driver script of the pipeline. 
+It takes the following main arguments: ::
 
 
   --run                 Run pipeline.
