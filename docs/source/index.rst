@@ -54,7 +54,7 @@ Get ``rnaseqlib`` from the GitHub repository (http://github.com/yarden/rnaseqlib
 
   easy_install rnaseqlib
 
-For local installation, use: ::
+For local installation with `distribute`_, use: ::
 
   easy_install --user -U rnaseqlib
 
@@ -62,7 +62,7 @@ If you don't have `easy_install`, install it as an ordinary Python package: ::
 
   python setup.py install 
 
-Or for local installation with distribute: ::
+Or for local installation: ::
 
   python setup.py install --prefix=/your/local/dir
 
