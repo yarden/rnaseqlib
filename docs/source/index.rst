@@ -66,6 +66,14 @@ Or for local installation with distribute: ::
 
   python setup.py install --prefix=/your/local/dir
 
+Dependencies
+------------
+
+Requires `Bedtools`_ and `Samtools`_, and several commonly used Python modules
+(like `pandas`_, all of which are installed automatically
+using the Python package manager.) The initialization step requires Jim Kent's 
+`genePredToGtf`_ utility for processing UCSC genome browser tables.
+
 
 Design principles
 =================
@@ -318,6 +326,9 @@ Thanks to:
 
 .. _MISO: http://genes.mit.edu/burgelab/miso/
 .. _samtools: http://samtools.sourceforge.net/
+.. _bedtools: http://code.google.com/p/bedtools/
+.. _genePredToGtf: http://hgdownload.cse.ucsc.edu/admin/exe/
+.. _pandas: http://pandas.pydata.org/
 .. _pysam: http://code.google.com/p/pysam/
 .. _SAM: http://samtools.sourceforge.net/SAM1.pdf
 .. _GFF: http://www.sequenceontology.org/gff3.shtml
