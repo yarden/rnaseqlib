@@ -72,16 +72,16 @@ Design principles
 
 ``rnaseqlib`` follows three simple design principles. It is intended to be:
 
-  1. Simple: provides minimalistic support for RNA-Seq. Performs only simple computations that 
+  1. **Simple:** provides minimalistic support for RNA-Seq. Performs only simple computations that 
      are applicable to nearly all experiments -- complexities that are specific to certain
      experiments/libraries are left as post-processing steps for the user.
 
 
-  2. Lightweight: minimal dependencies. Relies mostly on Python and commonly available 
+  2. **Lightweight:** minimal dependencies. Relies mostly on Python and commonly available 
      genomic packages (such as Bedtools), to avoid software bloat and complex installation.
 
 
-  3. Compact: produces and consumes compressed files, so that it can be used in projects 
+  3. **Compact:** produces and consumes compressed files, so that it can be used in projects 
      with hundreds of samples.
 
 
@@ -114,7 +114,7 @@ The initialization procedure will, among other things, do the following:
 For the mouse and human genomes, sequences of ribosomal RNA (rRNA) are automatically
 downloaded from NCBI and built into the Bowtie index as ``chrRibo``. The pipeline
 relies on ``chrRibo`` in later steps to filter out rRNA reads and measure the level
-of rRNA contamination in samples.
+of rRNA contamination in libraries.
 
 
 Configuration: specifying your data and mapping parameters
