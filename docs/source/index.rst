@@ -33,9 +33,9 @@ Features
 
   - Ribosome profiling data (Ribo-Seq)
 
-  - *CLIP for RNA-binding proteins (CLIP-Seq) [In progress]*
+  - CLIP for RNA-binding proteins (CLIP-Seq) *(In progress)*
 
-  - *SELEX-Seq [In progress]*
+  - SELEX-Seq *(In progress)*
 * Contains utilities for processing `MISO`_ output
 
 
@@ -67,6 +67,17 @@ Or for local installation with distribute: ::
   python setup.py install --prefix=/your/local/dir
 
 
+Design principles
+=================
+
+``rnaseqlib`` is intended to be:
+
+1. Simple: provides minimalistic support for RNA-Seq. Only simple computations that are relevant to nearly all
+experiments are performed by the pipeline -- complexities are left to the user as post-processing steps.
+
+2. Lightweight: minimal dependencies. Relies mostly on Python and commonly available genomic packages (such as Bedtools).
+
+3. Compact: produces and consumes compressed files, so that it can be used in projects with hundreds of samples.
 
 
 Running ``rnaseqlib``
@@ -149,6 +160,28 @@ To run the pipeline, use the ``--run`` option: ::
   rna_pipeline.py --run --settings ./settings.txt --output-dir ./my_results
 
 where ``settings.txt`` is the pipeline settings file and ``my_results`` is a directory where the pipeline output should go.
+
+An example settings file and small FASTQ files for an mRNA-Seq dataset are available in the ``examples/rnaseq``
+directory of the pipeline. The paths in the settings file ``examples/rnaseq/rnaseq_settings.txt`` need to be
+edited to reflect the paths of various files on your own filesystem (e.g. ``init_dir`` needs to be set
+to the location of your RNA base.) The rawdata files for the examples are two paired-end mRNA-Seq samples are 
+available in the ``examples/rnaseq/fastq`` directory.
+
+Running the pipeline using multiple cores or on a cluster
+---------------------------------------------------------
+
+The ``cluster_type`` settings under the ``[mapping]`` section of the settings file specifies how
+distinct samples should be processed. It can be set to one of three values:
+
+* ``cluster_type`` 
+
+  * ``bsub``: Run distinct samples as separate jobs on a cluster using ``bsub``
+  
+  * ``qsub``: Same as ``bsub``, but using the ``qsub`` submission system
+
+  * ``none``: Run the pipeline using multiple cores on the local computer (does not make
+    use of a cluster.)
+  
 
  
 Command-line options
