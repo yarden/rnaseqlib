@@ -50,7 +50,7 @@ Updates
 Installation
 ============
 
-Get ``rnaseqlib`` from the GitHub repository (http://github.com/yarden/rnaseqlib). To install with ``distribute``'s ``easy_install``: ::
+Get ``rnaseqlib`` from the GitHub repository (http://github.com/yarden/rnaseqlib). To install with `distribute`_'s ``easy_install``: ::
 
   easy_install rnaseqlib
 
@@ -329,6 +329,7 @@ Thanks to:
 .. _bedtools: http://code.google.com/p/bedtools/
 .. _genePredToGtf: http://hgdownload.cse.ucsc.edu/admin/exe/
 .. _pandas: http://pandas.pydata.org/
+.. _distribute: http://packages.python.org/distribute/
 .. _pysam: http://code.google.com/p/pysam/
 .. _SAM: http://samtools.sourceforge.net/SAM1.pdf
 .. _GFF: http://www.sequenceontology.org/gff3.shtml
