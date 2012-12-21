@@ -242,7 +242,7 @@ from the file.
 
 * ``genome``: Genome to be used, e.g. ``mm9`` or ``hg18``
 
-* ``tophat_options``: String of command-line options to be passed to ``tophat`` when it is invoked for mapping. E.g. ``--bowtie1 --min-anchor-length 4``, to signal to Tophat to use ``bowtie1`` for mapping and use a minimum of 4 base overhang for junction reads. This string is appended to the Tophat call and so must contain valid Tophat arguments for the call to succeed.
+* ``tophat_options``: String of command-line options to be passed to ``tophat`` when it is invoked for mapping. E.g. ``tophat_options = --bowtie1 --min-anchor-length 4``, to signal to Tophat to use ``bowtie1`` for mapping and use a minimum of 4 base overhang for junction reads. This string is appended to the Tophat call and so must contain valid Tophat arguments for the call to succeed.
 
 * ``tophat_gtf``: GTF file of known gene models to be used with Tophat (optional). Used to tell Tophat about known junctions.
 
