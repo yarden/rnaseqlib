@@ -85,7 +85,7 @@ Design principles
      experiments/libraries are left as post-processing steps for the user.
 
 
-  2. **Lightweight:** minimal dependencies. Relies mostly on Python and commonly available 
+  2. **Lightweight:** minimal dependencies. Relies mostly on Python and commonly used
      genomic packages (such as Bedtools), to avoid software bloat and complex installation.
 
 
