@@ -255,7 +255,7 @@ Creating and processing MISO output with ``misowrap``
 
   Section under construction
 
-``misowrap`` is a utility for running MISO and processing its output for a set of samples.
+``misowrap`` is a utility for running `MISO`_ and processing its output for a set of samples.
 It takes a configuration file as described above that lists a set of BAM files and their sample 
 labels, and automatically runs MISO on these samples and generates pairwise comparisons between them.
 
