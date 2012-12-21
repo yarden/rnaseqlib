@@ -223,7 +223,6 @@ from the file.
 * ``tophat_path``: Path to ``tophat`` program (optional). Default is ``"tophat"``, meaning ``tophat`` must be on your path.
 
 * ``tophat_index``: Path to genome index that should be used by ``tophat`` mapping. This index is typically built by ``bowtie-build`` and is automatically made as part of the RNA Base using the ``--init`` option. 
-
 * ``cluster_type``: The ``cluster_type`` settings under the ``[mapping]`` section of the settings file specifies how distinct samples should be processed. It can be set to one of three values:
 
   * ``bsub``: Run distinct samples as separate jobs on a cluster using ``bsub``
