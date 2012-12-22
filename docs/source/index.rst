@@ -39,6 +39,24 @@ Features
 * Contains utilities for processing `MISO`_ output
 
 
+Design principles
+=================
+
+``rnaseqlib`` follows three simple design principles. It is intended to be:
+
+  1. **Simple:** provides minimalistic support for RNA-Seq. Performs only simple computations that 
+     are applicable to nearly all experiments -- complexities that are specific to certain
+     experiments/libraries are left as post-processing steps for the user.
+
+
+  2. **Lightweight:** minimal dependencies. Relies mostly on Python and commonly used
+     genomic packages (such as Bedtools), to avoid software bloat and complex installation.
+
+
+  3. **Compact:** produces and consumes compressed files, so that it can be used in projects 
+     with hundreds of samples.
+
+
 Updates
 =======
 
@@ -74,23 +92,6 @@ Requires `Bedtools`_ and `Samtools`_, and several commonly used Python modules
 using the Python package manager.) The initialization step requires Jim Kent's 
 `genePredToGtf`_ utility for processing UCSC genome browser tables.
 
-
-Design principles
-=================
-
-``rnaseqlib`` follows three simple design principles. It is intended to be:
-
-  1. **Simple:** provides minimalistic support for RNA-Seq. Performs only simple computations that 
-     are applicable to nearly all experiments -- complexities that are specific to certain
-     experiments/libraries are left as post-processing steps for the user.
-
-
-  2. **Lightweight:** minimal dependencies. Relies mostly on Python and commonly used
-     genomic packages (such as Bedtools), to avoid software bloat and complex installation.
-
-
-  3. **Compact:** produces and consumes compressed files, so that it can be used in projects 
-     with hundreds of samples.
 
 
 Running ``rnaseqlib``
