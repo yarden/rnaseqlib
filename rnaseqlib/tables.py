@@ -396,6 +396,9 @@ class GeneTable:
         # Main ensGene table
         ensGene_filename = os.path.join(self.table_dir,
                                         "ensGene.txt")
+        if not os.path.isfile(ensGene_filename):
+            raise Exception, "Cannot find ensGene table %s" \
+                %(ensGene_filename)
         t1 = time.time()
         table = dictread_groupby_col(open(ensGene_filename),
                                      "name2",
@@ -410,8 +413,12 @@ class GeneTable:
                 chrom = entry["chrom"]
                 strand = entry["strand"]
                 # Convert start coordinates into 1-based coordinates
-                exon_starts = (int(start) + 1 for start in entry["exonStarts"].rstrip(",").split(","))
-                exon_ends = (int(end) for end in entry["exonEnds"].rstrip(",").split(","))
+                exon_starts = \
+                    (int(start) + 1 \
+                     for start in entry["exonStarts"].rstrip(",").split(","))
+                exon_ends = \
+                    (int(end) \
+                     for end in entry["exonEnds"].rstrip(",").split(","))
                 exon_coords = zip(exon_starts, exon_ends)
                 # Convert cds coordinates into 1-based as well
                 cds_start = int(entry["cdsStart"]) + 1
