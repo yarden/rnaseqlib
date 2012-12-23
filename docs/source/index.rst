@@ -116,7 +116,7 @@ The initialization procedure will, among other things, do the following:
 
   * Download the genome sequence files from UCSC (in FASTA format)
   * Download gene tables from UCSC for Ensembl genes, UCSC knownGenes, and RefSeq genes.
-  * Computate the coordinates for exons, introns, constitutive exons, constitutive exons in coding regions, and other 
+  * Compute the coordinates for exons, introns, constitutive exons, constitutive exons in coding regions, and other 
     useful features of gene tables
   * Index the genome files using ``bowtie-build``
 
