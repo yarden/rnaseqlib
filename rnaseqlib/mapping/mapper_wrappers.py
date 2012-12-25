@@ -19,6 +19,7 @@ def check_genome_index_path(index_filename):
         print "Are you sure that this is the right path to your "
         print "genome index?"
         print "Your mapping step will fail if this path is incorrect."
+        time.sleep(20)
 
 
 def get_tophat_mapping_cmd(tophat_path,
