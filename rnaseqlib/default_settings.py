@@ -25,7 +25,8 @@ def set_default_rnaseq_settings(settings_info):
     if settings_info["mapping"]["paired"]:
         # Compute mate inner dist based on read length
         mate_inner_dist = \
-            settings_info["mapping"]["paired_end_frag"] - (2 * settings_info["mapping"]["readlen"])
+            settings_info["mapping"]["paired_end_frag"] - \
+            (2 * settings_info["mapping"]["readlen"])
         settings_info = set_settings_value(settings_info,
                                            "mapping",
                                            "mate_inner_dist",
@@ -79,7 +80,8 @@ def check_settings(settings_info):
             if param not in settings_info[sect]:
                 param_error(param, sect)
     # Check that paired-end specific parameters are correct
-    if ("paired" in settings_info["mapping"]) and settings_info["mapping"]["paired"]:
+    if ("paired" in settings_info["mapping"]) and \
+        settings_info["mapping"]["paired"]:
         if "paired_end_frag" not in settings_info["mapping"]:
             print "Error: Need \'paired_end_frag\' to be set for paired " \
                   "samples. Is your data paired-end?"
@@ -92,6 +94,11 @@ def set_default_settings(settings_info):
     specific settings.
     """
     data_type = settings_info["pipeline"]["data_type"]
+    # Set general default settings
+    if "prefilter_miso" not in settings_info["settings"]:
+        # By default, set it so that MISO events are not
+        # prefiltered
+        settings_info["settings"]["prefilter_miso"] = False
     if data_type == "rnaseq":
         settings_info = set_default_rnaseq_settings(settings_info)
     elif data_type == "riboseq":

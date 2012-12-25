@@ -464,7 +464,7 @@ def compute_insert_lens(settings_filename,
     num_bams = len(misowrap_obj.bam_files)
     
     print "Computing insert lengths for %d files" %(num_bams)
-    for bam_filename in misowrap_obj.bam_files:
+    for bam_filename, sample_name in misowrap_obj.bam_files:
         print "Processing: %s" %(bam_filename)
         insert_len_cmd = "%s --compute-insert-len %s %s --output-dir %s" \
             %(pe_utils_path,
@@ -472,8 +472,7 @@ def compute_insert_lens(settings_filename,
               const_exons_gff,
               insert_len_output_dir)
         print "Executing: %s" %(insert_len_cmd)
-        sample_name = os.path.basename(bam_filename)
-        job_name = sample_name.split(".bam")[0]
+        job_name = "%s_insert_len" %(sample_name)
         if misowrap_obj.use_cluster:
             misowrap_obj.my_cluster.launch_job(insert_len_cmd, job_name,
                                                ppn=1)

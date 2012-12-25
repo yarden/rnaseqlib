@@ -26,8 +26,10 @@ class Cluster:
         self.jobs = {}
         
         if self.cluster_type not in supported_types:
-            self.logger.critical("Unsupported cluster type: %s" %(self.cluster_type))
-            print "Error: unsupported cluster type %s" %(self.cluster_type)
+            self.logger.critical("Unsupported cluster type: %s" \
+                                 %(self.cluster_type))
+            print "Error: unsupported cluster type %s" \
+                %(self.cluster_type)
             sys.exit(1)
             
 

@@ -4,9 +4,22 @@
 import os
 import sys
 import time
+import glob
 
 import rnaseqlib
 import rnaseqlib.settings
+
+def check_genome_index_path(index_filename):
+    """
+    Check that the genome index filename exists.
+    """
+    index_matches = glob.glob("%s*" %(index_filename))
+    if len(index_matches) == 0:
+        print "WARNING: Cannot find index files for %s" %(index_filename)
+        print "Are you sure that this is the right path to your "
+        print "genome index?"
+        print "Your mapping step will fail if this path is incorrect."
+
 
 def get_tophat_mapping_cmd(tophat_path,
                            sample,
@@ -18,6 +31,8 @@ def get_tophat_mapping_cmd(tophat_path,
     """
     tophat_path = settings_info["mapping"]["tophat_path"]
     index_filename = settings_info["mapping"]["tophat_index"]
+    # Check that index files can be matched
+    check_genome_index_path(index_filename)
     tophat_options = settings_info["mapping"]["tophat_options"]
     tophat_gtf = None
     if "tophat_gtf" in settings_info["mapping"]:
@@ -64,6 +79,7 @@ def get_bowtie_mapping_cmd(bowtie_path,
     input_compressed = False
     if input_filename.endswith(".gz"):
         input_compressed = True
+    check_genome_index_path(genome_index_filename)
     # Make output always gzipped
     if ("--sam" not in bowtie_options):
         # Always output sam

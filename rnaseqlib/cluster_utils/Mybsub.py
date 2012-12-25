@@ -33,11 +33,13 @@ def launchJob(cmd, job_name,
               ppn="4",
               queue_type="normal"):
     """
-    Submits a job on the cluster which will run command 'cmd', with options 'scriptOptions'
+    Submits a job on the cluster which will run command 'cmd',
+    with options 'scriptOptions'
 
     Optionally:
     verbose: output the job script
-    test: don't actually submit the job script (usually used in conjunction with verbose)
+    test: don't actually submit the job script
+          (usually used in conjunction with verbose)
 
     Returns a job ID if the job was submitted properly
     """
@@ -65,8 +67,9 @@ def launchJob(cmd, job_name,
     script_outdir = os.path.join(scriptOptions["outdir"],
                                  "cluster_scripts")
     utils.make_dir(script_outdir)
-    scriptOptions["outf"] = os.path.abspath(os.path.join(script_outdir,
-                                                         outscriptName+".out"))
+    scriptOptions["outf"] = \
+        os.path.abspath(os.path.join(script_outdir,
+                                     outscriptName+".out"))
     outtext = """#!/bin/sh
 
     #BSUB -n %(ppn)s 
@@ -101,7 +104,8 @@ def launchJob(cmd, job_name,
                 print "Process launched with job ID:", jobID
                 return jobID
             else:
-                raise Exception("Failed to launch job '%s': %s"%(outscriptName, str(output)))
+                raise Exception("Failed to launch job '%s': %s" \
+                                %(outscriptName, str(output)))
         except:
             print "failing..."
             raise
