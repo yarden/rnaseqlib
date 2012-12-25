@@ -165,6 +165,9 @@ class MISOWrap:
         # Create a logger object 
         self.logger = utils.get_logger("misowrap",
                                        self.logs_outdir)
+        # Whether to prefilter MISO events
+        self.prefilter_miso = \
+            self.settings_info["settings"]["prefilter_miso"]
         # Load event types
         self.load_event_types()
         # Set path to MISO scripts
@@ -416,6 +419,9 @@ def run_miso_on_samples(settings_filename, output_dir,
             miso_cmd += " --read-len %d" %(read_len)
             # Overhang length
             miso_cmd += " --overhang-len %d" %(overhang_len)
+            # Prefilter?
+            if misowrap_obj.prefilter_miso:
+                miso_cmd += " --prefilter"
             # Output directory
             miso_cmd += " --output-dir %s" %(sample_output_dir)
             # Use cluster
