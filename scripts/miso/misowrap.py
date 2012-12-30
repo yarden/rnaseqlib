@@ -25,9 +25,11 @@ class MISOWrap:
     Object containing information about a set of samples to be
     processed by MISO and their MISO output.
     """
-    def __init__(self, settings_filename, output_dir):
+    def __init__(self, settings_filename, output_dir,
+                 logger_label=None):
         self.settings_filename = settings_filename
         self.settings_info = None
+        self.logger_label = None
         # Main output directory
         self.output_dir = utils.pathify(output_dir)
         utils.make_dir(self.output_dir)
@@ -122,7 +124,7 @@ class MISOWrap:
         Load settings for misowrap.
         """
         settings_info, parsed_settings = \
-                  misowrap_settings.load_misowrap_settings(self.settings_filename)
+                misowrap_settings.load_misowrap_settings(self.settings_filename)
         self.settings_info = settings_info
         # Load basic settings about data
         self.read_len = self.settings_info["settings"]["readlen"]
@@ -145,7 +147,8 @@ class MISOWrap:
         # Set output directories
         self.comparisons_dir = os.path.join(self.output_dir, 
                                             "comparisons")
-        self.comparison_groups = self.settings_info["data"]["comparison_groups"]
+        self.comparison_groups = \
+            self.settings_info["data"]["comparison_groups"]
         self.logs_outdir = os.path.join(self.output_dir,
                                         "misowrap_logs")
         # Create necessary directories
@@ -162,10 +165,19 @@ class MISOWrap:
             print "Loading cluster information."
             # Load cluster object if given a cluster type
             self.load_cluster()
-        # Create a logger object 
-        self.logger = utils.get_logger("misowrap",
+        # Create a logger object
+        if self.logger_label is None:
+            self.logger_label = "misowrap"
+        else:
+            self.logger_label = "misowrap_%s" %(logger_label)
+        self.logger = utils.get_logger(self.logger_label,
                                        self.logs_outdir)
         # Whether to prefilter MISO events
+        # Set general default settings
+        if "prefilter_miso" not in settings_info["settings"]:
+            # By default, set it so that MISO events are not
+            # prefiltered
+            settings_info["settings"]["prefilter_miso"] = False
         self.prefilter_miso = \
             self.settings_info["settings"]["prefilter_miso"]
         # Load event types
@@ -193,7 +205,7 @@ class MISOWrap:
             print "Error: Const. exons GFF %s does not exist." \
                 %(self.const_exons_gff)
             sys.exit(1)
-
+            
 
     def load_event_types(self):
         """
@@ -266,7 +278,8 @@ def summarize_miso_samples(settings_filename,
     Summarize samples in MISO directory.
     """
     misowrap_obj = MISOWrap(settings_filename,
-                            output_dir)
+                            output_dir,
+                            logger_label="summarize")
     bam_files = misowrap_obj.bam_files
     sample_labels = misowrap_obj.sample_labels
     print "Summarizing MISO output..."
@@ -299,8 +312,8 @@ def summarize_miso_samples(settings_filename,
                                            os.path.basename(event_dirname))
             print "Executing: %s" %(summary_cmd)
             if misowrap_obj.use_cluster:
-                misowrap_obj.my_cluster.launch_job(summary_cmd, job_name,
-                                                   ppn=1)
+                misowrap_obj.my_cluster.launch_job(summary_cmd,
+                                                   job_name)
             else:
                 os.system(summary_cmd)
             
@@ -311,7 +324,8 @@ def compare_miso_samples(settings_filename,
     Run a MISO samples comparison between all pairs of samples.
     """
     misowrap_obj = MISOWrap(settings_filename,
-                            output_dir)
+                            output_dir,
+                            logger_label="compare")
     bam_files = misowrap_obj.bam_files
     sample_labels = misowrap_obj.sample_labels
     read_len = misowrap_obj.read_len
@@ -321,7 +335,7 @@ def compare_miso_samples(settings_filename,
     comparison_groups = misowrap_obj.comparison_groups
     comparisons_dir = misowrap_obj.comparisons_dir
     utils.make_dir(comparisons_dir)
-    print "Running MISO comparisons..."
+    misowrap_obj.logger.info("Running MISO comparisons...")
     ##
     ## Compute comparisons between all pairs
     ## in a sample group
@@ -332,15 +346,14 @@ def compare_miso_samples(settings_filename,
         for sample1, sample2 in sample_pairs:
             # For each pair of samples, compare their output
             # along each event type
-            print "Comparing %s %s" %(sample1,
-                                      sample2)
+            misowrap_obj.logger.info("Comparing %s %s" %(sample1,
+                                                         sample2))
             # Directories for each sample
             sample1_dir = os.path.join(miso_output_dir,
                                        sample1)
             sample2_dir = os.path.join(miso_output_dir,
                                        sample2)
             for event_type in misowrap_obj.event_types:
-                print "Processing %s..." %(event_type)
                 sample1_event_dir = os.path.join(sample1_dir,
                                                  event_type)
                 sample2_event_dir = os.path.join(sample2_dir,
@@ -359,7 +372,7 @@ def compare_miso_samples(settings_filename,
                       event_comparisons_dir,
                       sample1,
                       sample2)
-                print "Executing: %s" %(compare_cmd)
+                misowrap_obj.logger.info("Executing: %s" %(compare_cmd))
                 if misowrap_obj.use_cluster:
                     misowrap_obj.my_cluster.launch_job(compare_cmd,
                                                        job_name,
@@ -369,23 +382,26 @@ def compare_miso_samples(settings_filename,
 
 
 def run_miso_on_samples(settings_filename, output_dir,
-                        use_cluster=True):
+                        use_cluster=True,
+                        delay=120):
     """
     Run MISO on a set of samples.
     """
-    misowrap_obj = MISOWrap(settings_filename, output_dir)
+    misowrap_obj = MISOWrap(settings_filename, output_dir,
+                            logger_label="run")
     bam_files = misowrap_obj.bam_files
     read_len = misowrap_obj.read_len
     overhang_len = misowrap_obj.overhang_len
     events_dir = misowrap_obj.miso_events_dir
-    single_end = False
+    single_end = True
     if misowrap_obj.insert_lens_dir is not None:
-        print "Running in single-end mode..."
-        single_end = True
-    else:
         insert_lens_dir = misowrap_obj.insert_lens_dir
-        print "Running in paired end mode..."
-        print "  - Insert length directory: %s" %(insert_lens_dir)
+        misowrap_obj.logger.info("Running in paired-end mode...")
+        misowrap_obj.logger.info(" - Insert length directory: %s" \
+                                 %(insert_lens_dir))
+        single_end = False
+    else:
+        misowrap_obj.logger.info("Running in single-end mode...")        
     run_events_analysis = misowrap_obj.run_events_cmd
     event_types_dirs = \
         miso_utils.get_event_types_dirs(misowrap_obj.settings_info)
@@ -393,7 +409,7 @@ def run_miso_on_samples(settings_filename, output_dir,
     for bam_input in bam_files:
         bam_filename, sample_label = bam_input
         bam_filename = utils.pathify(bam_filename)
-        print "Processing: %s" %(bam_filename)
+        misowrap_obj.logger.info("Processing: %s" %(bam_filename))
         for event_type_dir in event_types_dirs:
             event_type = os.path.basename(event_type_dir)
             print "  - Using event dir: %s" %(event_type_dir)
@@ -410,7 +426,10 @@ def run_miso_on_samples(settings_filename, output_dir,
                 insert_len_filename = \
                     os.path.join(insert_lens_dir,
                                  "%s.insert_len" %(bam_basename))
-                print "Reading paired-end parameters from file..."
+                misowrap_obj.logger.info("Reading paired-end parameters " \
+                                         "from file...")
+                misowrap_obj.logger.info("  - PE file: %s" \
+                                         %(insert_len_filename))
                 pe_params = miso_utils.read_pe_params(insert_len_filename)
                 # Paired-end parameters
                 miso_cmd += " --paired-end %.2f %.2f" %(pe_params["mean"],
@@ -430,12 +449,12 @@ def run_miso_on_samples(settings_filename, output_dir,
                 miso_cmd += " --chunk-jobs %d" %(misowrap_obj.chunk_jobs)
             # Settings
             miso_cmd += " --settings %s" %(miso_settings_filename)
-            print "Executing: %s" %(miso_cmd)
+            misowrap_obj.logger.info("Executing: %s" %(miso_cmd))
             job_name = "%s_%s" %(sample_label, event_type)
             if use_cluster:
                 misowrap_obj.my_cluster.launch_job(miso_cmd,
-                                                   job_name,
-                                                   ppn=1)
+                                                   job_name)
+                time.sleep(delay)
             else:
                 os.system(miso_cmd)
 
@@ -446,8 +465,9 @@ def filter_events(settings_filename,
     Output a set of filtered MISO events.
     """
     misowrap_obj = MISOWrap(settings_filename,
-                            output_dir)
-    print "Filtering MISO events..."
+                            output_dir,
+                            logger_label="filter")
+    misowrap_obj.logger.info("Filtering MISO events...")
     psi_table = pt.PsiTable(misowrap_obj)
     psi_table.output_filtered_comparisons()
 
@@ -458,7 +478,8 @@ def compute_insert_lens(settings_filename,
     Compute insert lengths for all samples.
     """
     misowrap_obj = MISOWrap(settings_filename,
-                            output_dir)
+                            output_dir,
+                            logger_label="insert_lens")
     const_exons_gff = misowrap_obj.const_exons_gff
     if not os.path.isfile(const_exons_gff):
         print "Error: %s const exons GFF does not exist." \

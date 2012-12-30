@@ -683,6 +683,13 @@ class Pipeline:
         file and put them in a new file.
         """
         self.logger.info("Getting unique reads for %s" %(sample.label))
+        if not os.path.isfile(sample.bam_filename):
+            bam_error = "Error: Cannot find BAM file %s\n" \
+                        "Did your mapping step work? Check the Tophat/Bowtie " \
+                        "logs to make sure the run completed successfully." \
+                        %(sample.bam_filename)
+            self.logger.critical(bam_error)
+            sys.exit(1)
         mapped_reads = pysam.Samfile(sample.bam_filename, "rb")
         if not sample.bam_filename.endswith(".bam"):
             self.logger.critical("BAM %s file does not end in .bam" \
@@ -698,12 +705,15 @@ class Pipeline:
             unique_reads = pysam.Samfile(unique_bam_filename, "wb",
                                          # Use original file's headers
                                          template=mapped_reads)
-            unique_bam_filename
             num_unique = 0
             for read in mapped_reads:
                 # Keep only reads with 'NH' tag equal to 1
                 if ("NH", 1) in read.tags:
                     unique_reads.write(read)
+                    num_unique += 1
+            if num_unique == 0:
+                self.logger.warning("No unique reads found in %s" \
+                                    %(sample.bam_filename))
             unique_reads.close()
         else:
             print "Found %s. Skipping.." %(unique_bam_filename)

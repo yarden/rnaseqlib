@@ -94,11 +94,6 @@ def set_default_settings(settings_info):
     specific settings.
     """
     data_type = settings_info["pipeline"]["data_type"]
-    # Set general default settings
-    if "prefilter_miso" not in settings_info["settings"]:
-        # By default, set it so that MISO events are not
-        # prefiltered
-        settings_info["settings"]["prefilter_miso"] = False
     if data_type == "rnaseq":
         settings_info = set_default_rnaseq_settings(settings_info)
     elif data_type == "riboseq":
@@ -110,4 +105,9 @@ def set_default_settings(settings_info):
     else:
         print "Unknown data type %s. Are you on crack?" \
             %(data_type)
+    # Set general default settings
+    if "prefilter_miso" not in settings_info["settings"]:
+        # By default, set it so that MISO events are not
+        # prefiltered
+        settings_info["settings"]["prefilter_miso"] = False
     return settings_info
