@@ -188,7 +188,7 @@ class Pipeline:
         """
         # Create a QualityControl object for each sample in pipeline
         if len(self.samples) == 0:
-            print "WARNING: No samples to create QC objects for."
+            self.logger.warning("No samples to create QC objects for.")
             return
         self.load_qc()
         
@@ -257,14 +257,14 @@ class Pipeline:
           - qc: quality control output
           - analysis: analysis output
         """
-        print "Initializing the pipeline output directories."
+        self.logger.info("Initializing the pipeline output directories.")
         utils.make_dir(self.output_dir)
         # Subdirectories of toplevel subdirs
         self.toplevel_subdirs = defaultdict(list)
         self.toplevel_subdirs["analysis"] = ["rpkm", "insert_lens"]
         for dirname in self.toplevel_dirs:
             dirpath = os.path.join(self.output_dir, dirname)
-            print " - Creating: %s" %(dirpath)
+            self.logger.info(" - Creating: %s" %(dirpath))
             utils.make_dir(dirpath)
             self.pipeline_outdirs[dirname] = dirpath
             for subdir_name in self.toplevel_subdirs[dirname]:
@@ -280,8 +280,8 @@ class Pipeline:
         Load the settings filename
         """
         if not os.path.isfile(self.settings_filename):
-            print "Error: %s is not a settings filename." \
-                %(self.settings_filename)
+            self.logger.critical("Error: %s is not a settings filename." \
+                                 %(self.settings_filename))
             sys.exit(1)
         self.settings = settings.load_settings(self.settings_filename)
         self.settings_info, self.parsed_settings = self.settings
@@ -294,8 +294,8 @@ class Pipeline:
         self.load_sequence_files()
         # Load the directory where pipeline output should go
         self.output_dir = utils.pathify(self.settings_info["data"]["outdir"])
-        print "Loaded pipeline settings (source: %s)." \
-            %(self.settings_filename)
+        self.logger.info("Loaded pipeline settings (source: %s)." \
+                         %(self.settings_filename))
         # Pipeline init directory
         self.init_dir = \
             os.path.join(self.settings_info["pipeline-files"]["init_dir"])
@@ -310,8 +310,9 @@ class Pipeline:
         if not self.settings_info["mapping"]["paired"]:
             return
         if "sample_groups" not in self.settings_info["data"]:
-            print "Error: In paired-end mode, but cannot find \'sample_groups\' "\
-                  "parameter. Please set \'sample_groups\'."
+            self.logger.critical("Error: In paired-end mode, but cannot find " \
+                                 "\'sample_groups\' parameter. Please set " \
+                                 "\'sample_groups\'.")
             sys.exit(1)
         sample_groups = self.settings_info["data"]["sample_groups"]
         sample_to_group = {}
@@ -347,8 +348,8 @@ class Pipeline:
         Load sequence files from settings file.
         """
         if self.settings_info is None:
-            print "Error: cannot load sequence files if settings " \
-                "are not loaded."
+            self.logger.critical("Error: cannot load sequence files " \
+                                 "if settings are not loaded.")
             sys.exit(1)
         seq_files = self.settings_info["data"]["sequence_files"]
         # Get the absolute path names, with the prefix input directory,
@@ -357,13 +358,15 @@ class Pipeline:
         input_dir = utils.pathify(self.settings_info["data"]["indir"])
         for seq_entry in seq_files:
             if len(seq_entry) != 2:
-                print "Error: Must provide a sequence filename and a " \
-                    "sample label for each entry."
+                self.logger.critical("Error: Must provide a sequence " \
+                                     "filename and a sample label " \
+                                     "for each entry.")
                 sys.exit(1)
             fname, seq_label = seq_entry
             seq_fname = os.path.join(input_dir, fname)
             if not os.path.isfile(seq_fname):
-                print "Error: Cannot find sequence file %s" %(seq_fname)
+                self.logger.critical("Error: Cannot find sequence file %s" \
+                                     %(seq_fname))
                 sys.exit(1)
             sequence_filenames.append([seq_fname, seq_label])
         self.sequence_filenames = sequence_filenames
@@ -380,8 +383,8 @@ class Pipeline:
             seq_filename, sample_label = seq_entry
             # Ensure file exists
             if not os.path.isfile(seq_filename):
-                self.logger.critical("Error: %s does not exist!" %(seq_filename))
-                print "Error: %s does not exist!" %(seq_filename)
+                self.logger.critical("Error: %s does not exist!" \
+                                     %(seq_filename))
                 sys.exit(1)
             sample_rawdata = SampleRawdata(sample_label,
                                            seq_filename,
@@ -394,12 +397,13 @@ class Pipeline:
         """
         Load samples.
         """
-        print "Loading pipeline samples..."
+        self.logger.info("Loading pipeline samples...")
         samples = []
         # Get samples information
         all_samples_rawdata = self.get_samples_rawdata()
         # Mapping from labels to sample info
-        samples_rawdata_by_label = dict([(s.label, s) for s in all_samples_rawdata])
+        samples_rawdata_by_label = \
+            dict([(s.label, s) for s in all_samples_rawdata])
         # If paired-end, also load sample groups information
         if self.is_paired_end:
             self.load_groups()
@@ -428,7 +432,7 @@ class Pipeline:
         """
         Pre-process reads.
         """
-        print "Preprocessing: %s" %(sample)
+        self.logger.info("Preprocessing: %s" %(sample))
         if sample.sample_type == "riboseq":
             # Preprocess riboseq samples by trimming trailing
             # As
@@ -460,7 +464,8 @@ class Pipeline:
         for sample in self.samples:
             self.logger.info("Processing sample %s" %(sample))
             job_name = "pipeline_run_%s" %(sample.label)
-            sample_cmd = "python %s --run-on-sample %s --settings %s --output-dir %s" \
+            sample_cmd = \
+                "python %s --run-on-sample %s --settings %s --output-dir %s" \
                 %(PIPELINE_RUN_SCRIPT,
                   sample.label,
                   self.settings_filename,
@@ -479,10 +484,11 @@ class Pipeline:
         self.logger.info("Running pipeline.")
         num_samples = len(self.samples)
         if num_samples == 0:
-            print "Error: No samples to run on."
+            self.logger.critical("Error: No samples to run on.")
             sys.exit(1)
         else:
-            print "Running on %d samples" %(num_samples)
+            self.logger.info("Running on %d samples" \
+                             %(num_samples))
         # Job IDs for each sample
         job_ids = self.run_on_samples()
         # Wait until all jobs completed 
@@ -504,7 +510,6 @@ class Pipeline:
             if sample is None:
                 self.logger.info("Cannot find sample %s! Exiting.." \
                                  %(label))
-                print "Error: Cannot find sample %s" %(label)
                 sys.exit(1)
             # Pre-process the data if needed
             self.logger.info("Preprocessing reads")
@@ -562,20 +567,20 @@ class Pipeline:
             sample_mapping_outdir = \
                 os.path.join(self.pipeline_outdirs["mapping"],
                              sample.label)
-            print "Creating: %s" %(sample_mapping_outdir)
+            self.logger.info("Creating: %s" %(sample_mapping_outdir))
             utils.make_dir(sample_mapping_outdir)
             tophat_cmd, tophat_outfilename = \
                 mapper_wrappers.get_tophat_mapping_cmd(tophat_path,
                                                        sample,
                                                        sample_mapping_outdir,
                                                        self.settings_info)
-            print "Executing: %s" %(tophat_cmd)
+            self.logger.info("Executing: %s" %(tophat_cmd))
             # Check that Tophat file does not exist
             self.my_cluster.launch_and_wait(tophat_cmd, job_name,
                                             unless_exists=tophat_outfilename)
             sample.bam_filename = tophat_outfilename
         else:
-            print "Error: unsupported mapper %s" %(mapper)
+            self.logger.info("Error: unsupported mapper %s" %(mapper))
             sys.exit(1)
         ##
         ## Post processing of BAM reads
@@ -610,7 +615,7 @@ class Pipeline:
         """
         index_cmd = "samtools index %s" %(bam_filename)            
         index_filename = "%s.bai" %(bam_filename)
-        print "Indexing %s" %(bam_filename)
+        self.logger.info("Indexing %s" %(bam_filename))
         if not os.path.isfile(index_filename):
             os.system(index_cmd)
 
@@ -626,8 +631,8 @@ class Pipeline:
         bam_basename = os.path.basename(bam_filename).split(".bam")[0]
         sorted_bam_filename = os.path.join(os.path.dirname(bam_filename),
                                            "%s.sorted" %(bam_basename))
-        print "Sorting %s as %s" %(bam_filename,
-                                   sorted_bam_filename)
+        self.logger.info("Sorting %s as %s" %(bam_filename,
+                                              sorted_bam_filename))
         sort_cmd = "samtools sort %s %s" %(bam_filename,
                                            sorted_bam_filename)
         job_name = "sorted_bam_%s" %(bam_basename)
@@ -654,8 +659,8 @@ class Pipeline:
         bam_basename = os.path.basename(sample.bam_filename)
         ribosub_bam_filename = os.path.join(sample.processed_bam_dir,
                                            "%s.ribosub.bam" %(bam_basename[0:-4]))
-        print "Getting rRNA-subtracted reads for %s" %(sample.label)
-        print "  - Output file: %s" %(ribosub_bam_filename)
+        self.logger.info("Getting rRNA-subtracted reads for %s" %(sample.label))
+        self.logger.info("  - Output file: %s" %(ribosub_bam_filename))
         if not os.path.isfile(ribosub_bam_filename):
             # Get the ribosomal rRNA mapping reads
             ribo_read_ids = {}
@@ -675,7 +680,8 @@ class Pipeline:
                 ribosub_bam.write(read)
             ribosub_bam.close()
         else:
-            print "Found %s. Skipping.." %(ribosub_bam_filename)
+            self.logger.info("Found %s. Skipping.." \
+                             %(ribosub_bam_filename))
         mapped_reads.close()
         return ribosub_bam_filename
         
@@ -701,8 +707,10 @@ class Pipeline:
         unique_bam_filename = \
             os.path.join(sample.processed_bam_dir,
                          "%s.unique.bam" %(bam_basename[0:-4]))
-        print "Getting unique reads for %s" %(sample.label)
-        print "  - Output file: %s" %(unique_bam_filename)
+        self.logger.info("Getting unique reads for %s" \
+                         %(sample.label))
+        self.logger.info("  - Output file: %s" \
+                         %(unique_bam_filename))
         if not os.path.isfile(unique_bam_filename):
             # Get unique reads if file for them does not already
             # exist
@@ -720,7 +728,8 @@ class Pipeline:
                                     %(sample.bam_filename))
             unique_reads.close()
         else:
-            print "Found %s. Skipping.." %(unique_bam_filename)
+            self.logger.info("Found %s. Skipping.." \
+                             %(unique_bam_filename))
         mapped_reads.close()
         return unique_bam_filename
     
@@ -730,13 +739,11 @@ class Pipeline:
         Run QC for this sample.
         """
         self.logger.info("Running QC on %s" %(sample.label))
-        print "Running QC on sample: %s" %(sample.label)
         # Retrieve QC object for sample
         qc_obj = self.qc_objects[sample.label]
         if qc_obj.qc_loaded:
-            self.logger.info("QC objects already loaded.")
             # Don't load QC information if it already exists
-            print "  - QC objects already loaded from file."
+            self.logger.info("QC objects already loaded.")
         else:
             # Run QC metrics
             qc_obj.compute_qc()
@@ -751,7 +758,6 @@ class Pipeline:
         Compile QC output for all samples.
         """
         self.logger.info("Compiling QC output for all samples...")
-        print "Compiling QC output for all samples..."
         # Load QC information from existing files
         self.load_qc()
         # Get a compiled object representing the QC
@@ -762,7 +768,6 @@ class Pipeline:
         qc_stats.compile_qc()
         qc_output_filename = os.path.join(self.pipeline_outdirs["qc"],
                                           "qc_stats.txt")
-        print "  - Outputting QC to: %s" %(qc_output_filename)
         self.logger.info("Outputting QC to: %s" %(qc_output_filename))
         qc_stats.to_csv(qc_output_filename)
 
@@ -772,7 +777,6 @@ class Pipeline:
         Compile analysis output for all samples.
         """
         self.logger.info("Compiling analysis output for all samples...")
-        print "Compiling analysis output for all samples..."
         # Compile RPKM results
         self.compile_rpkms_output()
 
@@ -809,7 +813,8 @@ class Pipeline:
         """
         Output RPKMs.
         """
-        print "Outputting RPKMs for sample: %s" %(sample.label)
+        self.logger.info("Outputting RPKMs for sample: %s" \
+                         %(sample.label))
         sample_rpkm_outdir = os.path.join(self.rpkm_dir, sample.label)
         rpkm_tables = rpkm_utils.output_rpkm(sample,
                                              sample_rpkm_outdir,
