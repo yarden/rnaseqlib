@@ -432,14 +432,13 @@ class Pipeline:
         if sample.sample_type == "riboseq":
             # Preprocess riboseq samples by trimming trailing
             # As
-            trimmed_filename = ribo_utils.trim_polyA_ends(sample.rawdata.seq_filename,
-                                                          self.pipeline_outdirs["rawdata"])
+            trimmed_filename = \
+                ribo_utils.trim_polyA_ends(sample.rawdata.seq_filename,
+                                           self.pipeline_outdirs["rawdata"])
             # Adjust the trimmed file to be the "reads" sequence file for this
             # sample
             sample.rawdata.reads_filename = trimmed_filename
         else:
-            print "WARNING: Do not know how to pre-process type %s samples." \
-                %(sample.sample_type)
             self.logger.info("Do not know how to pre-process type %s samples" \
                              %(sample.sample_type))
         return sample
@@ -459,7 +458,7 @@ class Pipeline:
         samples_job_ids = []
         self.logger.info("Running on samples..")
         for sample in self.samples:
-            print "Processing sample %s" %(sample)
+            self.logger.info("Processing sample %s" %(sample))
             job_name = "pipeline_run_%s" %(sample.label)
             sample_cmd = "python %s --run-on-sample %s --settings %s --output-dir %s" \
                 %(PIPELINE_RUN_SCRIPT,
@@ -478,7 +477,6 @@ class Pipeline:
         Run pipeline. 
         """
         self.logger.info("Running pipeline.")
-        print "Running pipeline..."
         num_samples = len(self.samples)
         if num_samples == 0:
             print "Error: No samples to run on."
@@ -524,6 +522,7 @@ class Pipeline:
             self.logger.exception("Failed while running on sample %s" \
                                   %(label))
             raise
+
             
     def map_reads(self, sample):
         """
@@ -533,18 +532,17 @@ class Pipeline:
         reads, which is used for downstream analyses (e.g. in QC).
         """
         self.logger.info("Mapping reads for sample: %s" %(sample.label))
-        print "Mapping reads..."
         mapper = self.settings_info["mapping"]["mapper"]
         mapping_cmd = None
         job_name = "%s_%s" %(sample.label, mapper)
-        print "Mapping sample: %s" %(sample)
-        print "  - mapper: %s" %(mapper)
-        self.logger.info("Mapper: %s" %(mapper))
+        self.logger.info("Mapping sample: %s" %(sample))
+        self.logger.info("  - Mapper: %s" %(mapper))
         if mapper == "bowtie":
             bowtie_path = self.settings_info["mapping"]["bowtie_path"]
             index_filename = self.settings_info["mapping"]["bowtie_index"]
-            output_filename = "%s" %(os.path.join(self.pipeline_outdirs["mapping"],
-                                                  sample.label))
+            output_filename = "%s" \
+                %(os.path.join(self.pipeline_outdirs["mapping"],
+                               sample.label))
             bowtie_options = self.settings_info["mapping"]["bowtie_options"]
             # Number of mismatches to use in mapping
             # Optional bowtie arguments
@@ -561,8 +559,9 @@ class Pipeline:
                                             unless_exists=output_filename)
         elif mapper == "tophat":
             tophat_path = self.settings_info["mapping"]["tophat_path"]
-            sample_mapping_outdir = os.path.join(self.pipeline_outdirs["mapping"],
-                                                 sample.label)
+            sample_mapping_outdir = \
+                os.path.join(self.pipeline_outdirs["mapping"],
+                             sample.label)
             print "Creating: %s" %(sample_mapping_outdir)
             utils.make_dir(sample_mapping_outdir)
             tophat_cmd, tophat_outfilename = \
@@ -584,20 +583,24 @@ class Pipeline:
         # Index the main BAM file
         self.index_bam(sample.bam_filename)
         # Create a directory for processed BAMs
-        sample.processed_bam_dir = os.path.join(self.pipeline_outdirs["mapping"],
-                                                sample.label,
-                                                "processed_bams")
+        sample.processed_bam_dir = \
+            os.path.join(self.pipeline_outdirs["mapping"],
+                         sample.label,
+                         "processed_bams")
         utils.make_dir(sample.processed_bam_dir)
         # Get the uniquely mapping reads
         sample.unique_bam_filename = self.get_unique_reads(sample)
         # Get the ribo-subtracted mapping reads
         sample.ribosub_bam_filename = self.get_ribosub_bam_reads(sample)
         # Sort and index the ribo-subtracted mapped reads BAM
-        sample.bam_filename = self.sort_and_index_bam(sample.bam_filename)
+        sample.bam_filename = \
+            self.sort_and_index_bam(sample.bam_filename)
         # Sort and index the unique BAM reads
-        sample.unique_bam_filename = self.sort_and_index_bam(sample.unique_bam_filename)
+        sample.unique_bam_filename = \
+            self.sort_and_index_bam(sample.unique_bam_filename)
         # Sort and index the ribosubtracted BAM reads
-        sample.ribosub_bam_filename = self.sort_and_index_bam(sample.ribosub_bam_filename)
+        sample.ribosub_bam_filename = \
+            self.sort_and_index_bam(sample.ribosub_bam_filename)
         return sample
 
 
@@ -695,8 +698,9 @@ class Pipeline:
             self.logger.critical("BAM %s file does not end in .bam" \
                                  %(sample.bam_filename))
         bam_basename = os.path.basename(sample.bam_filename)
-        unique_bam_filename = os.path.join(sample.processed_bam_dir,
-                                           "%s.unique.bam" %(bam_basename[0:-4]))
+        unique_bam_filename = \
+            os.path.join(sample.processed_bam_dir,
+                         "%s.unique.bam" %(bam_basename[0:-4]))
         print "Getting unique reads for %s" %(sample.label)
         print "  - Output file: %s" %(unique_bam_filename)
         if not os.path.isfile(unique_bam_filename):
