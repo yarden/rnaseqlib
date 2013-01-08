@@ -54,7 +54,8 @@ class GeneTable:
     Parse gene table.
     """
     def __init__(self, table_dir, source,
-                 tables_only=False):
+                 tables_only=False,
+                 params={}):
         self.table_dir = table_dir
         self.exons_dir = os.path.join(self.table_dir, "exons")
         self.const_exons_dir = os.path.join(self.exons_dir,
@@ -67,6 +68,17 @@ class GeneTable:
         self.genes = {}
         self.genes_list = []
         self.na_val = "NA"
+        self.params = params
+        self.constitutive_exon_diff = 10
+        self.frac_constitutive = 0.7
+        # If given parameters about how to define constitutive exons,
+        # use them
+        if "constitutive_exon_diff" in self.params:
+            self.constitutive_exon_diff = \
+                self.params["constitutive_exon_diff"]
+        if "frac_constitutive" in self.params:
+            self.frac_constitutive = \
+                self.params["frac_constitutive"]
         # Mapping from transcripts to gene names/symbols
         self.trans_to_names = defaultdict(lambda: self.na_val)
         # Mapping from genes to gene names/symbols
@@ -460,7 +472,6 @@ class GeneTable:
 
         
     def output_exons_as_gff(self,
-                            base_diff=6,
                             const_only=False,
                             cds_only=False):
         """
@@ -475,7 +486,8 @@ class GeneTable:
             exons_type = "const_exons"
             exons_outdir = self.const_exons_dir
         if cds_only:
-            exons_basename = "%s.cds_only.%s.gff" %(self.source, exons_type)
+            exons_basename = "%s.cds_only.%s.gff" %(self.source,
+                                                    exons_type)
         else:
             exons_basename = "%s.%s.gff" %(self.source, exons_type)
         gff_output_filename = os.path.join(exons_outdir, exons_basename)
@@ -498,8 +510,10 @@ class GeneTable:
         for gene_id, gene in self.genes.iteritems():
             if const_only:
                 # Get only constitutive exons
-                exons = gene.compute_const_exons(base_diff=base_diff,
-                                                 cds_only=cds_only)
+                exons = \
+                    gene.compute_const_exons(base_diff=self.constitutive_exon_diff,
+                                             frac_const=self.frac_constitutive,
+                                             cds_only=cds_only)
             elif cds_only:
                 # Get all CDS exons
                 exons = gene.cds_parts
@@ -812,7 +826,8 @@ def download_ucsc_tables(genome,
         utils.gunzip_file(table_filename, tables_outdir)
         
 
-def process_ucsc_tables(genome, output_dir):
+def process_ucsc_tables(genome, output_dir,
+                        init_params={}):
     """
     Process UCSC tables and reformat them as needed.
     """
@@ -835,7 +850,8 @@ def process_ucsc_tables(genome, output_dir):
     ##
     table_names = ["ensGene"]#, "refGene"]
     for table_name in table_names:
-        table = GeneTable(tables_outdir, table_name)
+        table = GeneTable(tables_outdir, table_name,
+                          params=init_params)
         # Output the table's exons as GFF
         table.output_exons_as_gff()
         # Output the table's CDS-only exons as GFF

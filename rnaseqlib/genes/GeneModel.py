@@ -37,7 +37,8 @@ class Gene:
             if t.cds_coords is not None:
                 self.has_cds = True
                 break
-        if not self.has_cds: print "has no cds: %s" %(self.label)
+        if not self.has_cds:
+            print "has no cds: %s" %(self.label)
         # Get all parts from all transcripts
         self.parts = []
         for trans in self.transcripts:
@@ -95,7 +96,7 @@ class Gene:
     def compute_const_exons(self,
                             base_diff=6,
                             cds_only=False,
-                            frac_const=.8):
+                            frac_const=.7):
         """
         Get constitutive exons.
 
@@ -110,6 +111,7 @@ class Gene:
           exon must occur in all transcripts.  Only used
           when no truly constitutive exons are available.
         """
+        print "USING: ", base_diff, frac_const
         self.const_exons = []
         transcripts = []
         if cds_only:

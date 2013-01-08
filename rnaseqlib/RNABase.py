@@ -22,10 +22,12 @@ class RNABase:
     """
     def __init__(self, genome, output_dir,
                  with_index=True,
-                 from_dir=None):
+                 from_dir=None,
+                 init_params={}):
         self.genome = genome
         self.with_index = with_index
         self.indices_dir = None
+        self.init_params = init_params
         ##
         ## Gene table names for various tasks
         ##
@@ -95,7 +97,8 @@ class RNABase:
         """
         const_exons_dir = self.get_const_exons_dir()
         for table_name in self.rpkm_table_names:
-            const_exons = tables.ConstExons(table_name, from_dir=const_exons_dir)
+            const_exons = tables.ConstExons(table_name,
+                                            from_dir=const_exons_dir)
             if const_exons.found:
                 self.tables_to_const_exons[table_name] = const_exons
 
@@ -129,7 +132,8 @@ class RNABase:
         tables.download_ucsc_tables(self.genome,
                                     self.output_dir)
         tables.process_ucsc_tables(self.genome,
-                                   self.output_dir)
+                                   self.output_dir,
+                                   init_params=self.init_params)
 
 
     def build_indices(self):

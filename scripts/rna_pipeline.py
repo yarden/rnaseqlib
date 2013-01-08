@@ -89,13 +89,15 @@ def genePredToGtf_msg():
 
 
 def initialize_pipeline(genome,
-                        output_dir):
+                        output_dir,
+                        init_params={}):
     """
     Initialize the pipeline.
     """
     # Check for required programs
     check_requirements()
-    base_obj = rna_base.RNABase(genome, output_dir)
+    base_obj = rna_base.RNABase(genome, output_dir,
+                                init_params=init_params)
     base_obj.initialize()
 
 
@@ -123,6 +125,20 @@ def main():
     parser.add_option("--output-dir", dest="output_dir", nargs=1,
                       default=None,
                       help="Output directory.")
+    ##
+    ## Options related to --init
+    ##
+    parser.add_option("--frac-constitutive", dest="frac_constitutive",
+                      nargs=1, default=0.7, type="float",
+                      help="Fraction (number between 0 and 1) of " \
+                      "transcripts that an exon can be in to be considered " \
+                      "constitutive. Default is 0.7 (i.e. 70% of " \
+                      "transcripts.)")
+    parser.add_option("--constitutive-exon-diff", dest="constitutive_exon_diff",
+                      nargs=1, default=10, type="int",
+                      help="Number of \'wiggle\' bases by which an exon can " \
+                      "differ in order to be considered constitutive. By " \
+                      "default set to 10.")
     (options, args) = parser.parse_args()
 
     greeting()
@@ -159,9 +175,15 @@ def main():
                       output_dir)
 
     if options.initialize is not None:
+        # Parse initialization-related settings
+        frac_constitutive = float(options.frac_constitutive)
+        constitutive_exon_diff = int(options.constitutive_exon_diff)
+        init_params = {"frac_constitutive": frac_constitutive,
+                       "constitutive_exon_diff": constitutive_exon_diff}
         genome = options.initialize
         initialize_pipeline(genome,
-                            output_dir)
+                            output_dir,
+                            init_params=init_params)
     
 
 if __name__ == '__main__':
