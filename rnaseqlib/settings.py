@@ -15,12 +15,13 @@ def load_settings(config_filename,
                   # Boolean parameters
                   BOOL_PARAMS=["paired",
                                "prefilter_miso"],
-                  # Parameters to be interpreted as Python lists or
-                  # data structures,
                   STR_PARAMS=["indir",
                               "outdir",
                               "stranded",
-                              "mapper"],
+                              "mapper",
+                              "adaptors_file"],
+                  # Parameters to be interpreted as Python lists or
+                  # data structures,
                   DATA_PARAMS=["sequence_files", 
                                "sample_groups"]):
     config = ConfigParser.ConfigParser()

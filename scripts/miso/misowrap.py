@@ -16,260 +16,10 @@ import rnaseqlib
 import rnaseqlib.utils as utils
 import rnaseqlib.miso.misowrap_settings as misowrap_settings
 import rnaseqlib.miso.PsiTable as pt
+import rnaseqlib.miso.MISOWrap as mw
 import rnaseqlib.miso.miso_utils as miso_utils
 import rnaseqlib.cluster_utils.cluster as cluster
-
-
-class MISOWrap:
-    """
-    Object containing information about a set of samples to be
-    processed by MISO and their MISO output.
-    """
-    def __init__(self, settings_filename, output_dir,
-                 logger_label=None):
-        self.settings_filename = settings_filename
-        self.settings_info = None
-        self.logger_label = None
-        # Main output directory
-        self.output_dir = utils.pathify(output_dir)
-        utils.make_dir(self.output_dir)
-        # MISO output directory (where raw output is)
-        self.miso_outdir = None
-        # Comparisons output directory
-        self.comparisons_outdir = None
-        # BAM files to process
-        self.bam_files = None
-        # Sample labels
-        self.sample_labels = None
-        self.comparison_groups = None
-        # Insert length directory (for paired-end samples)
-        self.insert_lens_dir = None
-        # Logs output directory
-        self.logs_outdir = None
-        # Logger object
-        self.logger = None
-        # Cluster submission object
-        self.my_cluster = None
-        # Event types to process
-        self.event_types = None
-        # Whether to submit jobs to cluster
-        self.use_cluster = False
-        # run_miso cmd
-        self.run_miso_cmd = None
-        # run_events_analysis cmd
-        self.run_events_cmd = None
-        # Constitutive exons GFF file: used to compute
-        # the insert length distribution
-        self.const_exons_gff = None
-        # Load settings
-        self.load_settings()
-        ##
-        ## Load annotation of events, like a map
-        ## events to genes.
-        ##
-        self.events_to_genes = None
-        self.load_events_to_genes()
-
-
-    def load_events_to_genes(self,
-                             source="ensGene",
-                             delimiter="\t"):
-        """
-        Load mapping from events to genes.
-
-        Expects a directory with files named
-        according to events, e.g.:
-        
-          SE.mm9.gff3_to_ensGene.txt        
-        """
-        if "events_to_genes_dir" not in self.settings_info["settings"]:
-            return
-        events_to_genes_dir = \
-            self.settings_info["settings"]["events_to_genes_dir"]
-        events_to_genes_dir = utils.pathify(events_to_genes_dir)
-        print "Loading events to genes mapping from: %s" \
-            %(events_to_genes_dir)
-        # If we're given mapping from events to genes, load
-        # these and index them by event type.
-        if not os.path.isdir(events_to_genes_dir):
-            print "Error: %s not a directory."
-            sys.exit(1)
-        basename_card = "*_to_%s.txt" %(source)
-        events_to_genes_files = \
-            glob.glob(os.path.join(events_to_genes_dir,
-                                   basename_card))
-        if len(events_to_genes_files) == 0:
-            print "Error: %s directory contains no %s files." \
-                %(events_to_genes_dir,
-                  basename_card)
-            sys.exit(1)
-        self.events_to_genes = defaultdict(lambda: defaultdict(list))
-        for fname in events_to_genes_files:
-            # Extract event type based on filename
-            event_type = os.path.basename(fname).split(".")[0]
-            with open(fname, "r") as events_file:
-                events_entries = csv.DictReader(events_file,
-                                                delimiter=delimiter)
-                for entry in events_entries:
-                    event_id = entry["event_id"]
-                    # Parse genes into a list
-                    genes = entry["gene_id"].split(",")
-                    # Index events by their type and then by
-                    # their ID
-                    self.events_to_genes[event_type][event_id].extend(genes)
-
-                
-    def load_settings(self):
-        """
-        Load settings for misowrap.
-        """
-        settings_info, parsed_settings = \
-                misowrap_settings.load_misowrap_settings(self.settings_filename)
-        self.settings_info = settings_info
-        # Load basic settings about data
-        self.read_len = self.settings_info["settings"]["readlen"]
-        self.overhang_len = self.settings_info["settings"]["overhanglen"]
-        self.miso_bin_dir = \
-          utils.pathify(self.settings_info["settings"]["miso_bin_dir"])
-        self.miso_settings_filename = \
-          utils.pathify(self.settings_info["settings"]["miso_settings_filename"])
-        self.miso_events_dir = \
-          utils.pathify(self.settings_info["settings"]["miso_events_dir"])
-        self.miso_outdir = \
-          utils.pathify(self.settings_info["settings"]["miso_output_dir"])
-        # Load data-related parameters
-        self.bam_files = self.settings_info["data"]["bam_files"]
-        if "insert_lens_dir" in self.settings_info["data"]:
-            self.insert_lens_dir = \
-              utils.pathify(self.settings_info["data"]["insert_lens_dir"])
-        # Sample labels
-        self.sample_labels = self.settings_info["data"]["sample_labels"]
-        # Set output directories
-        self.comparisons_dir = os.path.join(self.output_dir, 
-                                            "comparisons")
-        self.comparison_groups = \
-            self.settings_info["data"]["comparison_groups"]
-        self.logs_outdir = os.path.join(self.output_dir,
-                                        "misowrap_logs")
-        # Create necessary directories
-        utils.make_dir(self.miso_outdir)
-        utils.make_dir(self.comparisons_dir)
-        utils.make_dir(self.logs_outdir)
-        if "cluster_type" in self.settings_info["settings"]:
-            self.use_cluster = True
-            self.cluster_type = \
-                self.settings_info["settings"]["cluster_type"]
-            self.chunk_jobs = \
-                self.settings_info["settings"]["chunk_jobs"]
-        if self.use_cluster:
-            print "Loading cluster information."
-            # Load cluster object if given a cluster type
-            self.load_cluster()
-        # Create a logger object
-        if self.logger_label is None:
-            self.logger_label = "misowrap"
-        else:
-            self.logger_label = "misowrap_%s" %(logger_label)
-        self.logger = utils.get_logger(self.logger_label,
-                                       self.logs_outdir)
-        # Whether to prefilter MISO events
-        # Set general default settings
-        if "prefilter_miso" not in settings_info["settings"]:
-            # By default, set it so that MISO events are not
-            # prefiltered
-            settings_info["settings"]["prefilter_miso"] = False
-        self.prefilter_miso = \
-            self.settings_info["settings"]["prefilter_miso"]
-        # Load event types
-        self.load_event_types()
-        # Set path to MISO scripts
-        self.run_miso_cmd = os.path.join(self.miso_bin_dir,
-                                         "run_miso.py")
-        self.run_events_cmd = os.path.join(self.miso_bin_dir,
-                                           "run_events_analysis.py")
-        self.pe_utils_cmd = os.path.join(self.miso_bin_dir,
-                                         "pe_utils.py")
-        # Files related to gene tables
-        self.tables_dir = \
-            os.path.join(self.settings_info["pipeline-files"]["init_dir"],
-                         "ucsc")
-        if not os.path.isdir(self.tables_dir):
-            print "Error: %s directory does not exist." \
-                %(self.tables_dir)
-            sys.exit(1)
-        self.const_exons_gff = os.path.join(self.tables_dir,
-                                            "exons",
-                                            "const_exons",
-                                            "ensGene.const_exons.gff")
-        if not os.path.isfile(self.const_exons_gff):
-            print "Error: Const. exons GFF %s does not exist." \
-                %(self.const_exons_gff)
-            sys.exit(1)
-            
-
-    def load_event_types(self):
-        """
-        Read a list of event types that were defined in the 
-        events indexed directory.
-        """
-        if not os.path.isdir(self.miso_events_dir):
-            print "Error: %s is not a directory. Need a directory " \
-                  "with indexed events." %(self.miso_events_dir)
-            sys.exit(1)
-        self.event_types = []
-        for fname in os.listdir(self.miso_events_dir):
-            fname = os.path.join(self.miso_events_dir, fname)
-            if os.path.isdir(fname):
-                event_name = os.path.basename(fname)
-                self.event_types.append(event_name)
-        if len(self.event_types) == 0:
-            print "WARNING: Unable to load event types from %s" \
-                %(self.miso_events_dir)
-        # Load MISO event filters
-        self.load_event_filters()
-        
-
-    def load_event_filters(self,
-                           filter_types=["atleast_inc",
-                                         "atleast_exc",
-                                         "atleast_sum",
-                                         "atleast_const"]):
-        """
-        Load event type count filters.
-        """
-        self.event_filters = defaultdict(lambda: defaultdict(int))
-        # Load filter settings if they are present
-        for event_type in self.event_types:
-            if event_type in self.settings_info:
-                event_settings = self.settings_info[event_type]
-                for filter_type in filter_types:
-                    if filter_type not in event_settings:
-                        continue
-                    # Record the filter count
-                    count_filter = int(event_settings[filter_type])
-                    self.event_filters[event_type][filter_type] = count_filter
-
-        
-    def load_cluster(self):
-        """
-        Load cluster submission object for the particular
-        pipeline settings we were given.
-        """
-        self.my_cluster = \
-          cluster.Cluster(self.cluster_type,
-                          self.output_dir,
-                          self.logger)
-
-
-    def __repr__(self):
-        repr_str = "MISOWrap(settings=%s, output_dir=%s)" \
-          %(self.settings_filename, 
-            self.output_dir)
-        return repr_str
-
-
-    def __str__(self):
-        return self.__repr__()
+import rnaseqlib.pandas_utils as pandas_utils
 
 
 def summarize_miso_samples(settings_filename,
@@ -277,16 +27,15 @@ def summarize_miso_samples(settings_filename,
     """
     Summarize samples in MISO directory.
     """
-    misowrap_obj = MISOWrap(settings_filename,
-                            output_dir,
-                            logger_label="summarize")
+    misowrap_obj = mw.MISOWrap(settings_filename,
+                               output_dir,
+                               logger_label="summarize")
     bam_files = misowrap_obj.bam_files
     sample_labels = misowrap_obj.sample_labels
     print "Summarizing MISO output..."
     print "  - Output dir: %s" %(output_dir)
     run_miso_cmd = misowrap_obj.run_miso_cmd
     for sample_label in sample_labels:
-        print "sample label: ", sample_label
         sample_basename = sample_label[0]
         sample_dir_path = \
             utils.pathify(os.path.join(misowrap_obj.miso_outdir,
@@ -323,9 +72,9 @@ def compare_miso_samples(settings_filename,
     """
     Run a MISO samples comparison between all pairs of samples.
     """
-    misowrap_obj = MISOWrap(settings_filename,
-                            output_dir,
-                            logger_label="compare")
+    misowrap_obj = mw.MISOWrap(settings_filename,
+                               output_dir,
+                               logger_label="compare")
     bam_files = misowrap_obj.bam_files
     sample_labels = misowrap_obj.sample_labels
     read_len = misowrap_obj.read_len
@@ -387,8 +136,9 @@ def run_miso_on_samples(settings_filename, output_dir,
     """
     Run MISO on a set of samples.
     """
-    misowrap_obj = MISOWrap(settings_filename, output_dir,
-                            logger_label="run")
+    misowrap_obj = mw.MISOWrap(settings_filename,
+                               output_dir,
+                               logger_label="run")
     bam_files = misowrap_obj.bam_files
     read_len = misowrap_obj.read_len
     overhang_len = misowrap_obj.overhang_len
@@ -464,9 +214,9 @@ def filter_events(settings_filename,
     """
     Output a set of filtered MISO events.
     """
-    misowrap_obj = MISOWrap(settings_filename,
-                            output_dir,
-                            logger_label="filter")
+    misowrap_obj = mw.MISOWrap(settings_filename,
+                               output_dir,
+                               logger_label="filter")
     misowrap_obj.logger.info("Filtering MISO events...")
     psi_table = pt.PsiTable(misowrap_obj)
     psi_table.output_filtered_comparisons()
@@ -477,9 +227,9 @@ def compute_insert_lens(settings_filename,
     """
     Compute insert lengths for all samples.
     """
-    misowrap_obj = MISOWrap(settings_filename,
-                            output_dir,
-                            logger_label="insert_lens")
+    misowrap_obj = mw.MISOWrap(settings_filename,
+                               output_dir,
+                               logger_label="insert_lens")
     const_exons_gff = misowrap_obj.const_exons_gff
     if not os.path.isfile(const_exons_gff):
         print "Error: %s const exons GFF does not exist." \
@@ -501,10 +251,82 @@ def compute_insert_lens(settings_filename,
         print "Executing: %s" %(insert_len_cmd)
         job_name = "%s_insert_len" %(sample_name)
         if misowrap_obj.use_cluster:
-            misowrap_obj.my_cluster.launch_job(insert_len_cmd, job_name,
+            misowrap_obj.my_cluster.launch_job(insert_len_cmd,
+                                               job_name,
                                                ppn=1)
         else:
             os.system(insert_len_cmd)
+
+
+def combine_comparisons(settings_filename,
+                        comparisons_dir,
+                        output_dir,
+                        common_cols=["event_name",
+                                     "isoforms",
+                                     "chrom",
+                                     "strand",
+                                     "mRNA_starts",
+                                     "mRNA_ends",
+                                     "gene_id",
+                                     "gene_symbol"]):
+    """
+    Output combined MISO comparisons. For each event type,
+    combine the MISO comparisons for the relevant groups
+    based on the 'comparison_groups' in the misowrap
+    settings file.
+    """
+    misowrap_obj = mw.MISOWrap(settings_filename,
+                               output_dir,
+                               logger_label="combine_comparisons")
+    if not os.path.isdir(comparisons_dir):
+        misowrap_obj.logger.critical("Comparisons directory %s not found. " \
+                                     %(comparisons_dir))
+        sys.exit(1)
+    output_dir = os.path.join(output_dir,
+                              "combined_comparisons")
+    utils.make_dir(output_dir)
+    comparison_groups = misowrap_obj.comparison_groups
+    # For each event type, output the sample comparisons
+    for event_type in misowrap_obj.event_types:
+        # Collection of MISO comparison dataframes (to be merged later)
+        # for the current event type
+        comparison_dfs = []
+        comparison_labels = []
+        event_dir = os.path.join(comparisons_dir, event_type)
+        if not os.path.isdir(event_dir):
+            misowrap_obj.logger.info("Cannot find event type %s dir, " \
+                                     "skipping..." %(event_type))
+            continue
+        # Look only at sample comparisons within each sample group
+        for comp_group in comparison_groups:
+            sample_pairs = utils.get_pairwise_comparisons(comp_group)
+            misowrap_obj.logger.info("  - Total of %d comparisons" \
+                                     %(len(sample_pairs)))
+            for sample1, sample2 in sample_pairs:
+                # Load miso_bf file for the current comparison
+                # and join it to the combined df
+                comparison_name = "%s_vs_%s" %(sample1, sample2)
+                bf_data = miso_utils.load_miso_bf_file(event_dir,
+                                                       comparison_name,
+                                                       substitute_labels=True)
+                if bf_data is None:
+                    misowrap_obj.logger.warning("Could not find comparison %s" \
+                                                %(comparison_name))
+                    continue
+                comparison_dfs.append(bf_data)
+                comparison_labels.append(comparison_name)
+        # Merge the comparison dfs together
+        combined_df = pandas_utils.combine_dfs(comparison_dfs,
+                                               comparison_labels,
+                                               on=common_cols,
+                                               how="outer")
+        output_filename = os.path.join(output_dir,
+                                       "%s.miso_bf" %(event_type))
+        misowrap_obj.logger.info("Outputting %s results to: %s" \
+                                 %(event_type, output_filename))
+        combined_df.to_csv(output_filename,
+                           sep="\t",
+                           index=False)
 
 
 def greeting(parser=None):
@@ -533,7 +355,13 @@ def main():
     parser.add_option("--compute-insert-lens", dest="compute_insert_lens",
                       nargs=1, default=None,
                       help="Compute insert lengths for a set of BAM files. " 
-                      "takes a settings filename.")
+                      "Takes a settings filename.")
+    parser.add_option("--combine-comparisons", dest="combine_comparisons",
+                      nargs=2, default=None,
+                      help="Combine MISO comparisons into a single file, "
+                      "based on the \'comparison_groups\' parameter in the "
+                      "settings file. Takes a MISO comparisons directory and "
+                      "a settings filename.")
     parser.add_option("--output-dir", dest="output_dir", default=None,
                       help="Output directory.")
     (options, args) = parser.parse_args()
@@ -569,6 +397,13 @@ def main():
     if options.compute_insert_lens != None:
         settings_filename = utils.pathify(options.compute_insert_lens)
         compute_insert_lens(settings_filename, output_dir)
+
+    if options.combine_comparisons != None:
+        comparisons_dir = options.combine_comparisons[0]
+        settings_filename = utils.pathify(options.combine_comparisons[1])
+        combine_comparisons(settings_filename,
+                            comparisons_dir,
+                            output_dir)
         
 
 if __name__ == '__main__':

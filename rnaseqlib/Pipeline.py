@@ -17,6 +17,7 @@ import rnaseqlib.mapping.bedtools_utils as bedtools_utils
 import rnaseqlib.ribo.ribo_utils as ribo_utils
 import rnaseqlib.QualityControl as qc
 import rnaseqlib.RNABase as rna_base
+import rnaseqlib.clip.clip_utils as clip_utils
 
 # Import all paths
 from rnaseqlib.paths import *
@@ -130,32 +131,41 @@ class Pipeline:
         # Directory where pipeline init files are
         self.init_dir = None
         # Paired-end or not
-        self.is_paired_end = None
+        self.is_paired_end = False
         self.sample_to_group = None
         self.group_to_samples = None
         self.samples = []
+        # Adaptors filename (for CLIP)
+        self.adaptors_filename = None
         # Cluster objects to use
         self.my_cluster = None
-        # Check settings are correct
-        self.load_pipeline_settings()
         # Pipeline output subdirectories
         self.pipeline_outdirs = {}
         # RPKM directory for teh pipeline
         self.rpkm_dir = None
         # QC objects for each sample in pipeline
         self.qc_objects = {}
+        # Load basic settings (to be processed later to get
+        # full settings)
+        self.load_basic_settings()
+        # Load the directory where pipeline output should go
+        self.output_dir = utils.pathify(self.settings_info["data"]["outdir"])
+        # Create logger
+        pipeline_log_name = "Pipeline"
+        if self.curr_sample is not None:
+            pipeline_log_name = "Pipeline.%s" %(self.curr_sample)
+        self.logger = utils.get_logger(pipeline_log_name,
+                                       os.path.join(self.output_dir, "logs"))
+        # Check settings are correct
+        self.load_pipeline_settings()
         # Top-level output dirs
         self.toplevel_dirs = ["rawdata",
                               "mapping",
                               "qc",
                               "analysis",
                               "logs"]
+        # Initialize output directories
         self.init_outdirs()
-        pipeline_log_name = "Pipeline"
-        if self.curr_sample is not None:
-            pipeline_log_name = "Pipeline.%s" %(self.curr_sample)
-        self.logger = utils.get_logger(pipeline_log_name,
-                                       self.pipeline_outdirs["logs"])
         self.load_cluster()
         ## Load RNA Base: object storing all the relevant
         ## initialization information
@@ -274,26 +284,34 @@ class Pipeline:
         self.rpkm_dir = os.path.join(self.pipeline_outdirs["analysis"],
                                      "rpkm")
 
-            
-    def load_pipeline_settings(self):
+    def load_basic_settings(self):
         """
-        Load the settings filename
+        Load barebones settings, which get processed later
+        by 'load_pipeline_settings'.
+
+        Note: Cannot use logger here!
         """
         if not os.path.isfile(self.settings_filename):
-            self.logger.critical("Error: %s is not a settings filename." \
-                                 %(self.settings_filename))
+            print "Error: %s is not a settings filename." \
+                %(self.settings_filename)
             sys.exit(1)
         self.settings = settings.load_settings(self.settings_filename)
         self.settings_info, self.parsed_settings = self.settings
+
+            
+    def load_pipeline_settings(self):
+        """
+        Load the settings filename.
+        """
+        self.data_type = self.settings_info["pipeline"]["data_type"]
         self.genome = self.settings_info["mapping"]["genome"]
         # Determine if we're in paired-end mode
         self.is_paired_end = False
-        if self.settings_info["mapping"]["paired"]:
-            self.is_paired_end = True
+        if "paired" in self.settings_info["mapping"]:
+            if self.settings_info["mapping"]["paired"]:
+                self.is_paired_end = True
         # Load the sequence files
         self.load_sequence_files()
-        # Load the directory where pipeline output should go
-        self.output_dir = utils.pathify(self.settings_info["data"]["outdir"])
         self.logger.info("Loaded pipeline settings (source: %s)." \
                          %(self.settings_filename))
         # Pipeline init directory
@@ -301,6 +319,14 @@ class Pipeline:
             os.path.join(self.settings_info["pipeline-files"]["init_dir"])
         # Loading group information if there is any
         self.load_groups()
+        # Load adaptors, if any are given and we're processing CLIP-Seq data
+        if self.data_type == "clipseq":
+            if "adaptors_file" not in self.settings_info["mapping"]:
+                self.logger.critical("Error: Need \'adaptors_file\' set in " \
+                                     "[mapping] for clipseq data.")
+                sys.exit(1)
+            self.adaptors_filename = \
+                utils.pathify(self.settings_info["mapping"]["adaptors_file"])
         
 
     def load_groups(self):
@@ -310,7 +336,7 @@ class Pipeline:
         if not self.settings_info["mapping"]["paired"]:
             return
         if "sample_groups" not in self.settings_info["data"]:
-            self.logger.critical("Error: In paired-end mode, but cannot find " \
+            self.logger.critical("In paired-end mode, but cannot find " \
                                  "\'sample_groups\' parameter. Please set " \
                                  "\'sample_groups\'.")
             sys.exit(1)
@@ -331,7 +357,6 @@ class Pipeline:
             sample_obj.group = self.sample_to_group[sample_obj.label]
         
 
-
     def load_cluster(self):
         """
         Load cluster submission object for the particular
@@ -348,7 +373,7 @@ class Pipeline:
         Load sequence files from settings file.
         """
         if self.settings_info is None:
-            self.logger.critical("Error: cannot load sequence files " \
+            self.logger.critical("Cannot load sequence files " \
                                  "if settings are not loaded.")
             sys.exit(1)
         seq_files = self.settings_info["data"]["sequence_files"]
@@ -358,14 +383,14 @@ class Pipeline:
         input_dir = utils.pathify(self.settings_info["data"]["indir"])
         for seq_entry in seq_files:
             if len(seq_entry) != 2:
-                self.logger.critical("Error: Must provide a sequence " \
+                self.logger.critical("Must provide a sequence " \
                                      "filename and a sample label " \
                                      "for each entry.")
                 sys.exit(1)
             fname, seq_label = seq_entry
             seq_fname = os.path.join(input_dir, fname)
             if not os.path.isfile(seq_fname):
-                self.logger.critical("Error: Cannot find sequence file %s" \
+                self.logger.critical("Cannot find sequence file %s" \
                                      %(seq_fname))
                 sys.exit(1)
             sequence_filenames.append([seq_fname, seq_label])
@@ -435,12 +460,22 @@ class Pipeline:
         self.logger.info("Preprocessing: %s" %(sample))
         if sample.sample_type == "riboseq":
             # Preprocess riboseq samples by trimming trailing
-            # As
+            # poly As
+            self.logger.info("Trimming polyAs..")
             trimmed_filename = \
                 ribo_utils.trim_polyA_ends(sample.rawdata.seq_filename,
                                            self.pipeline_outdirs["rawdata"])
             # Adjust the trimmed file to be the "reads" sequence file for this
             # sample
+            sample.rawdata.reads_filename = trimmed_filename
+        elif sample.sample_type == "clipseq":
+            # Preprocess CLIP-Seq reads by trimming adaptors
+            self.logger.info("Trimming CLIP adaptors..")
+            trimmed_filename = \
+                clip_utils.trim_clip_adaptors(sample.rawdata.seq_filename,
+                                              self.adaptors_filename,
+                                              self.pipeline_outdirs["rawdata"],
+                                              self.logger)
             sample.rawdata.reads_filename = trimmed_filename
         else:
             self.logger.info("Do not know how to pre-process type %s samples" \

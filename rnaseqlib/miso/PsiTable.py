@@ -50,7 +50,9 @@ class PsiTable:
     Takes as input a MISOWrap object.
     """
     def __init__(self, misowrap_obj,
-                 verbose=True):
+                 verbose=True,
+                 load_comparisons=True,
+                 load_summaries=True):
         self.delimiter = "\t"
         self.na_val = "NA"
         self.misowrap_obj = misowrap_obj
@@ -76,9 +78,11 @@ class PsiTable:
         ## Load the MISO output
         ##
         # Load summaries
-        self.load_summaries(self.miso_outdir)
+        if load_summaries:
+            self.load_summaries(self.miso_outdir)
         # Load comparisons
-        self.load_comparisons(self.comparisons_dir)
+        if load_comparisons:
+            self.load_comparisons(self.comparisons_dir)
         # Filter events based on coverage
         self.filter_coverage_events()
 

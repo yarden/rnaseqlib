@@ -29,15 +29,27 @@ def read_pe_params(insert_len_filename):
     return pe_params
 
 
-def load_miso_bf_file(comparisons_dir, comparison_name):
+def load_miso_bf_file(comparisons_dir, comparison_name,
+                      substitute_labels=False):
     """
     Load MISO information for a comparison name.
     """
-    sample_comparison_dir = os.path.join(comparisons_dir, comparison_name)
+    sample_comparison_dir = os.path.join(comparisons_dir,
+                                         comparison_name)
     bf_filename = get_bf_filename(sample_comparison_dir)
     if bf_filename is None or (not os.path.isfile(bf_filename)):
         return None
     miso_bf_data = pandas.read_table(bf_filename, sep="\t")
+    if substitute_labels:
+        # If asked, replace sample1 and sample2
+        # with names of the samples
+        sample1_label, sample2_label = comparison_name.split("_vs_")
+        columns = []
+        for c in miso_bf_data.columns:
+            new_col = c.replace("sample1", sample1_label)
+            new_col = new_col.replace("sample2", sample2_label)
+            columns.append(new_col)
+        miso_bf_data.columns = columns
     return miso_bf_data
     
 
@@ -74,11 +86,15 @@ def get_bf_filename(pairwise_comparison_dir):
     Return a Bayes factor filename from a
     pairwise comparisons directory.
     """
-    pairwise_comparison_dir = os.path.abspath(os.path.expanduser(pairwise_comparison_dir))
+    pairwise_comparison_dir = utils.pathify(pairwise_comparison_dir)
+    if not os.path.isdir(pairwise_comparison_dir):
+        print "WARNING: Could not find %s" %(pairwise_comparison_dir)
+        return None
     bf_dir = os.path.join(pairwise_comparison_dir, "bayes-factors")
     if not os.path.isdir(bf_dir):
-        print "WARNING: Could not get BF dir %s" %(bf_dir)
-        return None
+        # Attempt current directory without "bayes-factor"
+        # inner directory
+        bf_dir = pairwise_comparison_dir
     bf_filename = glob.glob(os.path.join(bf_dir,
                                          "*.miso_bf"))
     if len(bf_filename) > 1:

@@ -9,6 +9,46 @@ from numpy import *
 
 import pandas
 
+import rnaseqlib
+import rnaseqlib.utils as utils
+
+
+def combine_dfs(dfs_list, df_labels,
+                **kwargs):
+    """
+    Combine dataframes into one. Use the labels in
+    'df_labels' to create suffixes for the common
+    columns in the dfs.
+    """
+    if len(dfs_list) == 1:
+        return combined_df
+    left_df = dfs_list[0]
+    left_df_label = df_labels[0]
+    combined_df = None
+    for right_df, right_df_label in zip(dfs_list[1:],
+                                        df_labels[1:]):
+        left_df_label = "_%s" %(left_df_label)
+        right_df_label = "_%s" %(right_df_label)
+        if combined_df is not None:
+            left_df = combined_df
+            left_df_label = ""
+        combined_df = pandas.merge(left_df, right_df,
+                                   left_index=True,
+                                   right_index=True,
+                                   suffixes=[left_df_label,
+                                             right_df_label],
+                                   **kwargs)
+    # combined_df = reduce(lambda left_df, right_df:
+    #                      pandas.merge(left_df, right_df,
+    #                                   left_index=True,
+    #                                   right_index=True,
+    #                                   suffixes=["_%s" %(df_labels_dict[left_df]),
+    #                                             "_%s" %(df_labels_dict[right_df])],
+    #                                   **kwargs),
+    #                      dfs_list)
+    return combined_df
+              
+
 def select_df_rows(df, cond,
                    columns=None,
                    how='any'):
@@ -32,6 +72,7 @@ def select_df_rows(df, cond,
         raise Exception, "Do not know %s" %(how)
     result = df[result_ind]
     return result, result_ind
+
 
 if __name__ == "__main__":
     from numpy import *

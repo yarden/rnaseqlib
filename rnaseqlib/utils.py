@@ -5,6 +5,8 @@ import os
 import sys
 import time
 
+import re
+
 from os.path import basename
 from urlparse import urlsplit
 
@@ -17,6 +19,7 @@ def get_logger(logger_name, log_outdir,
     """
     Return a logging object.
     """
+    make_dir(log_outdir)
     logger = logging.getLogger(logger_name)
     formatter = \
         logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -36,6 +39,21 @@ def get_logger(logger_name, log_outdir,
         logger.addHandler(ch)
     logger.info("Created logger %s" %(logger_name))
     return logger
+
+
+def trim_fastq_ext(fastq_filename):
+    """
+    Trim .fastq or .fastq.gz (case-insensitive)
+    from basename of given fastq filename.
+    """
+    fastq_dirname = os.path.dirname(fastq_filename)
+    fastq_basename = os.path.basename(fastq_filename)
+    # Trim trailing .fastq (optionally followed by .gz)
+    ext_pattern = re.compile("\.fastq(\.gz)?$", re.IGNORECASE)
+    trimmed_basename = ext_pattern.sub("", fastq_basename)
+    trimmed_fastq_fname = \
+        os.path.join(fastq_dirname, trimmed_basename)
+    return trimmed_fastq_fname
 
 
 def make_dir(dirpath):

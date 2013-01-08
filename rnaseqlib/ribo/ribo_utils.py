@@ -73,7 +73,8 @@ def trim_polyA_ends(fastq_filename,
     """
     print "Trimming polyA trails from: %s" %(fastq_filename)
     # Strip the trailing extension
-    output_basename = ".".join(os.path.basename(fastq_filename).split(".")[0:-1])
+    output_basename = \
+        ".".join(os.path.basename(fastq_filename).split(".")[0:-1])
     output_basename = "%s.trimmed_polyA.fastq.gz" %(output_basename)
     output_filename = os.path.join(output_dir, output_basename)
     utils.make_dir(output_dir)
