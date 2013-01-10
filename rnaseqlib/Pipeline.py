@@ -432,7 +432,8 @@ class Pipeline:
         # If paired-end, also load sample groups information
         if self.is_paired_end:
             self.load_groups()
-            for group_label, samples_in_group in self.group_to_samples.iteritems():
+            for group_label, samples_in_group in \
+                self.group_to_samples.iteritems():
                 # Get all the samples in the group
                 group_samples = [samples_rawdata_by_label[label] \
                                  for label in samples_in_group]
@@ -444,13 +445,15 @@ class Pipeline:
             # If single-end, then each sample consists of just one
             # sample rawdata object
             for sample_rawdata in all_samples_rawdata:
-                sample = Sample(sample_rawdata.label, sample_rawdata)
+                sample = Sample(sample_rawdata.label,
+                                sample_rawdata)
                 samples.append(sample)
         self.samples = samples
         # Tell each sample locations of its various output directories
         # (e.g. where its RPKM directory is)
         for sample in self.samples:
-            sample.rpkm_dir = os.path.join(self.rpkm_dir, sample.label)
+            sample.rpkm_dir = os.path.join(self.rpkm_dir,
+                                           sample.label)
             
 
     def preprocess_reads(self, sample):

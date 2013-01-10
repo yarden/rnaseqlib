@@ -15,7 +15,7 @@ def read_pe_params(insert_len_filename):
     """
     Get paired-end parameters from .insert_len file.
     """
-    insert_len_filename = os.path.abspath(os.path.expanduser(insert_len_filename))
+    insert_len_filename = utils.pathify(insert_len_filename)
     if not os.path.isfile(insert_len_filename):
         print "Error: %s not a file." %(insert_len_filename)
         sys.exit(1)
@@ -39,7 +39,9 @@ def load_miso_bf_file(comparisons_dir, comparison_name,
     bf_filename = get_bf_filename(sample_comparison_dir)
     if bf_filename is None or (not os.path.isfile(bf_filename)):
         return None
-    miso_bf_data = pandas.read_table(bf_filename, sep="\t")
+    miso_bf_data = pandas.read_table(bf_filename,
+                                     sep="\t",
+                                     index_col="event_name")
     if substitute_labels:
         # If asked, replace sample1 and sample2
         # with names of the samples
@@ -48,6 +50,8 @@ def load_miso_bf_file(comparisons_dir, comparison_name,
         for c in miso_bf_data.columns:
             new_col = c.replace("sample1", sample1_label)
             new_col = new_col.replace("sample2", sample2_label)
+            if (c == "bayes_factor") or (c == "diff"):
+                new_col = "%s_%s" %(c, comparison_name)
             columns.append(new_col)
         miso_bf_data.columns = columns
     return miso_bf_data

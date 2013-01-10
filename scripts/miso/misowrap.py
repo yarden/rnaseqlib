@@ -261,14 +261,14 @@ def compute_insert_lens(settings_filename,
 def combine_comparisons(settings_filename,
                         comparisons_dir,
                         output_dir,
-                        common_cols=["event_name",
-                                     "isoforms",
+                        common_cols=["isoforms",
                                      "chrom",
                                      "strand",
                                      "mRNA_starts",
                                      "mRNA_ends",
                                      "gene_id",
-                                     "gene_symbol"]):
+                                     "gene_symbol"],
+                        NA_VAL="NA"):
     """
     Output combined MISO comparisons. For each event type,
     combine the MISO comparisons for the relevant groups
@@ -288,6 +288,7 @@ def combine_comparisons(settings_filename,
     comparison_groups = misowrap_obj.comparison_groups
     # For each event type, output the sample comparisons
     for event_type in misowrap_obj.event_types:
+        if event_type != "SE": continue
         # Collection of MISO comparison dataframes (to be merged later)
         # for the current event type
         comparison_dfs = []
@@ -303,6 +304,12 @@ def combine_comparisons(settings_filename,
             misowrap_obj.logger.info("  - Total of %d comparisons" \
                                      %(len(sample_pairs)))
             for sample1, sample2 in sample_pairs:
+                if not ((sample1 == "MSI1_NoDox_B" and \
+                         sample2 == "MSI1_DOX_A") or \
+                        (sample1 == "MSI1_NoDox" and \
+                         sample2 == "MSI1_DOX")):
+                    print "SKIPPING IRRELEVANT SAMPLES"
+                    continue
                 # Load miso_bf file for the current comparison
                 # and join it to the combined df
                 comparison_name = "%s_vs_%s" %(sample1, sample2)
@@ -317,16 +324,17 @@ def combine_comparisons(settings_filename,
                 comparison_labels.append(comparison_name)
         # Merge the comparison dfs together
         combined_df = pandas_utils.combine_dfs(comparison_dfs,
-                                               comparison_labels,
                                                on=common_cols,
                                                how="outer")
+        print "COMBINED DF-->",combined_df.index
         output_filename = os.path.join(output_dir,
                                        "%s.miso_bf" %(event_type))
         misowrap_obj.logger.info("Outputting %s results to: %s" \
                                  %(event_type, output_filename))
         combined_df.to_csv(output_filename,
                            sep="\t",
-                           index=False)
+                           na_rep=NA_VAL,
+                           index=True)
 
 
 def greeting(parser=None):

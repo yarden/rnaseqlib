@@ -111,7 +111,6 @@ class Gene:
           exon must occur in all transcripts.  Only used
           when no truly constitutive exons are available.
         """
-        print "USING: ", base_diff, frac_const
         self.const_exons = []
         transcripts = []
         if cds_only:

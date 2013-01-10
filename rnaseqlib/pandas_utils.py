@@ -13,31 +13,27 @@ import rnaseqlib
 import rnaseqlib.utils as utils
 
 
-def combine_dfs(dfs_list, df_labels,
-                **kwargs):
+def combine_dfs(dfs_list, **kwargs):
     """
-    Combine dataframes into one. Use the labels in
-    'df_labels' to create suffixes for the common
-    columns in the dfs.
+    Combine dataframes into one. 
     """
     if len(dfs_list) == 1:
         return combined_df
-    left_df = dfs_list[0]
-    left_df_label = df_labels[0]
-    combined_df = None
-    for right_df, right_df_label in zip(dfs_list[1:],
-                                        df_labels[1:]):
-        left_df_label = "_%s" %(left_df_label)
-        right_df_label = "_%s" %(right_df_label)
-        if combined_df is not None:
-            left_df = combined_df
-            left_df_label = ""
-        combined_df = pandas.merge(left_df, right_df,
+    combined_df = dfs_list[0]
+    for right_df in dfs_list[1:]:
+        # Get the new columns that are not common
+        new_noncommon_cols = [c for c in right_df \
+                              if (c not in combined_df.columns) or \
+                                 (c in kwargs["on"])]
+        combined_df = pandas.merge(combined_df,
+                                   right_df[new_noncommon_cols],
                                    left_index=True,
                                    right_index=True,
-                                   suffixes=[left_df_label,
-                                             right_df_label],
                                    **kwargs)
+#                                   left_index=True,
+#                                   right_index=True,
+#                                   suffixes=["", ""],
+#                                   **kwargs)
     # combined_df = reduce(lambda left_df, right_df:
     #                      pandas.merge(left_df, right_df,
     #                                   left_index=True,
