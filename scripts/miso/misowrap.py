@@ -304,12 +304,6 @@ def combine_comparisons(settings_filename,
             misowrap_obj.logger.info("  - Total of %d comparisons" \
                                      %(len(sample_pairs)))
             for sample1, sample2 in sample_pairs:
-                if not ((sample1 == "MSI1_NoDox_B" and \
-                         sample2 == "MSI1_DOX_A") or \
-                        (sample1 == "MSI1_NoDox" and \
-                         sample2 == "MSI1_DOX")):
-                    print "SKIPPING IRRELEVANT SAMPLES"
-                    continue
                 # Load miso_bf file for the current comparison
                 # and join it to the combined df
                 comparison_name = "%s_vs_%s" %(sample1, sample2)
@@ -326,7 +320,6 @@ def combine_comparisons(settings_filename,
         combined_df = pandas_utils.combine_dfs(comparison_dfs,
                                                on=common_cols,
                                                how="outer")
-        print "COMBINED DF-->",combined_df.index
         output_filename = os.path.join(output_dir,
                                        "%s.miso_bf" %(event_type))
         misowrap_obj.logger.info("Outputting %s results to: %s" \
