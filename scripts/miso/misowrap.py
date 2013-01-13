@@ -288,8 +288,7 @@ def combine_comparisons(settings_filename,
     comparison_groups = misowrap_obj.comparison_groups
     # For each event type, output the sample comparisons
     for event_type in misowrap_obj.event_types:
-        if event_type != "SE": continue
-        # Collection of MISO comparison dataframes (to be merged later)
+         # Collection of MISO comparison dataframes (to be merged later)
         # for the current event type
         comparison_dfs = []
         comparison_labels = []
@@ -318,7 +317,7 @@ def combine_comparisons(settings_filename,
                 comparison_labels.append(comparison_name)
         # Merge the comparison dfs together
         combined_df = pandas_utils.combine_dfs(comparison_dfs,
-                                               on=common_cols,
+#                                               on=common_cols,
                                                how="outer")
         output_filename = os.path.join(output_dir,
                                        "%s.miso_bf" %(event_type))

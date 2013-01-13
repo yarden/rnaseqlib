@@ -19,17 +19,21 @@ def combine_dfs(dfs_list, **kwargs):
     """
     if len(dfs_list) == 1:
         return combined_df
-    combined_df = dfs_list[0]
-    for right_df in dfs_list[1:]:
+    combined_df = reduce(lambda x, y: x.combine_first(y), dfs_list)
+#    combined_df = dfs_list[0]
+#    for right_df in dfs_list[1:]:
         # Get the new columns that are not common
-        new_noncommon_cols = [c for c in right_df \
-                              if (c not in combined_df.columns) or \
-                                 (c in kwargs["on"])]
-        combined_df = pandas.merge(combined_df,
-                                   right_df[new_noncommon_cols],
-                                   left_index=True,
-                                   right_index=True,
-                                   **kwargs)
+        #new_noncommon_cols = [c for c in right_df \
+        #                      if (c not in combined_df.columns) or \
+        #                         (c in kwargs["on"])]
+#        new_noncommon_cols = [c for c in right_df \
+#                              if (c not in combined_df.columns)]
+#        print "COMBINING USING: ", new_noncommon_cols
+#        combined_df = pandas.merge(combined_df,
+#                                   right_df[new_noncommon_cols],
+#                                   left_index=True,
+#                                   right_index=True,
+#                                   **kwargs)
 #                                   left_index=True,
 #                                   right_index=True,
 #                                   suffixes=["", ""],
@@ -47,7 +51,7 @@ def combine_dfs(dfs_list, **kwargs):
 
 def select_df_rows(df, cond,
                    columns=None,
-                   how='any'):
+                   how="any"):
     """
     Select rows from DataFrame where a condition
     holds.  cond is a lambda.

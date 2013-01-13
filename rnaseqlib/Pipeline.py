@@ -52,6 +52,10 @@ class Sample:
         self.unique_bam_filename = None
         # rRNA subtracted BAM filename
         self.ribosub_bam_filename = None
+        # Duplicate-subtracted unique filename
+        self.rmdups_bam_filename = None
+        # Unique BAM after duplicate-subtraction filename
+        self.rmdups_unique_bam_filename = None
         # Sample's RPKM directory
         self.rpkm_dir = None
         # RPKM tables for the sample
@@ -644,9 +648,62 @@ class Pipeline:
         # Sort and index the ribosubtracted BAM reads
         sample.ribosub_bam_filename = \
             self.sort_and_index_bam(sample.ribosub_bam_filename)
+        ##
+        ## Remove duplicates optionally for CLIP
+        ##
+        self.postprocess_clip_bams(sample)
         return sample
 
 
+    def rmdups_bam(self, bam_filename):
+        """
+        Remove duplicates using samtools rmdups
+        from given BAM filename.  Assumes reads are
+        single-end.
+        """
+        input_basename = os.path.basename(bam_filename)
+        output_basename = input_basename.replace(".bam", "")
+        output_basename = output_basename.replace(".sorted.", "")
+        rmdups_bam_filename = os.path.join(os.path.dirname(bam_filename),
+                                           "%s.rmdups.bam" %(output_basename))
+        self.logger.info("Removing duplicates from BAM..")
+        self.logger.info("  Input: %s" %(bam_filename))
+        self.logger.info("  Output: %s" %(rmdups_bam_filename))
+        rmdup_cmd = "samtools rmdup -s %s %s" %(bam_filename,
+                                                rmdups_bam_filename)
+        self.logger.info("  Executing: %s" %(rmdup_cmd))
+        t1 = time.time()
+        os.system(rmdup_cmd)
+        t2 = time.time()
+        self.logger.info("Duplicates removal completed in %.2f mins" \
+                         %((t2 - t1)/60.))
+
+
+    def postprocess_clip_bams(self, sample):
+        """
+        Post-process BAM files for CLIP-Seq data sets.
+        """
+        if sample.sample_type != "clipseq":
+            return
+        self.logger.info("Postprocessing CLIP-Seq BAMs for %s" \
+                         %(sample.label))
+        self.logger.info("  Removing duplicates..")
+        # Get the non-duplicate version of BAM file
+        self.rmdups_bam_filename = \
+            self.rmdups_bam(sample.bam_filename)
+        # Get the non-duplicate version of the unique BAM file
+        self.rmdups_unique_bam_filename = \
+            self.rmdups_bam(sample.unique_bam_filename)
+        self.logger.info("  Sorting and indexing duplicate-removed BAMs..")
+        # Sort and index the non-duplicate BAM
+        sample.rmdups_bam_filename = \
+            self.sort_and_index_bam(sample.rmdups_bam_filename)
+        # Sort and index the non-duplicate unique BAM
+        sample.rmdups_unique_bam_filename = \
+            self.sort_and_index_bam(sample.rmdups_unique_bam_filename)
+        self.logger.info("Postprocessing of CLIP-Seq BAMs completed.")
+        
+        
     def index_bam(self, bam_filename):
         """
         Index a BAM filename if it's not already indexed.
@@ -680,7 +737,6 @@ class Pipeline:
         # Index the sorted BAM
         self.index_bam(expected_bam_filename)
         return expected_bam_filename
-
 
 
     def get_ribosub_bam_reads(self, sample, chr_ribo="chrRibo"):
