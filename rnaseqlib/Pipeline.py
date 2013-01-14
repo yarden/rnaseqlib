@@ -18,6 +18,7 @@ import rnaseqlib.ribo.ribo_utils as ribo_utils
 import rnaseqlib.QualityControl as qc
 import rnaseqlib.RNABase as rna_base
 import rnaseqlib.clip.clip_utils as clip_utils
+import rnaseqlib.fastq_utils as fastq_utils
 
 # Import all paths
 from rnaseqlib.paths import *
@@ -476,6 +477,8 @@ class Pipeline:
             # sample
             sample.rawdata.reads_filename = trimmed_filename
         elif sample.sample_type == "clipseq":
+            # Check that CLIP-related utils are available
+            clip_utils.check_utils()
             # Preprocess CLIP-Seq reads by trimming adaptors
             self.logger.info("Trimming CLIP adaptors..")
             trimmed_filename = \
@@ -484,6 +487,14 @@ class Pipeline:
                                               self.pipeline_outdirs["rawdata"],
                                               self.logger)
             sample.rawdata.reads_filename = trimmed_filename
+            # Remove all Ns reads from file
+            self.logger.info("Removing sequence-less reads..")
+            self.rawdata.reads_filename = \
+                fastq_utils.filter_seqless_reads(sample.rawdata.reads_filename)
+            # Create collapsed versions of sequence files
+            self.logger.info("Collapsing CLIP reads..")
+            sample.rawdata.collapsed_seq_filename = \
+                clip_utils.collapse_clip_reads(sample)
         else:
             self.logger.info("Do not know how to pre-process type %s samples" \
                              %(sample.sample_type))
@@ -655,7 +666,7 @@ class Pipeline:
         return sample
 
 
-    def rmdups_bam(self, bam_filename):
+    def rmdups_bam(self, bam_filename, output_dir):
         """
         Remove duplicates using samtools rmdups
         from given BAM filename.  Assumes reads are
@@ -663,10 +674,15 @@ class Pipeline:
         """
         input_basename = os.path.basename(bam_filename)
         output_basename = input_basename.replace(".bam", "")
+        self.logger.info("Removing .sorted. from %s" %(input_basename))
         output_basename = output_basename.replace(".sorted.", "")
-        rmdups_bam_filename = os.path.join(os.path.dirname(bam_filename),
-                                           "%s.rmdups.bam" %(output_basename))
         self.logger.info("Removing duplicates from BAM..")
+        rmdups_bam_filename = os.path.join(output_dir,
+                                           "%s.rmdups.bam" %(output_basename))
+        if os.path.isfile(rmdups_bam_filename):
+            self.logger.info("%s exists, skipping duplication removal." \
+                             %(rmdups_bam_filename))
+            return rmdups_bam_filename
         self.logger.info("  Input: %s" %(bam_filename))
         self.logger.info("  Output: %s" %(rmdups_bam_filename))
         rmdup_cmd = "samtools rmdup -s %s %s" %(bam_filename,
@@ -677,6 +693,7 @@ class Pipeline:
         t2 = time.time()
         self.logger.info("Duplicates removal completed in %.2f mins" \
                          %((t2 - t1)/60.))
+        return rmdups_bam_filename
 
 
     def postprocess_clip_bams(self, sample):
@@ -689,11 +706,13 @@ class Pipeline:
                          %(sample.label))
         self.logger.info("  Removing duplicates..")
         # Get the non-duplicate version of BAM file
-        self.rmdups_bam_filename = \
-            self.rmdups_bam(sample.bam_filename)
+        sample.rmdups_bam_filename = \
+            self.rmdups_bam(sample.bam_filename,
+                            sample.processed_bam_dir)
         # Get the non-duplicate version of the unique BAM file
-        self.rmdups_unique_bam_filename = \
-            self.rmdups_bam(sample.unique_bam_filename)
+        sample.rmdups_unique_bam_filename = \
+            self.rmdups_bam(sample.unique_bam_filename,
+                            sample.processed_bam_dir)
         self.logger.info("  Sorting and indexing duplicate-removed BAMs..")
         # Sort and index the non-duplicate BAM
         sample.rmdups_bam_filename = \

@@ -56,3 +56,26 @@ def trim_clip_adaptors(fastq_filename,
     logger.info("Trimming took %.2f mins." %((t2 - t1)/60.))
     return output_filename
 
+
+def collapse_clip_reads(sample):
+    """
+    Collapse CLIP reads. Uses fastx_collapser.
+    """
+    return collapsed_seq_filename
+
+
+def check_clip_utils(logger,
+                     required_utils=["cutadapt",
+                                     "fastx_collapser"]):
+    """
+    Check that necessary utilities are available.
+    """
+    logger.info("Checking that utilities required for CLIP are available..")
+    for program in required_utils:
+        program_path = utils.which(program)
+        if program_path is None:
+            logger.critical("Could not access: %s" %(program))
+            logger.critical("Make %s avaialble and try again." %(program))
+            sys.exit(1)
+    logger.info("Found CLIP utilities.")
+    

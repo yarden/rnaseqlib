@@ -32,7 +32,10 @@ def write_open_fastq(fastq_filename):
     
 
 def read_fastq(fastqfile):
-    "parse a fastq-formatted file, yielding a (header, sequence, header2, quality) tuple"
+    """
+    parse a fastq-formatted file, yielding a
+    (header, sequence, header2, quality) tuple
+    """
     fastqiter = (l.strip('\n') for l in fastqfile)  # strip trailing newlines
     fastqiter = ifilter(lambda l: l, fastqiter)  # skip blank lines
     line_num = 0
@@ -52,6 +55,7 @@ def read_fastq(fastqfile):
             raise EOFError("Failed to parse four lines from fastq file!")
         line_num += 1
 
+
 def write_fastq(fastq_file, fastq_rec):
     header, seq, header2, quality = fastq_rec
     if not header.startswith("@"):
@@ -67,6 +71,7 @@ def fastq_get_rec_id(line):
         return line[1:]
     else:
         return line
+
 
 def fastq2fasta(settings_filename,
                 output_dir,
@@ -174,6 +179,7 @@ def split_file(chunk, output_filename):
     otf.close()
     f.close()
 
+
 def chunk_fasta(fasta_filename, output_dir,
                 mb=1):
     """
@@ -213,6 +219,32 @@ def chunk_fasta(fasta_filename, output_dir,
     t2 = time.time()
     print "Chunking into %d chunks took %.2f seconds" \
           %(chunk_num - 1, (t2 - t1))
+
+
+def filter_seqless_reads(fastq_filename):
+    """
+    Trim sequence-less or quality-less reads,
+    i.e. reads that have all "N"s as sequences
+    or all "#" as quality scores
+    """
+    input_file = fastq_utils.read_open_fastq(fastq_filename)
+    output_filename = "%s.filtered.fastq.gz" \
+                      %(utils.trim_fastq_ext(input_filename))
+    output_file = fastq_utils.write_open_fastq(output_filename)
+    t1 = time.time()
+    for line in fastq_utils.read_fastq(input_file):
+        header, seq, header2, qual = line
+        # Check if sequence is all Ns or quality is all #s
+        if all(seq_char == "N" for seq_char in seq) or \
+           all(qual_char == "#" for qual_char in qual):
+            continue
+        new_rec = (header, seq, header2, qual)
+        # Write the record
+        fastq_utils.write_fastq(output_file, new_rec)
+    t2 = time.time()
+    print "Trimming took %.2f mins." %((t2 - t1)/60.)
+    output_file.close()
+
 
 
 def main():
