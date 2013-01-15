@@ -43,12 +43,12 @@ def trim_clip_adaptors(fastq_filename,
     # Substitute newlines with spaces
     adaptors = adaptors_in.read().strip().replace("\n", " ")
     adaptors_in.close()
-    cutadapt_cmd = "%s %s %s -o %s -m %d > %s.log" %(cutadapt_path,
-                                                     adaptors,
-                                                     fastq_filename,
-                                                     output_filename,
-                                                     min_read_len,
-                                                     output_filename)
+    cutadapt_cmd = "%s %s %s -o %s -m %d -q 3 > %s.log" %(cutadapt_path,
+                                                          adaptors,
+                                                          fastq_filename,
+                                                          output_filename,
+                                                          min_read_len,
+                                                          output_filename)
     logger.info("Executing: %s" %(cutadapt_cmd))
     t1 = time.time()
     os.system(cutadapt_cmd)
@@ -57,10 +57,20 @@ def trim_clip_adaptors(fastq_filename,
     return output_filename
 
 
-def collapse_clip_reads(sample):
+def collapse_clip_reads(sample, output_dir, logger):
     """
     Collapse CLIP reads. Uses fastx_collapser.
     """
+    logger.info("Collapsing CLIP reads for %s" %(sample.label))
+    t1 = time.time()
+    collapsed_seq_filename = \
+        fastx_utils.fastx_collapse_fastq(sample.reads_filename,
+                                         output_dir)
+    if collapsed_seq_filename is None:
+        logger.critical("Collapsing of CLIP reads failed.")
+        sys.exit(1)
+    t2 = time.time()
+    logger.info("Collapsing took %.2f minutes." %((t2 - t1)/60.))
     return collapsed_seq_filename
 
 

@@ -142,6 +142,8 @@ class Pipeline:
         self.samples = []
         # Adaptors filename (for CLIP)
         self.adaptors_filename = None
+        # Collapsed sequence filename (for CLIP)
+        self.collapsed_seq_filename = None
         # Cluster objects to use
         self.my_cluster = None
         # Pipeline output subdirectories
@@ -478,23 +480,22 @@ class Pipeline:
             sample.rawdata.reads_filename = trimmed_filename
         elif sample.sample_type == "clipseq":
             # Check that CLIP-related utils are available
-            clip_utils.check_utils()
+            clip_utils.check_clip_utils(self.logger)
             # Preprocess CLIP-Seq reads by trimming adaptors
-            self.logger.info("Trimming CLIP adaptors..")
             trimmed_filename = \
                 clip_utils.trim_clip_adaptors(sample.rawdata.seq_filename,
                                               self.adaptors_filename,
                                               self.pipeline_outdirs["rawdata"],
                                               self.logger)
             sample.rawdata.reads_filename = trimmed_filename
-            # Remove all Ns reads from file
-            self.logger.info("Removing sequence-less reads..")
-            self.rawdata.reads_filename = \
-                fastq_utils.filter_seqless_reads(sample.rawdata.reads_filename)
             # Create collapsed versions of sequence files
-            self.logger.info("Collapsing CLIP reads..")
             sample.rawdata.collapsed_seq_filename = \
-                clip_utils.collapse_clip_reads(sample)
+                clip_utils.collapse_clip_reads(sample,
+                                               self.pipeline_outdirs["rawdata"],
+                                               self.logger)
+            # Use this to map the reads
+            sample.rawdata.reads_filename = \
+                rawdata.rawdata.collapsed_seq_filename
         else:
             self.logger.info("Do not know how to pre-process type %s samples" \
                              %(sample.sample_type))
