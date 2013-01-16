@@ -1,7 +1,6 @@
 import ConfigParser
 from collections import defaultdict
-import json
-
+import ast
 import default_settings
 
 def load_settings(config_filename,
@@ -44,7 +43,8 @@ def load_settings(config_filename,
                     str(config.get(section, option))
             elif option in DATA_PARAMS:
                 settings_info[section][option] = \
-                    json.loads(config.get(section, option))
+                    ast.literal_eval(config.get(section,
+                                                option))
             else:
                 settings_info[section][option] = \
                     config.get(section, option)

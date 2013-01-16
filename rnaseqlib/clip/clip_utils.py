@@ -7,6 +7,7 @@ import time
 
 import rnaseqlib
 import rnaseqlib.utils as utils
+import rnaseqlib.fastx_utils as fastx_utils
 
 
 def trim_clip_adaptors(fastq_filename,
@@ -64,8 +65,9 @@ def collapse_clip_reads(sample, output_dir, logger):
     logger.info("Collapsing CLIP reads for %s" %(sample.label))
     t1 = time.time()
     collapsed_seq_filename = \
-        fastx_utils.fastx_collapse_fastq(sample.reads_filename,
-                                         output_dir)
+        fastx_utils.fastx_collapse_fastq(sample.rawdata.reads_filename,
+                                         output_dir,
+                                         logger)
     if collapsed_seq_filename is None:
         logger.critical("Collapsing of CLIP reads failed.")
         sys.exit(1)

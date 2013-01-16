@@ -493,9 +493,11 @@ class Pipeline:
                 clip_utils.collapse_clip_reads(sample,
                                                self.pipeline_outdirs["rawdata"],
                                                self.logger)
+            self.logger.info("Collapsed reads filename: %s" \
+                             %(sample.rawdata.collapsed_seq_filename))
             # Use this to map the reads
             sample.rawdata.reads_filename = \
-                rawdata.rawdata.collapsed_seq_filename
+                sample.rawdata.collapsed_seq_filename
         else:
             self.logger.info("Do not know how to pre-process type %s samples" \
                              %(sample.sample_type))
