@@ -31,11 +31,18 @@ def write_open_fastq(fastq_filename):
     return fastq_file
     
 
-def read_fastq(fastqfile):
+def read_fastq(fastq_in):
     """
     parse a fastq-formatted file, yielding a
     (header, sequence, header2, quality) tuple
     """
+    fastqfile = None
+    if type(fastq_in) == str:
+        # Parse as filename
+        fastqfile = read_open_fastq(fastq_in)
+    else:
+        # Otherwise assume it's a file handle
+        fastqfile = fastq_in
     fastqiter = (l.strip('\n') for l in fastqfile)  # strip trailing newlines
     fastqiter = ifilter(lambda l: l, fastqiter)  # skip blank lines
     line_num = 0

@@ -8,6 +8,7 @@ import os
 import sys
 import time
 import csv
+import subprocess
 
 import itertools
 import operator
@@ -500,9 +501,10 @@ class GeneTable:
             return
         # Output a map from genes to constitutive exons
         # for convenience
-        genes_to_exons_fname = os.path.join(exons_outdir,
-                                            exons_basename.replace(".gff",
-                                                                   ".to_genes.txt"))
+        genes_to_exons_fname = \
+            os.path.join(exons_outdir,
+                         exons_basename.replace(".gff",
+                                                ".to_genes.txt"))
         gff_out = gff_utils.Writer(open(gff_output_filename, "w"))
         rec_type = "exon"
         genes_to_exons = []
@@ -511,9 +513,9 @@ class GeneTable:
             if const_only:
                 # Get only constitutive exons
                 exons = \
-                    gene.compute_const_exons(base_diff=self.constitutive_exon_diff,
-                                             frac_const=self.frac_constitutive,
-                                             cds_only=cds_only)
+                  gene.compute_const_exons(base_diff=self.constitutive_exon_diff,
+                                           frac_const=self.frac_constitutive,
+                                           cds_only=cds_only)
             elif cds_only:
                 # Get all CDS exons
                 exons = gene.cds_parts
@@ -577,6 +579,9 @@ class GeneTable:
                                                    chrom, exon_coords, strand,
                                                    name=gene_id)
         exons_file.close()
+        # Sort the exons
+        output_filename = \
+            bedtools_utils.sort_bedfile_inplace(output_filename)
         return output_filename
 
 
@@ -678,6 +683,8 @@ class GeneTable:
                                                    strand,
                                                    name=gene_id)
         introns_file.close()
+        # Sort introns
+        bedtools_utils.sort_bedfile_inplace(output_filename)
                                                    
 
     def parse_string_int_list(self, int_list_as_str,
@@ -936,6 +943,8 @@ def process_tRNA_table(tables_outdir,
         bed_line = "%s\n" %("\t".join(bed_fields))
         tRNA_bed.write(bed_line)
     tRNA_bed.close()
+    # Sort tRNA file
+    bedtools_utils.sort_bedfile_inplace(tRNA_bed_filename)
     
 
 def convert_tables_to_gff(tables_outdir):

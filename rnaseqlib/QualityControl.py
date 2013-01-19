@@ -7,7 +7,7 @@ import logging
 import csv
 
 import rnaseqlib
-import rnaseqlib.fastq_utils as fastq_utils
+import rnaseqlib.fastx_utils as fastx_utils
 import rnaseqlib.mapping.bedtools_utils as bedtools_utils
 import rnaseqlib.utils as utils
 
@@ -84,7 +84,7 @@ class QualityControl:
 
     def get_num_reads(self):
         """
-        Return number of reads in FASTQ file.
+        Return number of reads in FASTA/FASTQ file.
 
         For single-end samples, returns a single number.
 
@@ -98,9 +98,9 @@ class QualityControl:
             mate_reads = []
             for mate_rawdata in self.sample.rawdata:
                 num_reads = 0
-                fastq_entries = \
-                    fastq_utils.get_fastq_entries(mate_rawdata.reads_filename)
-                for entry in fastq_entries:
+                fastx_entries = \
+                    fastx_utils.get_fastx_entries(mate_rawdata.reads_filename)
+                for entry in fastx_entries:
                     num_reads += 1
                 mate_reads.append(num_reads)
             pair_num_reads = ",".join(map(str, mate_reads))
@@ -109,9 +109,9 @@ class QualityControl:
             self.logger.info("Getting number of single-end reads.")
             num_reads = 0
             # Single-end
-            fastq_entries = \
-                fastq_utils.get_fastq_entries(self.sample.rawdata.reads_filename)
-            for entry in fastq_entries:
+            fastx_entries = \
+                fastx_utils.get_fastx_entries(self.sample.rawdata.reads_filename)
+            for entry in fastx_entries:
                 num_reads += 1
             return num_reads
 
@@ -267,6 +267,9 @@ class QualityControl:
 
 
     def get_percent_mapped(self):
+        """
+        Get percent of reads that were mapped.
+        """
         percent_mapped = 0
         if self.qc_results["num_mapped"] == self.na_val:
             return percent_mapped
@@ -277,55 +280,75 @@ class QualityControl:
             pair_denom = min(map(int,
                                  self.qc_results["num_reads"].split(",")))
             percent_mapped = \
-                self.qc_results["num_mapped"] / pair_denom
+                self.qc_results["num_mapped"] / float(pair_denom)
         else:
             percent_mapped = \
-                self.qc_results["num_mapped"] / self.qc_results["num_reads"]
+                self.qc_results["num_mapped"] / float(self.qc_results["num_reads"])
+        percent_mapped *= float(100)
         return percent_mapped
 
 
     def get_percent_unique(self):
+        """
+        Get percent of reads that are unique.
+        """
         percent_unique = 0
         if self.qc_results["num_unique_mapped"] == self.na_val:
             return percent_unique
         percent_unique = \
-            self.qc_results["num_unique_mapped"] / self.qc_results["num_mapped"]
+            self.qc_results["num_unique_mapped"] / float(self.qc_results["num_mapped"])
+        percent_unique *= float(100)
         return percent_unique
 
     
     def get_percent_ribo(self):
+        """
+        Get percent ribosomal RNA mapping reads.
+        """
         percent_ribo = 0
         if self.qc_results["num_ribo"] == self.na_val:
             return percent_ribo
         percent_ribo = \
-            self.qc_results["num_ribo"] / self.qc_results["num_mapped"]
+            self.qc_results["num_ribo"] / float(self.qc_results["num_mapped"])
         return 0
 
     
     def get_percent_exons(self):
+        """
+        Get percent of reads in exons.
+        """
         percent_exons = 0
         if self.qc_results["num_exons"] == self.na_val:
             return percent_exons
         percent_exons = \
-            float(self.qc_results["num_exons"]) / self.qc_results["num_mapped"]
+            float(self.qc_results["num_exons"]) / float(self.qc_results["num_mapped"])
+        percent_exons *= float(100)
         return percent_exons
 
 
     def get_percent_introns(self):
+        """
+        Get percent of reads in introns.
+        """
         percent_introns = 0
         if self.qc_results["num_introns"] == self.na_val:
             return percent_introns
         percent_introns = \
-            float(self.qc_results["num_introns"]) / self.qc_results["num_mapped"]
+            float(self.qc_results["num_introns"]) / float(self.qc_results["num_mapped"])
+        percent_introns *= float(100)
         return percent_introns
 
 
     def get_percent_cds(self):
+        """
+        Get percent of reads in CDS.
+        """
         percent_cds = 0
         if self.qc_results["num_cds"] == self.na_val:
             return percent_cds
         percent_cds = \
-                float(self.qc_results["num_cds"]) / self.qc_results["num_mapped"]
+            float(self.qc_results["num_cds"]) / float(self.qc_results["num_mapped"])
+        percent_cds *= float(100)
         return percent_cds
 
 
@@ -386,6 +409,8 @@ class QualityControl:
         # Write QC information as csv
         qc_df.to_csv(self.qc_filename,
                      cols=self.qc_header,
+                     na_rep=self.na_val,
+                     float_format="%.3f",
                      sep="\t",
                      index=False)
         
@@ -396,8 +421,7 @@ class QualityControl:
         Compute the average 'N' bases (unable to sequence)
         as a function of the position of the read.
         """
-        fastq_file = fastq_utils.read_open_fastq(fastq_filename)
-        fastq_entries = fastq_utils.read_fastq(fastq_file)
+        fastq_entries = fastx_utils.get_read_fastx(fastq_filename)
         # Mapping from position in read to number of Ns
         num_n_bases = defaultdict(int)
         # Mapping from position in read to total number of
@@ -439,6 +463,7 @@ class QCStats:
         self.qc_objects = qc_objects
         self.qc_stats = None
         self.qc_header = qc_header
+        self.na_val = "NA"
 
 
     def output_qc(self, output_filename):
@@ -482,6 +507,8 @@ class QCStats:
                       %(col)
         self.qc_stats.to_csv(output_filename,
                              sep="\t",
+                             na_rep=self.na_val,
+                             float_format="%.3f",
                              index=False,
                              cols=output_header)
 

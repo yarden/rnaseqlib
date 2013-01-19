@@ -8,6 +8,24 @@ import time
 import rnaseqlib
 import rnaseqlib.utils as utils
 
+import rnaseqlib.fasta_utils as fasta_utils
+import rnaseqlib.fastq_utils as fastq_utils
+
+
+def get_fastx_entries(fastx_filename):
+    """
+    Get entries of FASTQ/FASTA file.
+    """
+    if (fastx_filename.endswith(".fasta") or \
+        fastx_filename.endswith(".fasta.gz")):
+        # It's a FASTA file
+        entries = fasta_utils.read_fasta(fastx_filename)
+    elif (fastx_filename.endswith(".fastq") or \
+          fastx_filename.endswith(".fastq.gz")):
+        # It's a FASTQ file
+        entries = fastq_utils.read_fastq(fastx_filename)
+    return entries
+
 
 def fastx_collapse_fastq(fastq_filename, output_dir, logger):
     """
@@ -24,7 +42,7 @@ def fastx_collapse_fastq(fastq_filename, output_dir, logger):
     output_basename = \
         utils.trim_fastq_ext(os.path.basename(fastq_filename))
     collapsed_seq_filename = os.path.join(output_dir,
-                                          "%s.collapsed.fastq.gz" \
+                                          "%s.collapsed.fasta.gz" \
                                           %(output_basename))
     if os.path.isfile(collapsed_seq_filename):
         logger.info("%s exists, skipping collapsing step." \
