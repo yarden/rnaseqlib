@@ -474,12 +474,14 @@ class GeneTable:
         
     def output_exons_as_gff(self,
                             const_only=False,
-                            cds_only=False):
+                            cds_only=False,
+                            bed_too=True):
         """
-        Output constitutive exons for all genes as GFF.
+        Output exons for all genes as GFF.
 
         - const_only: if True, output only constitutive exons
-        - cds_only: if True, output CDS only exons 
+        - cds_only: if True, output CDS only exons
+        - bed_too: if True, output BED versions of GFF file
         """
         exons_type = "exons"
         exons_outdir = self.exons_dir
@@ -496,53 +498,66 @@ class GeneTable:
         print "  - Exons type: %s" %(exons_type)
         print "  - Output file: %s" %(gff_output_filename)
         print "  - CDS only: %s" %(cds_only)
-        if os.path.isfile(gff_output_filename):
-            print "%s exists. Skipping.." %(gff_output_filename)
-            return
-        # Output a map from genes to constitutive exons
-        # for convenience
-        genes_to_exons_fname = \
-            os.path.join(exons_outdir,
-                         exons_basename.replace(".gff",
-                                                ".to_genes.txt"))
-        gff_out = gff_utils.Writer(open(gff_output_filename, "w"))
-        rec_type = "exon"
-        genes_to_exons = []
-        genes_to_exons_header = ["gene_id", "exons"]
-        for gene_id, gene in self.genes.iteritems():
-            if const_only:
-                # Get only constitutive exons
-                exons = \
-                  gene.compute_const_exons(base_diff=self.constitutive_exon_diff,
-                                           frac_const=self.frac_constitutive,
-                                           cds_only=cds_only)
-            elif cds_only:
-                # Get all CDS exons
-                exons = gene.cds_parts
-            else:
-                # Get all exons
-                exons = gene.parts
-            exon_labels = [e.label for e in exons]
-            if len(exon_labels) == 0:
-                exon_labels = self.na_val
-            else:
-                exon_labels = ",".join(exon_labels)
-            entry = {"gene_id": gene_id,
-                     "exons": exon_labels}
-            genes_to_exons.append(entry)
-            # Output constitutive exons to GFF file
-            GeneModel.output_parts_as_gff(gff_out,
-                                          exons,
-                                          gene.chrom,
-                                          gene.strand,
-                                          source=self.source,
-                                          rec_type=rec_type,
-                                          gene_id=gene_id)
-        genes_to_exons = pandas.DataFrame(genes_to_exons)
-        genes_to_exons.to_csv(genes_to_exons_fname,
-                              cols=genes_to_exons_header,
-                              index=False,
-                              sep="\t")
+        if not os.path.isfile(gff_output_filename):
+            # Output a map from genes to constitutive exons
+            # for convenience
+            genes_to_exons_fname = \
+                os.path.join(exons_outdir,
+                             exons_basename.replace(".gff",
+                                                    ".to_genes.txt"))
+            gff_out_file = open(gff_output_filename, "w")
+            gff_out = gff_utils.Writer(gff_out_file)
+            rec_type = "exon"
+            genes_to_exons = []
+            genes_to_exons_header = ["gene_id", "exons"]
+            for gene_id, gene in self.genes.iteritems():
+                if const_only:
+                    # Get only constitutive exons
+                    exons = \
+                      gene.compute_const_exons(base_diff=self.constitutive_exon_diff,
+                                               frac_const=self.frac_constitutive,
+                                               cds_only=cds_only)
+                elif cds_only:
+                    # Get all CDS exons
+                    exons = gene.cds_parts
+                else:
+                    # Get all exons
+                    exons = gene.parts
+                exon_labels = [e.label for e in exons]
+                if len(exon_labels) == 0:
+                    exon_labels = self.na_val
+                else:
+                    exon_labels = ",".join(exon_labels)
+                entry = {"gene_id": gene_id,
+                         "exons": exon_labels}
+                genes_to_exons.append(entry)
+                # Output constitutive exons to GFF file
+                GeneModel.output_parts_as_gff(gff_out,
+                                              exons,
+                                              gene.chrom,
+                                              gene.strand,
+                                              source=self.source,
+                                              rec_type=rec_type,
+                                              gene_id=gene_id)
+            genes_to_exons = pandas.DataFrame(genes_to_exons)
+            genes_to_exons.to_csv(genes_to_exons_fname,
+                                  cols=genes_to_exons_header,
+                                  index=False,
+                                  sep="\t")
+            # Close out file to flush buffers
+            gff_out_file.close()
+        else:
+            print "Found %s. Skipping.." %(gff_output_filename)
+        # Output sorted version of the file as BED
+        if bed_too:
+            print "Making BED version of GFF %s" %(gff_output_filename)
+            bed_output_filename = \
+                gff_output_filename.replace(".gff", ".bed")
+            if os.path.isfile(bed_output_filename):
+                print " - BED %s exists, skipping.." %(bed_output_filename)
+            bedtools_utils.sort_bed(gff_output_filename,
+                                    bed_output_filename,
+                                    gff_to_bed=True)
 
 
     def output_exons_as_bed(self):
@@ -571,12 +586,16 @@ class GeneTable:
             exonEnds = gene_info["exonEnds"]
             # Keep 0-based start of ensGene table since
             # this will be outputted as a BED
-            exon_starts = (int(start) for start in exonStarts.rstrip(",").split(","))
-            exon_ends = (int(end) for end in exonEnds.rstrip(",").split(","))
+            exon_starts = \
+                (int(start) for start in exonStarts.rstrip(",").split(","))
+            exon_ends = \
+                (int(end) for end in exonEnds.rstrip(",").split(","))
             exon_coords = zip(exon_starts, exon_ends)
             # Output as BED: encode gene ID
             bedtools_utils.output_intervals_as_bed(exons_file,
-                                                   chrom, exon_coords, strand,
+                                                   chrom,
+                                                   exon_coords,
+                                                   strand,
                                                    name=gene_id)
         exons_file.close()
         # Sort the exons
@@ -596,6 +615,9 @@ class GeneTable:
         necessary to work out for other tables since this is
         only used for aggregate statistics.
         """
+        ##
+        ## Output merged exons
+        ##
         if self.source != "ensGene":
             return
         print "Outputting merged exons..."
@@ -609,6 +631,15 @@ class GeneTable:
                                        "ensGene.merged_exons.bed")
         # Merge the exons and output them as a new BED file
         bedtools_utils.merge_bed(exons_filename, output_filename)
+        ##
+        ## Output CDS merged exons
+        ##
+        #cds_exons_filename = os.path.join(self.exons_dir, 
+        #if not os.path.isfile():
+        #    sys.exit(1)
+        #cds_output_filename = \
+        #    os.path.join(self.exons,
+        #                 "ensGene.cds_only.merged_exons.bed")
 
 
     def load_merged_exons_by_gene(self):

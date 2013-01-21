@@ -44,7 +44,9 @@ class QualityControl:
                                 "percent_introns"]
         self.qc_header = ["num_reads", 
                           "num_mapped",
-                          "num_unique_mapped"] + self.qc_stats_header + self.regions_header
+                          "num_unique_mapped"] + \
+                          self.qc_stats_header + \
+                          self.regions_header
         # QC results
         self.na_val = "NA"
         self.qc_results = defaultdict(lambda: self.na_val)
@@ -180,7 +182,8 @@ class QualityControl:
         result = \
             bedtools_utils.count_reads_matching_intervals(self.sample.ribosub_bam_filename,
                                                           merged_exons_filename,
-                                                          merged_exons_map_fname)
+                                                          merged_exons_map_fname,
+                                                          self.logger)
         if result is None:
             self.logger.warning("Mapping to exons failed.")
         else:
@@ -204,7 +207,8 @@ class QualityControl:
         result = \
             bedtools_utils.count_reads_matching_intervals(self.sample.ribosub_bam_filename,
                                                           introns_filename,
-                                                          introns_map_fname)
+                                                          introns_map_fname,
+                                                          self.logger)
         if result is None:
             self.logger.warning("Mapping to introns failed.")
             return num_introns_reads
@@ -243,6 +247,12 @@ class QualityControl:
         Compute number of reads mapping to various regions.
         """
         self.logger.info("Computing reads in regions..")
+        # Map reads to all regions 
+        #
+        #   exons
+        #   introns
+        #   cds exons
+        
         # Dictionary mapping regions to number of reads mapping
         # to them
         self.region_funcs = [("num_ribo", self.get_num_ribo),

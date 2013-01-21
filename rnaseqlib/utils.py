@@ -13,6 +13,18 @@ from urlparse import urlsplit
 import itertools
 import logging
 
+
+def parse_attributes(attributes_str):
+    """
+    Parse semi-colon separated key=val attributes
+    (e.g. from GFF attributes fields).
+    Returns a dictionary.
+    """
+    attribute_fields = attributes_str.split(";")
+    attributes = dict(map(lambda a: a.split("="), attribute_fields))
+    return attributes
+
+
 def get_logger(logger_name, log_outdir,
                level=logging.INFO,
                include_stdout=True):
