@@ -142,10 +142,14 @@ def output_rpkm_from_gff_aligned_bam(bam_filename,
     print "  - BAM: %s" %(bam_filename)
     print "  - Output filename: %s" %(output_filename)
     # Map of gff region to read counts
-    region_to_count = defaultdict(int)
+    region_to_count = defaultdict(int)    
     for bam_read in bam_file:
         # Read aligns to region of interest
-        gff_aligned_regions = bam_read.opt("YB")
+        gff_aligned_regions = None
+        try:
+            gff_aligned_regions = bam_read.opt("YB")
+        except KeyError:
+            continue
         parsed_regions = gff_aligned_regions.split("gff:")[1:]
         # Compile region counts and lengths
         for region in parsed_regions:

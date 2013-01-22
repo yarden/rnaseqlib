@@ -38,10 +38,13 @@ class QualityControl:
                                "num_3p_utr",
                                "num_5p_utr"]
         self.qc_stats_header = ["percent_mapped",
+                                "percent_unique",
                                 "percent_ribo",
                                 "percent_exons",
                                 "percent_cds",     
-                                "percent_introns"]
+                                "percent_introns",
+                                "percent_3p_utr",
+                                "percent_5p_utr"]
         self.qc_header = ["num_reads", 
                           "num_mapped",
                           "num_unique_mapped"] + \
@@ -142,8 +145,8 @@ class QualityControl:
 
     def get_exon_intron_ratio(self):
         pass
-    
 
+    
     def get_num_ribo(self, chr_ribo="chrRibo"):
         """
         Compute the number of ribosomal mapping reads per
@@ -218,30 +221,6 @@ class QualityControl:
         return num_introns_reads 
 
 
-    def get_num_3p_utrs(self):
-        """
-        Return number of reads mapping to 3' UTRs.
-        """
-        self.logger.info("Getting number of 3\' UTRs reads..")
-        return 0
-
-    
-    def get_num_5p_utrs(self):
-        """
-        Return number of reads mapping to 5' UTRs.
-        """
-        self.logger.info("Getting number of 5\' UTRs reads..")
-        return 0
-    
-
-    def get_num_cds(self):
-        """
-        Return number of reads mapping to CDS regions.
-        """
-        self.logger.info("Getting number of CDS reads..")
-        return 0
-
-
     def get_region_files(self):
         """
         Get region filenames to map reads to for QC and their
@@ -261,7 +240,7 @@ class QualityControl:
         three_prime_utrs_fname = os.path.join(self.gene_table.utrs_dir,
                                               "ensGene.3p_utrs.bed")
         # 5' UTRs
-        five_prime_utrs_fname = os.paht.join(self.gene_Table.utrs_dir,
+        five_prime_utrs_fname = os.path.join(self.gene_table.utrs_dir,
                                              "ensGene.5p_utrs.bed")
         # 5' UTRs
         region_files = [[merged_exons_filename,
@@ -280,6 +259,8 @@ class QualityControl:
     def compute_regions(self):
         """
         Compute number of reads mapping to various regions.
+
+        Mapping done based on uniquely mapped BAM reads.
         """
         self.logger.info("Computing reads in regions..")
         # Map reads to all regions
@@ -299,7 +280,7 @@ class QualityControl:
                              %(num_regions))
             # Compute which reads map to each region
             region_results = \
-                bedtools_utils.multi_tagBam(self.sample.bam_filename,
+                bedtools_utils.multi_tagBam(self.sample.unique_bam_filename,
                                             region_filenames,
                                             region_labels,
                                             self.qc_regions_bam,
@@ -310,18 +291,82 @@ class QualityControl:
         else:
             self.logger.info("QC regions BAM %s found, skipping.." \
                              %(self.qc_regions_bam))
-        # Dictionary mapping regions to number of reads mapping
-        # to them
-        self.region_funcs = [("num_ribo", self.get_num_ribo),
-                             ("num_exons", self.get_num_exons),
-                             ("num_cds", self.get_num_cds),
-                             ("num_introns", self.get_num_introns),
-                             ("num_3p_utr", self.get_num_3p_utrs),
-                             ("num_5p_utr", self.get_num_5p_utrs)]
-        # Get the number of reads in each region and add these
-        # to QC results
-        for region_name, region_func in self.region_funcs:
-            self.qc_results[region_name] = region_func()
+        region_counts = \
+            self.count_reads_in_qc_regions(self.qc_regions_bam)
+        self.logger.info("Done counting reads in QC regions.")
+
+
+    def count_reads_in_qc_regions(self, qc_regions_bam):
+        """
+        Count reads mapping to various QC regions in the
+        BAM produced by tagBam.
+        """
+        if not os.path.isfile(qc_regions_bam):
+            self.logger.critical("Cannot found reads, BAM file %s not found." \
+                                 %(qc_regions_bam))
+            return
+        # Count reads in exons
+        bam_file = pysam.Samfile(qc_regions_bam, "rb")
+        self.logger.info("Counting reads in: %s" %(qc_regions_bam))
+        region_counts = defaultdict(int)
+        for bam_read in bam_file:
+            # Read aligns to region of interest
+            regions_field = None
+            try:
+                regions_field = bam_read.opt("YB")
+            except KeyError:
+                continue
+            regions_detected = \
+                map(lambda x: x.split(":")[0],
+                    filter(lambda x: ":" in x, regions_field.split(";")))
+            ##
+            ## Rules for counting regions
+            ##
+            if "merged_exons" in regions_detected:
+                # If it's in an intron and an exon, discard it
+                if "introns" in regions_detected:
+                    continue
+                # Count the exonic type: if it's an exon then
+                # record it as either CDS, 3' UTR, or 5' UTR.
+                # Note that these categories are mutually exclusive here
+                if "cds_only.merged_exons" in regions_detected:
+                    region_counts["num_cds"] += 1
+                elif "3p_utrs" in regions_detected:
+                    region_counts["num_3p_utr"] += 1
+                elif "5p_utrs" in regions_detected:
+                    region_counts["num_5p_utr"] += 1
+                else:
+                    # Misc exons: not 3p_UTR, not 5p_UTR and not
+                    # CDS exons
+                    region_counts["num_other_exons"] += 1
+            elif ("cds_only.merged_exons" in regions_detected) and \
+                 (len(regions_detected) == 1):
+                # If the exon maps only to the CDS region, count it
+                # as CDS
+                region_counts["num_cds"] += 1
+            elif ("introns" in regions_detected) and \
+                 (len(regions_detected) == 1):
+                # It's a reliable intron
+                region_counts["num_introns"] += 1
+        self.qc_results["num_cds"] = region_counts["num_cds"]
+        self.qc_results["num_introns"] = region_counts["num_introns"]
+        self.qc_results["num_3p_utr"] = region_counts["num_3p_utr"]
+        self.qc_results["num_5p_utr"] = region_counts["num_5p_utr"]
+        # Number of exonic reads is defined as
+        # sum of reads that fall in:
+        #  - CDS exons
+        #  - 3'/5' UTRs
+        #  - Other misc. exons
+        self.qc_results["num_exons"] = \
+            region_counts["num_cds"] + \
+            region_counts["num_other_exons"] + \
+            region_counts["num_3p_utr"] + \
+            region_counts["num_5p_utr"]
+        self.logger.info("Num other exons: %d" %(region_counts["num_other_exons"]))
+        self.logger.info("NUM EXONS: %d" %(self.qc_results["num_exons"]))
+        # Collect sum of all the QC regions
+        self.qc_results["qc_regions_total"] = \
+            self.qc_results["num_exons"] + self.qc_results["num_introns"]
         
 
     def compute_basic_qc(self):
@@ -357,13 +402,22 @@ class QualityControl:
 
     def get_percent_unique(self):
         """
-        Get percent of reads that are unique.
+        Get percent uniquely mapped.
         """
         percent_unique = 0
         if self.qc_results["num_unique_mapped"] == self.na_val:
-            return percent_unique
-        percent_unique = \
-            self.qc_results["num_unique_mapped"] / float(self.qc_results["num_mapped"])
+            return percent_mapped
+        if self.sample.paired:
+            # For paired-end samples, divide the number of mapped
+            # reads by the smaller of the two numbers of left mate
+            # and right mates
+            pair_denom = min(map(int,
+                                 self.qc_results["num_reads"].split(",")))
+            percent_mapped = \
+                self.qc_results["num_unique_mapped"] / float(pair_denom)
+        else:
+            percent_mapped = \
+                self.qc_results["num_unique_mapped"] / float(self.qc_results["num_mapped"])
         percent_unique *= float(100)
         return percent_unique
 
@@ -376,7 +430,7 @@ class QualityControl:
         if self.qc_results["num_ribo"] == self.na_val:
             return percent_ribo
         percent_ribo = \
-            self.qc_results["num_ribo"] / float(self.qc_results["num_mapped"])
+            self.qc_results["num_ribo"] / float(self.qc_results["num_unique_mapped"])
         return 0
 
     
@@ -388,7 +442,7 @@ class QualityControl:
         if self.qc_results["num_exons"] == self.na_val:
             return percent_exons
         percent_exons = \
-            float(self.qc_results["num_exons"]) / float(self.qc_results["num_mapped"])
+            self.qc_results["num_exons"] / float(self.qc_results["qc_regions_total"])
         percent_exons *= float(100)
         return percent_exons
 
@@ -401,7 +455,7 @@ class QualityControl:
         if self.qc_results["num_introns"] == self.na_val:
             return percent_introns
         percent_introns = \
-            float(self.qc_results["num_introns"]) / float(self.qc_results["num_mapped"])
+            self.qc_results["num_introns"] / float(self.qc_results["qc_regions_total"])
         percent_introns *= float(100)
         return percent_introns
 
@@ -414,9 +468,35 @@ class QualityControl:
         if self.qc_results["num_cds"] == self.na_val:
             return percent_cds
         percent_cds = \
-            float(self.qc_results["num_cds"]) / float(self.qc_results["num_mapped"])
+            self.qc_results["num_cds"] / float(self.qc_results["num_exons"])
         percent_cds *= float(100)
         return percent_cds
+
+
+    def get_percent_3p_utr(self):
+        """
+        Get percent of exonic reads in 3' UTRs.
+        """
+        percent_3p_utr = 0
+        if self.qc_results["num_3p_utr"] == self.na_val:
+            return percent_3p_utr
+        percent_3p_utr = \
+            self.qc_results["num_3p_utr"] / float(self.qc_results["num_exons"])
+        percent_3p_utr *= float(100)
+        return percent_3p_utr
+
+
+    def get_percent_5p_utr(self):
+        """
+        Get percent of exonic reads in 5' UTRs.
+        """
+        percent_5p_utr = 0
+        if self.qc_results["num_5p_utr"] == self.na_val:
+            return percent_5p_utr
+        percent_5p_utr = \
+            self.qc_results["num_5p_utr"] / float(self.qc_results["num_exons"])
+        percent_5p_utr *= float(100)
+        return percent_5p_utr
 
 
     def compute_qc_stats(self):
@@ -436,7 +516,9 @@ class QualityControl:
                               ("percent_ribo", self.get_percent_ribo),
                               ("percent_exons", self.get_percent_exons),
                               ("percent_introns", self.get_percent_introns),
-                              ("percent_cds", self.get_percent_cds)]
+                              ("percent_cds", self.get_percent_cds),
+                              ("percent_3p_utr", self.get_percent_3p_utr),
+                              ("percent_5p_utr", self.get_percent_5p_utr)]
         for stat_name, stat_func in self.qc_stat_funcs:
             self.qc_results[stat_name] = stat_func()
         
