@@ -113,7 +113,9 @@ def multi_tagBam(bam_filename, intervals_files, intervals_labels,
     if os.path.isfile(output_filename):
         logger.info("Found %s, skipping." %(output_filename))
         return output_filename
-    args = {"bam_filename": bam_filename,
+    t1 = time.time()
+    args = {"tagBam": tagBam,
+            "bam_filename": bam_filename,
             "intervals_files": " ".join(intervals_files),
             "intervals_labels": " ".join(intervals_labels),
             "output_filename": output_filename}
@@ -121,7 +123,10 @@ def multi_tagBam(bam_filename, intervals_files, intervals_labels,
       "%(tagBam)s -i %(bam_filename)s -files %(intervals_files)s " \
       "-labels %(intervals_labels)s -intervals -f 1 > %(output_filename)s" \
       %(args)
-    ret_val = os.system(tag_cmd)
+    logger.info("Executing: %s" %(tagBam_cmd))
+    ret_val = os.system(tagBam_cmd)
+    t2 = time.time()
+    logger.info("tagBam took %.2f minutes." %((t2 - t1)/60.))
     if ret_val != 0:
         logger.critical("tagBam command failed.")
         return None
@@ -194,7 +199,8 @@ def make_bed_line(chrom, start, end,
 
 
 def sort_bed(input_filename, output_filename,
-             gff_to_bed=False):
+             gff_to_bed=False,
+             attribute_to_use=None):
     """
     Sort BED file with sortBed.
 
@@ -210,12 +216,14 @@ def sort_bed(input_filename, output_filename,
         return output_filename
     input_file = open(input_filename, "r")
     output_file = open(output_filename, "w")
+    print "  - Output file: %s" %(output_filename)
     if gff_to_bed:
         proc = subprocess.Popen(["sortBed", "-i"],
                                 stdin=input_file,
                                 stdout=subprocess.PIPE)
         # Iterate through stdout
-        convert_gff_to_bed(proc.stdout, output_file)
+        convert_gff_to_bed(proc.stdout, output_file,
+                           attribute_to_use=attribute_to_use)
     else:
         proc = subprocess.Popen(["sortBed", "-i"],
                                 stdin=input_file,
@@ -266,7 +274,8 @@ def output_intervals_as_bed(out_file, chrom, interval_coords, strand,
         out_file.write("%s\n" %(bed_line))
 
 
-def convert_gff_to_bed(input_stream, output_stream):
+def convert_gff_to_bed(input_stream, output_stream,
+                       attribute_to_use=None):
     """
     Convert GFF lines from input_stream to
     BED output_stream.
@@ -296,7 +305,11 @@ def convert_gff_to_bed(input_stream, output_stream):
             # If there's an ID= attribute present,
             # use its value as the BED entry's name
             attributes = utils.parse_attributes(rec_attributes)
-            if "ID" in attributes:
+            if (attribute_to_use is not None) and \
+               (attribute_to_use in attributes):
+                # Use gene_id as ID if found
+                name = attributes["gene_id"]
+            elif "ID" in attributes:
                 name = attributes["ID"]
         bed_line = make_bed_line(chrom, start, end,
                                  name, score, strand)

@@ -557,51 +557,53 @@ class GeneTable:
                 print " - BED %s exists, skipping.." %(bed_output_filename)
             bedtools_utils.sort_bed(gff_output_filename,
                                     bed_output_filename,
-                                    gff_to_bed=True)
+                                    gff_to_bed=True,
+                                    attribute_to_use="gene_id")
 
 
-    def output_exons_as_bed(self):
-        """
-        Output the table's exons as BED.
+    # def output_exons_as_bed(self):
+    #     """
+    #     Output the table's exons as BED.
         
-        Only implemented for ensGene.txt; probably not
-        necessary to work out for other tables since this is
-        only used for aggregate statistics.
-        """
-        if self.source != "ensGene":
-            return
-        output_filename = os.path.join(self.exons_dir,
-                                       "%s.exons.bed" %(self.source))
-        print "Outputting exons..."
-        if os.path.isfile(output_filename):
-            print "  - Found %s. Skipping..." %(output_filename)
-            return output_filename
-        exons_file = open(output_filename, "w")
-        for idx, series in self.raw_table.iterrows():
-            gene_info = series.to_dict()
-            gene_id = gene_info["name2"]
-            chrom = gene_info["chrom"]
-            strand = gene_info["strand"]
-            exonStarts = gene_info["exonStarts"]
-            exonEnds = gene_info["exonEnds"]
-            # Keep 0-based start of ensGene table since
-            # this will be outputted as a BED
-            exon_starts = \
-                (int(start) for start in exonStarts.rstrip(",").split(","))
-            exon_ends = \
-                (int(end) for end in exonEnds.rstrip(",").split(","))
-            exon_coords = zip(exon_starts, exon_ends)
-            # Output as BED: encode gene ID
-            bedtools_utils.output_intervals_as_bed(exons_file,
-                                                   chrom,
-                                                   exon_coords,
-                                                   strand,
-                                                   name=gene_id)
-        exons_file.close()
-        # Sort the exons
-        output_filename = \
-            bedtools_utils.sort_bedfile_inplace(output_filename)
-        return output_filename
+    #     Only implemented for ensGene.txt; probably not
+    #     necessary to work out for other tables since this is
+    #     only used for aggregate statistics.
+    #     """
+    #     if self.source != "ensGene":
+    #         return
+    #     output_filename = os.path.join(self.exons_dir,
+    #                                    "%s.exons.bed" %(self.source))
+    #     print "Outputting exons..."
+    #     if os.path.isfile(output_filename):
+    #         print "  - Found %s. Skipping..." %(output_filename)
+    #         return output_filename
+    #     exons_file = open(output_filename, "w")
+    #     for idx, series in self.raw_table.iterrows():
+    #         gene_info = series.to_dict()
+    #         gene_id = gene_info["name2"]
+    #         chrom = gene_info["chrom"]
+    #         strand = gene_info["strand"]
+    #         exonStarts = gene_info["exonStarts"]
+    #         exonEnds = gene_info["exonEnds"]
+    #         # Keep 0-based start of ensGene table since
+    #         # this will be outputted as a BED
+    #         exon_starts = \
+    #             (int(start) for start in exonStarts.rstrip(",").split(","))
+    #         exon_ends = \
+    #             (int(end) for end in exonEnds.rstrip(",").split(","))
+    #         exon_coords = zip(exon_starts, exon_ends)
+    #         # Output as BED: encode gene ID
+    #         bedtools_utils.output_intervals_as_bed(exons_file,
+    #                                                chrom,
+    #                                                exon_coords,
+    #                                                strand,
+    #                                                name=gene_id)
+    #     exons_file.close()
+    #     # Sort the exons
+    #     #### TRY WITHOUT SORTING
+    #     #output_filename = \
+    #     #    bedtools_utils.sort_bedfile_inplace(output_filename)
+    #     return output_filename
 
 
     def output_merged_exons(self):
@@ -624,7 +626,8 @@ class GeneTable:
         exons_filename = os.path.join(self.exons_dir,
                                       "ensGene.exons.bed")
         if not os.path.isfile(exons_filename):
-            print "Error: Could not find exons filename %s" %(exons_filename)
+            print "Error: Could not find exons filename %s" \
+                %(exons_filename)
             print "Did a previous step fail?"
             sys.exit(1)
         output_filename = os.path.join(self.exons_dir,
@@ -634,12 +637,16 @@ class GeneTable:
         ##
         ## Output CDS merged exons
         ##
-        #cds_exons_filename = os.path.join(self.exons_dir, 
-        #if not os.path.isfile():
-        #    sys.exit(1)
-        #cds_output_filename = \
-        #    os.path.join(self.exons,
-        #                 "ensGene.cds_only.merged_exons.bed")
+        cds_exons_filename = os.path.join(self.exons_dir,
+                                          "ensGene.cds_only.exons.bed")
+        if not os.path.isfile(cds_exons_filename):
+            print "Error: could not find CDS exons filename %s" \
+                %(cds_exons_filename)
+            sys.exit(1)
+        cds_output_filename = \
+            os.path.join(self.exons_dir,
+                         "ensGene.cds_only.merged_exons.bed")
+        bedtools_utils.merge_bed(cds_exons_filename, cds_output_filename)
 
 
     def load_merged_exons_by_gene(self):
@@ -666,6 +673,64 @@ class GeneTable:
         return merged_exons_by_gene
 
 
+    def output_utrs(self):
+        """
+        Output UTRs (3' and 5') as BED files.
+        """
+        def output_utrs_from_gff(utr_type, input_filename, output_file):
+            with open(input_filename) as input_file:
+                for line in input_file:
+                    if line.startswith("#"):
+                        continue
+                    fields = line.strip().split("\t")
+                    if fields[2] != utr_type:
+                        continue
+                    output_file.write(line)
+        print "Outputting 3\'/5\' UTRs.."
+        if self.source != "ensGene":
+            return
+        ensGene_gff_fname = os.path.join(self.table_dir,
+                                         "ensGene.gff3")
+        if not os.path.isfile(ensGene_gff_fname):
+            print "Error: Cannot find GFF %s" %(ensGene_gff_fname)
+            sys.exit(1)
+        three_prime_fname = os.path.join(self.utrs_dir,
+                                         "ensGene.3p_utrs.gff")
+        five_prime_fname = os.path.join(self.utrs_dir,
+                                        "ensGene.5p_utrs.gff")
+        # Output 3' UTRs
+        if not os.path.isfile(three_prime_fname):
+            print "Outputting %s" %(three_prime_fname)
+            with open(three_prime_fname, "w") as three_prime_out:
+                output_utrs_from_gff("three_prime_UTR",
+                                     ensGene_gff_fname,
+                                     three_prime_out)
+        # Output 5' UTRs
+        if not os.path.isfile(five_prime_fname):
+            print "Outputting %s" %(five_prime_fname)
+            with open(five_prime_fname, "w") as five_prime_out:
+                output_utrs_from_gff("five_prime_UTR",
+                                     ensGene_gff_fname,
+                                     five_prime_out)
+        ##
+        ## Output BED versions of both files
+        ##
+        three_prime_bed_fname = \
+            three_prime_fname.replace(".gff", ".bed")
+        five_prime_bed_fname = \
+            five_prime_fname.replace(".gff", ".bed")
+        # Output BED version of 3' UTRs
+        bedtools_utils.sort_bed(three_prime_fname,
+                                three_prime_bed_fname,
+                                gff_to_bed=True,
+                                attribute_to_use="gene_id")
+        # Output BED version of 5' UTRs
+        bedtools_utils.sort_bed(five_prime_fname,
+                                five_prime_bed_fname,
+                                gff_to_bed=True,
+                                attribute_to_use="gene_id")
+
+        
     def output_introns(self, min_intron_size=50):
         """
         Given the merged exons, compute the intronic coordinates.
@@ -895,7 +960,7 @@ def process_ucsc_tables(genome, output_dir,
         # Output the table's CDS-only exons as GFF
         table.output_exons_as_gff(cds_only=True)        
         # Output the table's exons as BED
-        table.output_exons_as_bed()
+        #table.output_exons_as_bed()
         # Output the table's merged exons
         table.output_merged_exons()
         # Output the table's constitutive exons
@@ -903,6 +968,8 @@ def process_ucsc_tables(genome, output_dir,
         # Output the table's CDS-only constitutive exons
         table.output_exons_as_gff(const_only=True,
                                   cds_only=True)
+        # Output UTRs
+        table.output_utrs()
         # Output introns
         table.output_introns()
 

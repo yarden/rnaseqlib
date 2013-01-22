@@ -241,18 +241,75 @@ class QualityControl:
         self.logger.info("Getting number of CDS reads..")
         return 0
 
+
+    def get_region_files(self):
+        """
+        Get region filenames to map reads to for QC and their
+        labels.
+        """
+        # Merged exons 
+        merged_exons_filename = os.path.join(self.gene_table.exons_dir,
+                                             "ensGene.merged_exons.bed")
+        # Introns 
+        introns_filename = os.path.join(self.gene_table.introns_dir,
+                                        "ensGene.introns.bed")
+        # CDS-only merged exons
+        merged_cds_only_exons_filename \
+            = os.path.join(self.gene_table.exons_dir,
+                           "ensGene.cds_only.merged_exons.bed")
+        # 3' UTRs
+        three_prime_utrs_fname = os.path.join(self.gene_table.utrs_dir,
+                                              "ensGene.3p_utrs.bed")
+        # 5' UTRs
+        five_prime_utrs_fname = os.paht.join(self.gene_Table.utrs_dir,
+                                             "ensGene.5p_utrs.bed")
+        # 5' UTRs
+        region_files = [[merged_exons_filename,
+                         "merged_exons"],
+                        [introns_filename,
+                         "introns"],
+                        [merged_cds_only_exons_filename,
+                         "cds_only.merged_exons"],
+                        [three_prime_utrs_fname,
+                         "3p_utrs"],
+                        [five_prime_utrs_fname,
+                         "5p_utrs"]]
+        return [r[0] for r in region_files], [r[1] for r in region_files]
+
     
     def compute_regions(self):
         """
         Compute number of reads mapping to various regions.
         """
         self.logger.info("Computing reads in regions..")
-        # Map reads to all regions 
-        #
-        #   exons
-        #   introns
-        #   cds exons
-        
+        # Map reads to all regions
+        regions_info = self.get_region_files()
+        region_filenames, region_labels = regions_info
+        # Check that all files exist
+        for fname in region_filenames:
+            if not os.path.isfile(fname):
+                self.logger.critical("Cannot find regions filename for %s" \
+                                     %(fname))
+                sys.exit(1)
+        self.qc_regions_bam = \
+            os.path.join(self.regions_outdir, "qc_regions.bam")
+        if not os.path.isfile(self.qc_regions_bam):
+            num_regions = len(region_filenames)
+            self.logger.info("Mapping reads to %d region types." \
+                             %(num_regions))
+            # Compute which reads map to each region
+            region_results = \
+                bedtools_utils.multi_tagBam(self.sample.bam_filename,
+                                            region_filenames,
+                                            region_labels,
+                                            self.qc_regions_bam,
+                                            self.logger)
+            if region_results is None:
+                self.logger.critical("Mapping of reads to QC regions failed.")
+                sys.exit(1)
+        else:
+            self.logger.info("QC regions BAM %s found, skipping.." \
+                             %(self.qc_regions_bam))
         # Dictionary mapping regions to number of reads mapping
         # to them
         self.region_funcs = [("num_ribo", self.get_num_ribo),
