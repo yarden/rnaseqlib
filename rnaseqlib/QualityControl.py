@@ -135,6 +135,7 @@ class QualityControl:
         self.logger.info("Getting number of unique reads.")
         num_unique_mapped = \
             count_nondup_reads(self.sample.unique_bam_filename)
+        self.logger.info("Num uniq mapped: %d" %(num_unique_mapped))
         return num_unique_mapped
     
 
@@ -405,6 +406,7 @@ class QualityControl:
         Get percent uniquely mapped.
         """
         percent_unique = 0
+        self.logger.info("GET PERCENT UNIQUE: %d" %(self.qc_results["num_unique_mapped"]))
         if self.qc_results["num_unique_mapped"] == self.na_val:
             return percent_mapped
         if self.sample.paired:
@@ -413,10 +415,10 @@ class QualityControl:
             # and right mates
             pair_denom = min(map(int,
                                  self.qc_results["num_reads"].split(",")))
-            percent_mapped = \
+            percent_unique = \
                 self.qc_results["num_unique_mapped"] / float(pair_denom)
         else:
-            percent_mapped = \
+            percent_unique = \
                 self.qc_results["num_unique_mapped"] / float(self.qc_results["num_mapped"])
         percent_unique *= float(100)
         return percent_unique
