@@ -532,21 +532,39 @@ class QualityControl:
         """
         Get 3' UTR to CDS ratio.
         """
-        return 0
+        three_prime_to_cds = 0
+        if (self.qc_results["percent_3p_utr"] == self.na_val) or \
+           (self.qc_results["percent_cds"] == self.na_val):
+            return three_prime_to_cds
+        three_prime_to_cds = \
+            self.qc_results["percent_3p_utr"] / float(self.qc_results["percent_cds"])
+        return three_prime_to_cds
 
 
-    def get_5p_to_3p(self):
+    def get_5p_to_cds(self):
         """
-        Get 5' UTR to 3' UTR ratio.
+        Get 5' UTR to CDS ratio.
         """
-        return 0
+        five_prime_to_cds = 0
+        if (self.qc_results["percent_5p_utr"] == self.na_val) or \
+           (self.qc_results["percent_cds"] == self.na_val):
+            return five_prime_to_cds
+        five_prime_to_cds = \
+            self.qc_results["percent_5p_utr"] / float(self.qc_results["percent_cds"])
+        return five_prime_to_cds
 
 
     def get_3p_to_5p(self):
         """
         Get 3' UTR to 5' UTR ratio.
         """
-        return 0
+        three_to_five_prime = 0
+        if (self.qc_results["percent_3p_utr"] == self.na_val) or \
+           (self.qc_results["percent_5p_utr"] == self.na_val):
+            return three_to_five_prime
+        three_to_five_prime = \
+            self.qc_results["percent_3p_utr"] / float(self.qc_results["percent_5p_utr"])
+        return three_to_five_prime
     
 
     def compute_qc_stats(self):
@@ -572,7 +590,7 @@ class QualityControl:
                               ("percent_tRNAs", self.get_percent_tRNAs),
                               ("3p_to_cds", self.get_3p_to_cds),
                               ("5p_to_cds", self.get_5p_to_cds),
-                              ("3p_to_5p", self.get_5p_to_3p)]
+                              ("3p_to_5p", self.get_3p_to_5p)]
         for stat_name, stat_func in self.qc_stat_funcs:
             self.qc_results[stat_name] = stat_func()
         
