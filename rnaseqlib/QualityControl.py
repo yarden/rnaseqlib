@@ -36,7 +36,8 @@ class QualityControl:
                                "num_cds",
                                "num_introns",
                                "num_3p_utr",
-                               "num_5p_utr"]
+                               "num_5p_utr",
+                               "num_tRNAs"]
         self.qc_stats_header = ["percent_mapped",
                                 "percent_unique",
                                 "percent_ribo",
@@ -44,7 +45,11 @@ class QualityControl:
                                 "percent_cds",     
                                 "percent_introns",
                                 "percent_3p_utr",
-                                "percent_5p_utr"]
+                                "percent_5p_utr",
+                                "percent_tRNAs",
+                                "3p_to_cds",
+                                "5p_to_cds",
+                                "3p_to_5p"]
         self.qc_header = ["num_reads", 
                           "num_mapped",
                           "num_unique_mapped"] + \
@@ -243,7 +248,9 @@ class QualityControl:
         # 5' UTRs
         five_prime_utrs_fname = os.path.join(self.gene_table.utrs_dir,
                                              "ensGene.5p_utrs.bed")
-        # 5' UTRs
+        # tRNAs
+        tRNAs_fname = os.path.join(self.gene_table.tRNAs_dir,
+                                   "tRNAs.bed")
         region_files = [[merged_exons_filename,
                          "merged_exons"],
                         [introns_filename,
@@ -253,7 +260,9 @@ class QualityControl:
                         [three_prime_utrs_fname,
                          "3p_utrs"],
                         [five_prime_utrs_fname,
-                         "5p_utrs"]]
+                         "5p_utrs"],
+                        [tRNAs_fname,
+                         "tRNAs"]]
         return [r[0] for r in region_files], [r[1] for r in region_files]
 
     
@@ -323,6 +332,11 @@ class QualityControl:
             ##
             ## Rules for counting regions
             ##
+            if "tRNA" in regions_detected:
+                # If it maps to tRNAs, count it and discard
+                # all other possible mapping for the read
+                region_counts["tRNAs"] += 1
+                continue
             if "merged_exons" in regions_detected:
                 # If it's in an intron and an exon, discard it
                 if "introns" in regions_detected:
@@ -347,12 +361,14 @@ class QualityControl:
                 region_counts["num_cds"] += 1
             elif ("introns" in regions_detected) and \
                  (len(regions_detected) == 1):
-                # It's a reliable intron
+                # It maps to an intron and only an intron, so count it
+                # as intronic read
                 region_counts["num_introns"] += 1
         self.qc_results["num_cds"] = region_counts["num_cds"]
         self.qc_results["num_introns"] = region_counts["num_introns"]
         self.qc_results["num_3p_utr"] = region_counts["num_3p_utr"]
         self.qc_results["num_5p_utr"] = region_counts["num_5p_utr"]
+        self.qc_results["num_tRNAs"] = region_counts["num_tRNAs"]
         # Number of exonic reads is defined as
         # sum of reads that fall in:
         #  - CDS exons
@@ -363,8 +379,6 @@ class QualityControl:
             region_counts["num_other_exons"] + \
             region_counts["num_3p_utr"] + \
             region_counts["num_5p_utr"]
-        self.logger.info("Num other exons: %d" %(region_counts["num_other_exons"]))
-        self.logger.info("NUM EXONS: %d" %(self.qc_results["num_exons"]))
         # Collect sum of all the QC regions
         self.qc_results["qc_regions_total"] = \
             self.qc_results["num_exons"] + self.qc_results["num_introns"]
@@ -501,6 +515,40 @@ class QualityControl:
         return percent_5p_utr
 
 
+    def get_percent_tRNAs(self):
+        """
+        Get percent tRNAs.
+        """
+        percent_tRNAs = 0
+        if self.qc_results["num_tRNAs"] == self.na_val:
+            return percent_tRNAs
+        percent_tRNAs = \
+            self.qc_results["num_tRNAs"] / float(self.qc_results["num_unique_mapped"])
+        percent_tRNAs *= float(100)
+        return percent_tRNAs
+
+
+    def get_3p_to_cds(self):
+        """
+        Get 3' UTR to CDS ratio.
+        """
+        return 0
+
+
+    def get_5p_to_3p(self):
+        """
+        Get 5' UTR to 3' UTR ratio.
+        """
+        return 0
+
+
+    def get_3p_to_5p(self):
+        """
+        Get 3' UTR to 5' UTR ratio.
+        """
+        return 0
+    
+
     def compute_qc_stats(self):
         """
         Compute various statistics from the QC numbers we have.
@@ -520,7 +568,11 @@ class QualityControl:
                               ("percent_introns", self.get_percent_introns),
                               ("percent_cds", self.get_percent_cds),
                               ("percent_3p_utr", self.get_percent_3p_utr),
-                              ("percent_5p_utr", self.get_percent_5p_utr)]
+                              ("percent_5p_utr", self.get_percent_5p_utr),
+                              ("percent_tRNAs", self.get_percent_tRNAs),
+                              ("3p_to_cds", self.get_3p_to_cds),
+                              ("5p_to_cds", self.get_5p_to_cds),
+                              ("3p_to_5p", self.get_5p_to_3p)]
         for stat_name, stat_func in self.qc_stat_funcs:
             self.qc_results[stat_name] = stat_func()
         

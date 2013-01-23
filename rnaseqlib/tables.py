@@ -63,6 +63,7 @@ class GeneTable:
                                             "const_exons")
         self.introns_dir = os.path.join(self.table_dir, "introns")
         self.utrs_dir = os.path.join(self.table_dir, "utrs")
+        self.tRNAs_dir = os.path.join(self.table_dir, "tRNAs")
         self.source = source
         self.delimiter = "\t"
         self.table = None
