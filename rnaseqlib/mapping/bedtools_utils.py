@@ -222,6 +222,7 @@ def sort_bed(input_filename, output_filename,
                                 stdin=input_file,
                                 stdout=subprocess.PIPE)
         # Iterate through stdout
+        print "CONVERTING GFF -> BED: %s" %(attribute_to_use)
         convert_gff_to_bed(proc.stdout, output_file,
                            attribute_to_use=attribute_to_use)
     else:
@@ -308,7 +309,7 @@ def convert_gff_to_bed(input_stream, output_stream,
             if (attribute_to_use is not None) and \
                (attribute_to_use in attributes):
                 # Use gene_id as ID if found
-                name = attributes["gene_id"]
+                name = attributes[attribute_to_use]
             elif "ID" in attributes:
                 name = attributes["ID"]
         bed_line = make_bed_line(chrom, start, end,

@@ -559,7 +559,7 @@ class GeneTable:
             bedtools_utils.sort_bed(gff_output_filename,
                                     bed_output_filename,
                                     gff_to_bed=True,
-                                    attribute_to_use="gene_id")
+                                    attribute_to_use="Parent")
 
 
     # def output_exons_as_bed(self):
@@ -724,12 +724,12 @@ class GeneTable:
         bedtools_utils.sort_bed(three_prime_fname,
                                 three_prime_bed_fname,
                                 gff_to_bed=True,
-                                attribute_to_use="gene_id")
+                                attribute_to_use="ID")
         # Output BED version of 5' UTRs
         bedtools_utils.sort_bed(five_prime_fname,
                                 five_prime_bed_fname,
                                 gff_to_bed=True,
-                                attribute_to_use="gene_id")
+                                attribute_to_use="ID")
 
         
     def output_introns(self, min_intron_size=50):

@@ -37,7 +37,8 @@ class QualityControl:
                                "num_introns",
                                "num_3p_utr",
                                "num_5p_utr",
-                               "num_tRNAs"]
+                               "num_tRNAs",
+                               "num_junctions"]
         self.qc_stats_header = ["percent_mapped",
                                 "percent_unique",
                                 "percent_ribo",
@@ -332,6 +333,16 @@ class QualityControl:
             ##
             ## Rules for counting regions
             ##
+            # Count junction reads but do not use them
+            # in counting regions
+            # (3 signals "N" in cigar string)
+            if (len(bam_read.cigar) == 3) and \
+               (0 == bam_read.cigar[0][0]) and \
+               (3 == bam_read.cigar[1][0]) and \
+               (0 == bam_read.cigar[2][0]):
+                region_counts["num_junctions"] += 1
+                print "JUNCTION READ: ", bam_read
+                continue
             if "tRNA" in regions_detected:
                 # If it maps to tRNAs, count it and discard
                 # all other possible mapping for the read
@@ -369,6 +380,7 @@ class QualityControl:
         self.qc_results["num_3p_utr"] = region_counts["num_3p_utr"]
         self.qc_results["num_5p_utr"] = region_counts["num_5p_utr"]
         self.qc_results["num_tRNAs"] = region_counts["num_tRNAs"]
+        self.qc_results["num_junctions"] = region_counts["num_junctions"]
         # Number of exonic reads is defined as
         # sum of reads that fall in:
         #  - CDS exons
