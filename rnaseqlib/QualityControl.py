@@ -3,13 +3,15 @@ import sys
 import time
 
 import logging
-
 import csv
 
 import rnaseqlib
 import rnaseqlib.fastx_utils as fastx_utils
 import rnaseqlib.mapping.bedtools_utils as bedtools_utils
 import rnaseqlib.utils as utils
+
+import numpy
+from numpy import log, exp
 
 import pandas
 import pysam
@@ -73,7 +75,8 @@ class QualityControl:
         self.qc_loaded = False
         # use ensGene gene table for QC computations
         self.gene_table = self.pipeline.rna_base.gene_tables["ensGene"]
-        # Load QC information if file corresponding to sample already exists
+        # Load QC information if file corresponding to sample
+        # already exists
         self.load_qc_from_file()
 
 
@@ -266,6 +269,28 @@ class QualityControl:
                          "tRNAs"]]
         return [r[0] for r in region_files], [r[1] for r in region_files]
 
+
+    def compute_region_lens(self):
+        """
+        Compute the lengths of the relevant regions
+        (cds, utr, introns, etc.)
+        """
+        self.logger.info("Computing lengths of all regions..")
+        # Mapping from region types (e.g. 3' UTR, cds) to
+        # coordinates to lengths
+        self.qc_region_lens = defaultdict(lambda: defaultdict(int))
+        # Mapping from region types to sum of lengths
+        self.total_qc_region_lens = defaultdict(int)
+        region_files, region_labels = self.get_region_files()
+        for region_filename, region_label in zip(region_files,
+                                                 region_labels):
+            curr_len_dict, total_len = \
+                bedtools_utils.get_bed_lens(region_filename)
+            self.qc_region_lens[region_label] = curr_len_dict
+            self.total_qc_region_lens[region_label] = total_len
+        self.logger.info("Finished computing region lengths.")
+        return self.qc_region_lens
+
     
     def compute_regions(self):
         """
@@ -274,6 +299,8 @@ class QualityControl:
         Mapping done based on uniquely mapped BAM reads.
         """
         self.logger.info("Computing reads in regions..")
+        # Compute lengths of regions used for normalization
+        self.compute_region_lens()
         # Map reads to all regions
         regions_info = self.get_region_files()
         region_filenames, region_labels = regions_info
@@ -327,52 +354,47 @@ class QualityControl:
                 regions_field = bam_read.opt("YB")
             except KeyError:
                 continue
+            read_categories = regions_field.split(";")
+            # Get coordinates that read fall in
+            # Get region types detected
             regions_detected = \
                 map(lambda x: x.split(":")[0],
-                    filter(lambda x: ":" in x, regions_field.split(";")))
+                    filter(lambda x: ":" in x, read_categories))
             ##
             ## Rules for counting regions
             ##
             # Count junction reads but do not use them
             # in counting regions
             # (3 signals "N" in cigar string)
-            if (len(bam_read.cigar) == 3) and \
-               (0 == bam_read.cigar[0][0]) and \
-               (3 == bam_read.cigar[1][0]) and \
-               (0 == bam_read.cigar[2][0]):
+            # First check if it's a junction
+            if (len(bam_read.cigar) > 1) and \
+               (3 in [c[0] for c in bam_read.cigar]):
+                # It's a junction read
                 region_counts["num_junctions"] += 1
-                print "JUNCTION READ: ", bam_read
-                continue
+            # Then check if it's a tRNA
             if "tRNA" in regions_detected:
-                # If it maps to tRNAs, count it and discard
-                # all other possible mapping for the read
+                # It's a tRNA
                 region_counts["tRNAs"] += 1
                 continue
-            if "merged_exons" in regions_detected:
-                # If it's in an intron and an exon, discard it
-                if "introns" in regions_detected:
-                    continue
-                # Count the exonic type: if it's an exon then
-                # record it as either CDS, 3' UTR, or 5' UTR.
-                # Note that these categories are mutually exclusive here
-                if "cds_only.merged_exons" in regions_detected:
-                    region_counts["num_cds"] += 1
-                elif "3p_utrs" in regions_detected:
-                    region_counts["num_3p_utr"] += 1
-                elif "5p_utrs" in regions_detected:
-                    region_counts["num_5p_utr"] += 1
-                else:
-                    # Misc exons: not 3p_UTR, not 5p_UTR and not
-                    # CDS exons
-                    region_counts["num_other_exons"] += 1
-            elif ("cds_only.merged_exons" in regions_detected) and \
-                 (len(regions_detected) == 1):
-                # If the exon maps only to the CDS region, count it
-                # as CDS
+            # Check if it's in a CDS region
+            if "cds_only.merged_exons" in regions_detected:
                 region_counts["num_cds"] += 1
+                continue
+            # Check if it's in a 3' UTR
+            if "3p_utrs" in regions_detected:
+                region_counts["num_3p_utr"] += 1
+                continue
+            # Check if it's in a 5' UTR
+            if "5p_utrs" in regions_detected:
+                region_counts["num_5p_utr"] += 1
+                continue
+            # Check if it's in a generic exonic region
+            # which is non-CDS, non-UTR
+            if "merged_exons" in regions_detected:
+                region_counts["num_other_exons"] += 1
             elif ("introns" in regions_detected) and \
                  (len(regions_detected) == 1):
-                # It maps to an intron and only an intron, so count it
+                # It maps to an intron and only an intron, count it
                 # as intronic read
                 region_counts["num_introns"] += 1
         self.qc_results["num_cds"] = region_counts["num_cds"]
@@ -432,7 +454,6 @@ class QualityControl:
         Get percent uniquely mapped.
         """
         percent_unique = 0
-        self.logger.info("GET PERCENT UNIQUE: %d" %(self.qc_results["num_unique_mapped"]))
         if self.qc_results["num_unique_mapped"] == self.na_val:
             return percent_mapped
         if self.sample.paired:
@@ -544,40 +565,61 @@ class QualityControl:
         """
         Get 3' UTR to CDS ratio.
         """
-        three_prime_to_cds = 0
-        if (self.qc_results["percent_3p_utr"] == self.na_val) or \
-           (self.qc_results["percent_cds"] == self.na_val):
-            return three_prime_to_cds
-        three_prime_to_cds = \
-            self.qc_results["percent_3p_utr"] / float(self.qc_results["percent_cds"])
-        return three_prime_to_cds
+        ratio_3p_to_cds = 0
+        if (self.qc_results["num_3p_utr"] == self.na_val) or \
+           (self.qc_results["num_cds"] == self.na_val):
+            return ratio_3p_to_cds
+        # Length-normalized 3' UTR number
+        self.logger.info("qc region lens " + str(self.total_qc_region_lens))
+        density_3p_utr = \
+            self.qc_results["num_3p_utr"] / float(self.total_qc_region_lens["3p_utrs"])
+        # Length-normalized CDS number
+        density_cds = \
+            self.qc_results["num_cds"] / float(self.total_qc_region_lens["cds_only.merged_exons"])
+        ratio_3p_to_cds = density_3p_utr / density_cds
+        return ratio_3p_to_cds
 
 
     def get_5p_to_cds(self):
         """
         Get 5' UTR to CDS ratio.
         """
-        five_prime_to_cds = 0
-        if (self.qc_results["percent_5p_utr"] == self.na_val) or \
-           (self.qc_results["percent_cds"] == self.na_val):
-            return five_prime_to_cds
-        five_prime_to_cds = \
-            self.qc_results["percent_5p_utr"] / float(self.qc_results["percent_cds"])
-        return five_prime_to_cds
+        ratio_5p_to_cds = 0
+        if (self.qc_results["num_5p_utr"] == self.na_val) or \
+           (self.qc_results["num_cds"] == self.na_val):
+            return ratio_5p_to_cds
+        # Length-normalized 5' UTR number
+        density_5p_utr = \
+            self.qc_results["num_5p_utr"] / float(self.total_qc_region_lens["5p_utrs"])
+        # Length-normalized CDS number
+        density_cds = \
+            self.qc_results["num_cds"] / float(self.total_qc_region_lens["cds_only.merged_exons"])
+        ratio_5p_to_cds = density_5p_utr / density_cds
+        return ratio_5p_to_cds
 
 
     def get_3p_to_5p(self):
         """
         Get 3' UTR to 5' UTR ratio.
         """
-        three_to_five_prime = 0
-        if (self.qc_results["percent_3p_utr"] == self.na_val) or \
-           (self.qc_results["percent_5p_utr"] == self.na_val):
-            return three_to_five_prime
-        three_to_five_prime = \
-            self.qc_results["percent_3p_utr"] / float(self.qc_results["percent_5p_utr"])
-        return three_to_five_prime
-    
+        ratio_3p_to_5p = 0
+        if (self.qc_results["num_3p_utr"] == self.na_val) or \
+           (self.qc_results["num_5p_utr"] == self.na_val):
+            return ratio_3p_to_5p
+        # Length-normalized 3' UTR number
+        density_3p_utr = \
+            log(self.qc_results["num_3p_utr"]) - \
+            log(float(self.total_qc_region_lens["3p_utrs"]))
+        self.logger.info("DENSITY 3P UTR: %.5f" %(density_3p_utr))
+        # Length-normalized 5' UTR number
+        density_5p_utr = \
+            log(self.qc_results["num_5p_utr"]) - \
+            log(float(self.total_qc_region_lens["5p_utrs"]))
+        self.logger.info("DENSITY 5P UTR: %.5f" %(density_5p_utr))
+        self.logger.info("LENS: " + str(self.total_qc_region_lens))
+        ratio_3p_to_5p = density_3p_utr - density_5p_utr
+        return exp(ratio_3p_to_5p)
+        
 
     def compute_qc_stats(self):
         """
@@ -588,8 +630,6 @@ class QualityControl:
            (self.qc_results["num_mapped"] == 0):
             self.logger.critical("Cannot compute QC stats since number of reads "
                                  "mapped is not available!")
-            self.logger.critical("num_mapped = %s" \
-                                 %(str(self.qc_results["num_mapped"])))
             sys.exit(1)
         self.qc_stat_funcs = [("percent_unique", self.get_percent_unique),
                               ("percent_mapped", self.get_percent_mapped),

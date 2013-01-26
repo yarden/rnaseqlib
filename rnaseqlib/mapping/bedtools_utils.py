@@ -222,7 +222,6 @@ def sort_bed(input_filename, output_filename,
                                 stdin=input_file,
                                 stdout=subprocess.PIPE)
         # Iterate through stdout
-        print "CONVERTING GFF -> BED: %s" %(attribute_to_use)
         convert_gff_to_bed(proc.stdout, output_file,
                            attribute_to_use=attribute_to_use)
     else:
@@ -306,13 +305,43 @@ def convert_gff_to_bed(input_stream, output_stream,
             # If there's an ID= attribute present,
             # use its value as the BED entry's name
             attributes = utils.parse_attributes(rec_attributes)
-            if (attribute_to_use is not None) and \
-               (attribute_to_use in attributes):
-                # Use gene_id as ID if found
-                name = attributes[attribute_to_use]
+            if attribute_to_use is not None:
+                if attribute_to_use in attributes:
+                    # Use gene_id as ID if found
+                    name = attributes[attribute_to_use]
+                else:
+                    print "WARNING: %s attribute not found" \
+                        %(attribute_to_use)
+                    name = attributes["ID"]
             elif "ID" in attributes:
                 name = attributes["ID"]
         bed_line = make_bed_line(chrom, start, end,
                                  name, score, strand)
         output_stream.write("%s\n" %(bed_line))
-        
+
+
+def get_bed_lens(bed_filename):
+    """
+    Get the lengths of all the intervals of the
+    BED filename. Returns dictionary mapping coordinate
+    string to length.
+    """
+    region_lens = {}
+    total_len = 0
+    with open(bed_filename) as bed_file:
+        for line in bed_file:
+            fields = line.strip().split("\t")
+            chrom = fields[0]
+            start_coord, end_coord = \
+                int(fields[1]), int(fields[2])
+            coordinate_id = "%s:%s-%s" \
+                %(chrom, start_coord, end_coord)
+            if start_coord > end_coord:
+                start_coord, end_coord = \
+                    end_coord, start_coord
+            region_len = end_coord - start_coord + 1
+            region_lens[coordinate_id] = region_len
+            # Keep track of total length of all regions
+            total_len += region_len
+    return region_lens, total_len
+    

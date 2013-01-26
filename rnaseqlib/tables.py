@@ -556,10 +556,12 @@ class GeneTable:
                 gff_output_filename.replace(".gff", ".bed")
             if os.path.isfile(bed_output_filename):
                 print " - BED %s exists, skipping.." %(bed_output_filename)
+            attribute_to_use = "Parent"
+            print "ATTRIBUTE USED: ", attribute_to_use
             bedtools_utils.sort_bed(gff_output_filename,
                                     bed_output_filename,
                                     gff_to_bed=True,
-                                    attribute_to_use="Parent")
+                                    attribute_to_use=attribute_to_use)
 
 
     # def output_exons_as_bed(self):
@@ -761,7 +763,8 @@ class GeneTable:
             exon_coords = [(int(exon["start"]), int(exon["end"])) \
                            for exon in merged_exons]
             intron_coords = []
-            for first_exon, second_exon in zip(exon_coords, exon_coords[1::1]):
+            for first_exon, second_exon in zip(exon_coords,
+                                               exon_coords[1::1]):
                 # Intron start coordinate is the coordinate right after
                 # the end of the first exon, intron end coordinate is the
                 # coordinate just before the beginning of the second exon
