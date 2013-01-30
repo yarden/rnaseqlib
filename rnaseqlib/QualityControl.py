@@ -11,7 +11,7 @@ import rnaseqlib.mapping.bedtools_utils as bedtools_utils
 import rnaseqlib.utils as utils
 
 import numpy
-from numpy import log, exp
+from numpy import log, log2, exp, power
 
 import pandas
 import pysam
@@ -52,7 +52,8 @@ class QualityControl:
                                 "percent_tRNAs",
                                 "3p_to_cds",
                                 "5p_to_cds",
-                                "3p_to_5p"]
+                                "3p_to_5p",
+                                "exon_intron_ratio"]
         self.qc_header = ["num_reads", 
                           "num_mapped",
                           "num_unique_mapped"] + \
@@ -144,17 +145,37 @@ class QualityControl:
         self.logger.info("Getting number of unique reads.")
         num_unique_mapped = \
             count_nondup_reads(self.sample.unique_bam_filename)
-        self.logger.info("Num uniq mapped: %d" %(num_unique_mapped))
         return num_unique_mapped
     
 
     def get_exon_intergenic_ratio(self):
         self.logger.info("Getting exon intergenic ratio.")
         return 0
+
+
+    def get_exon_density(self):
+        """
+        Return density of reads in (merged) exons (in log2).
+        """
+        exon_density = self.na_val
+        num_exons = self.qc_results["num_exons"]
+        if num_exons == self.na_val:
+            return exon_density
+        exons_len = self.qc_region_lens["merged_exons"]
+        exon_density = log2(num_exons) - log2(exons_len)
+        return exon_density
     
 
     def get_exon_intron_ratio(self):
-        pass
+        """
+        Exon intron ratio.
+        """
+        exon_intron_ratio = self.na_val
+        exon_density = self.get_exon_density()
+        intron_density = self.get_exon_density()
+        if (exon_density != self.na_val) and (intron_density != self.na_val):
+            exon_intron_ratio = power(2, exon_density - intron_density)
+        return exon_intron_ratio
 
     
     def get_num_ribo(self, chr_ribo="chrRibo"):
@@ -347,6 +368,11 @@ class QualityControl:
         bam_file = pysam.Samfile(qc_regions_bam, "rb")
         self.logger.info("Counting reads in: %s" %(qc_regions_bam))
         region_counts = defaultdict(int)
+        ##
+        ## Map transcripts to region types and hits
+        ##
+        region_counts_by_transcript = \
+            defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
         for bam_read in bam_file:
             # Read aligns to region of interest
             regions_field = None
@@ -354,12 +380,9 @@ class QualityControl:
                 regions_field = bam_read.opt("YB")
             except KeyError:
                 continue
-            read_categories = regions_field.split(";")
-            # Get coordinates that read fall in
-            # Get region types detected
-            regions_detected = \
-                map(lambda x: x.split(":")[0],
-                    filter(lambda x: ":" in x, read_categories))
+            region_coordinates, regions_detected = \
+                bedtools_utils.parse_tagBam_region(regions_field)
+            print "REGION COORDINATES: ", region_coordinates
             ##
             ## Rules for counting regions
             ##
@@ -565,37 +588,40 @@ class QualityControl:
         """
         Get 3' UTR to CDS ratio.
         """
-        ratio_3p_to_cds = 0
+        ratio_3p_to_cds = self.na_val
         if (self.qc_results["num_3p_utr"] == self.na_val) or \
            (self.qc_results["num_cds"] == self.na_val):
             return ratio_3p_to_cds
         # Length-normalized 3' UTR number
-        self.logger.info("qc region lens " + str(self.total_qc_region_lens))
         density_3p_utr = \
-            self.qc_results["num_3p_utr"] / float(self.total_qc_region_lens["3p_utrs"])
+            log2(self.qc_results["num_3p_utr"]) - \
+            log2(float(self.total_qc_region_lens["3p_utrs"]))
         # Length-normalized CDS number
         density_cds = \
-            self.qc_results["num_cds"] / float(self.total_qc_region_lens["cds_only.merged_exons"])
-        ratio_3p_to_cds = density_3p_utr / density_cds
-        return ratio_3p_to_cds
+            log2(self.qc_results["num_cds"]) - \
+            log2(float(self.total_qc_region_lens["cds_only.merged_exons"]))
+        ratio_3p_to_cds = density_3p_utr - density_cds
+        return power(2, ratio_3p_to_cds)
 
 
     def get_5p_to_cds(self):
         """
         Get 5' UTR to CDS ratio.
         """
-        ratio_5p_to_cds = 0
+        ratio_5p_to_cds = self.na_val
         if (self.qc_results["num_5p_utr"] == self.na_val) or \
            (self.qc_results["num_cds"] == self.na_val):
             return ratio_5p_to_cds
         # Length-normalized 5' UTR number
         density_5p_utr = \
-            self.qc_results["num_5p_utr"] / float(self.total_qc_region_lens["5p_utrs"])
+            log2(self.qc_results["num_5p_utr"]) - \
+            log2(float(self.total_qc_region_lens["5p_utrs"]))
         # Length-normalized CDS number
         density_cds = \
-            self.qc_results["num_cds"] / float(self.total_qc_region_lens["cds_only.merged_exons"])
-        ratio_5p_to_cds = density_5p_utr / density_cds
-        return ratio_5p_to_cds
+            log2(self.qc_results["num_cds"]) - \
+            log2(float(self.total_qc_region_lens["cds_only.merged_exons"]))
+        ratio_5p_to_cds = density_5p_utr - density_cds
+        return power(2, ratio_5p_to_cds)
 
 
     def get_3p_to_5p(self):
@@ -608,17 +634,14 @@ class QualityControl:
             return ratio_3p_to_5p
         # Length-normalized 3' UTR number
         density_3p_utr = \
-            log(self.qc_results["num_3p_utr"]) - \
-            log(float(self.total_qc_region_lens["3p_utrs"]))
-        self.logger.info("DENSITY 3P UTR: %.5f" %(density_3p_utr))
+            log2(self.qc_results["num_3p_utr"]) - \
+            log2(float(self.total_qc_region_lens["3p_utrs"]))
         # Length-normalized 5' UTR number
         density_5p_utr = \
-            log(self.qc_results["num_5p_utr"]) - \
-            log(float(self.total_qc_region_lens["5p_utrs"]))
-        self.logger.info("DENSITY 5P UTR: %.5f" %(density_5p_utr))
-        self.logger.info("LENS: " + str(self.total_qc_region_lens))
+            log2(self.qc_results["num_5p_utr"]) - \
+            log2(float(self.total_qc_region_lens["5p_utrs"]))
         ratio_3p_to_5p = density_3p_utr - density_5p_utr
-        return exp(ratio_3p_to_5p)
+        return power(2, ratio_3p_to_5p)
         
 
     def compute_qc_stats(self):
@@ -642,7 +665,8 @@ class QualityControl:
                               ("percent_tRNAs", self.get_percent_tRNAs),
                               ("3p_to_cds", self.get_3p_to_cds),
                               ("5p_to_cds", self.get_5p_to_cds),
-                              ("3p_to_5p", self.get_3p_to_5p)]
+                              ("3p_to_5p", self.get_3p_to_5p),
+                              ("exon_intron_ratio", self.get_exon_intron_ratio)]
         for stat_name, stat_func in self.qc_stat_funcs:
             self.qc_results[stat_name] = stat_func()
         
@@ -656,7 +680,8 @@ class QualityControl:
         # First check that BAM file is present
         if (self.sample.bam_filename is None) or \
            (not os.path.isfile(self.sample.bam_filename)):
-            print "WARNING: Cannot find BAM filename for %s" %(self.sample.label)
+            print "WARNING: Cannot find BAM filename for %s" \
+                %(self.sample.label)
         else:
             # Basic QC stats
             self.compute_basic_qc()
@@ -674,8 +699,9 @@ class QualityControl:
         Output QC metrics for sample.
         """
         if os.path.isfile(self.qc_filename):
-            print "SKIPPING %s, since %s already exists..." %(self.sample.label,
-                                                              self.qc_filename)
+            print "SKIPPING %s, since %s already exists..." \
+                %(self.sample.label,
+                  self.qc_filename)
             return None
         # Header for QC output file for sample
         qc_df = pandas.DataFrame([self.qc_results])
@@ -689,7 +715,7 @@ class QualityControl:
         
 
     def get_seq_cycle_profile(self, fastq_filename,
-                              first_n_seqs=None):#sample):
+                              first_n_seqs=None):
         """
         Compute the average 'N' bases (unable to sequence)
         as a function of the position of the read.
@@ -720,7 +746,8 @@ class QualityControl:
         # Compute percentage of N along each position
         percent_n = []
         for base_pos in range(max(num_reads.keys())):
-            curr_percent_n = float(num_n_bases[base_pos]) / num_reads[base_pos]
+            curr_percent_n = \
+                float(num_n_bases[base_pos]) / num_reads[base_pos]
             percent_n.append(curr_percent_n)
         return percent_n
 

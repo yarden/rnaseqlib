@@ -212,6 +212,26 @@ def abs_fold_change(fold_changes):
                  1/float(v) if v <= 1 else v,
                  fold_changes)
     return abs_fc
+
+
+def flatten(l):
+    """
+    Flatten a list.
+    """
+    return [item for sublist in l for item in sublist]
+
+
+def chunk_list(l, delim):
+    record = []
+    for r in l:
+        if delim in r:
+            if record:
+                yield record
+            record = [r]
+        else:
+            record.append(r)
+    if record:
+        yield record         
     
 
 def pathify(filename):

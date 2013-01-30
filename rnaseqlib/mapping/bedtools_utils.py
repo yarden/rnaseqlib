@@ -4,7 +4,10 @@
 import os
 import sys
 import time
+import shlex
 import subprocess
+
+from collections import defaultdict
 
 import rnaseqlib
 import rnaseqlib.utils as utils
@@ -176,15 +179,36 @@ def merge_bed(input_filename, output_filename,
         return output_filename
     if sort_input:
         merge_cmd = \
-          "sortBed -i %s | mergeBed -i stdin -nms -s | sortBed -i - > %s" \
-            %(input_filename,
-              output_filename)
+          "sortBed -i %s | mergeBed -i stdin -nms -s -scores sum | sortBed -i - " \
+            %(input_filename)
         print "Executing: %s" %(merge_cmd)
-        os.system(merge_cmd)
+        output_file = open(output_filename, "w")
+        proc = subprocess.Popen(merge_cmd,
+                                stdout=subprocess.PIPE,
+                                shell=True)
+        sub_bed_delimiter(proc.stdout, output_file,
+                          from_delim=";",
+                          to_delim=",")
+        proc.communicate()
     else:
         raise Exception, "Not implemented."
     return output_filename
 
+
+def sub_bed_delimiter(input_file, output_file,
+                      from_delim=";",
+                      to_delim=","):
+    """
+    Substitute BED delimiter in names field.
+    """
+    for line in input_file:
+        bed_fields = line.strip().split("\t")
+        bed_fields[3] = bed_fields[3].replace(from_delim,
+                                              to_delim)
+        bed_output_line = "%s\n" %("\t".join(bed_fields))
+        output_file.write(bed_output_line)
+    output_file.close()
+        
     
 def make_bed_line(chrom, start, end,
                   name, score, strand,
@@ -345,3 +369,25 @@ def get_bed_lens(bed_filename):
             total_len += region_len
     return region_lens, total_len
     
+
+def parse_tagBam_region(regions_field, trans_prefix="ENS"):
+    """
+    Parse tagBam region. Returns read coordinates
+    detected and a set of regions detected.
+
+    Assumes transcripts being with trans_prefix.
+    """
+    read_categories = regions_field.split(";")
+    mapped_parts = utils.flatten([read_cat.split(",") \
+                                  for read_cat in read_categories])
+    region_coordinates = []
+    for part in utils.chunk_list(mapped_parts, ":"):
+        region_type, region_coord = part[0].split(":", 1)[0:2]
+        curr_transcripts = set([t for t in part if t.startswith(trans_prefix)])
+        region_coordinates.append((region_coord, region_type, curr_transcripts))
+    # Get coordinates that read fall in
+    # Get region types detected
+    regions_detected = \
+        map(lambda x: x.split(":")[0],
+            filter(lambda x: ":" in x, read_categories))
+    return region_coordinates, regions_detected

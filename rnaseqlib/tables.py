@@ -259,10 +259,6 @@ class GeneTable:
                                        sep=self.delimiter,
                                        names=self.ensGene_header)
         self.table = main_table
-#                                       converters={"exonStarts":
-#                                                   self.parse_string_int_list,
-#                                                   "exonEnds":
-#                                                   self.parse_string_int_list})
         self.ensemblToGeneName_header = ["name",
                                          "value"]
         ensGene_name_filename = os.path.join(self.table_dir,
