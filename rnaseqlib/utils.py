@@ -256,6 +256,9 @@ def parse_coords(coords):
     if len(fields) == 3:
         strand = fields[2]
     start, end = int(fields[1]), int(fields[2])
+    if start > end:
+        # Reverse coordinates of start > end
+        start, end = end, start
     return chrom, start, end, strand
     
     
