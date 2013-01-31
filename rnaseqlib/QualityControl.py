@@ -159,11 +159,25 @@ class QualityControl:
         """
         exon_density = self.na_val
         num_exons = self.qc_results["num_exons"]
-        if num_exons == self.na_val:
+        exons_len = self.total_qc_region_lens["merged_exons"]
+        if (num_exons == self.na_val) or (exons_len == self.na_val):
             return exon_density
-        exons_len = self.qc_region_lens["merged_exons"]
         exon_density = log2(num_exons) - log2(exons_len)
         return exon_density
+
+
+    def get_intron_density(self):
+        """
+        Return density of reads in the introns (in log2).
+        """
+        intron_density = self.na_val
+        num_introns = self.qc_results["num_introns"]
+        introns_len = self.total_qc_region_lens["introns"]
+        if (num_introns == self.na_val) or (introns_len == self.na_val):
+            return intron_density
+        intron_density = log2(num_introns) - log2(introns_len)
+        return intron_density
+        
     
 
     def get_exon_intron_ratio(self):
@@ -172,7 +186,9 @@ class QualityControl:
         """
         exon_intron_ratio = self.na_val
         exon_density = self.get_exon_density()
-        intron_density = self.get_exon_density()
+        intron_density = self.get_intron_density()
+        self.logger.info("exon_density: " + str(exon_density))
+        self.logger.info("intron_density: " + str(intron_density))
         if (exon_density != self.na_val) and (intron_density != self.na_val):
             exon_intron_ratio = power(2, exon_density - intron_density)
         return exon_intron_ratio
@@ -382,7 +398,6 @@ class QualityControl:
                 continue
             region_coordinates, regions_detected = \
                 bedtools_utils.parse_tagBam_region(regions_field)
-            print "REGION COORDINATES: ", region_coordinates
             ##
             ## Rules for counting regions
             ##
@@ -500,10 +515,11 @@ class QualityControl:
         """
         percent_ribo = 0
         if self.qc_results["num_ribo"] == self.na_val:
+            self.logger.info("Cannot computer num ribo.")
             return percent_ribo
         percent_ribo = \
             self.qc_results["num_ribo"] / float(self.qc_results["num_unique_mapped"])
-        return 0
+        return percent_ribo
 
     
     def get_percent_exons(self):
