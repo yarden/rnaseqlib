@@ -238,7 +238,8 @@ class Pipeline:
         for table_name in self.rna_base.rpkm_table_names:
             curr_sample = self.samples[0]
             # If the RPKM table is not available, skip it
-            if curr_sample.rpkm_tables[table_name] is None: continue
+            if curr_sample.rpkm_tables[table_name] is None:
+                continue
             # If we have only one sample, make add it to the set of
             # RPKM tables by itself and continue to next table
             if len(self.samples) == 1:

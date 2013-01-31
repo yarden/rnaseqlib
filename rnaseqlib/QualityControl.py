@@ -387,7 +387,7 @@ class QualityControl:
         ##
         ## Map transcripts to region types and hits
         ##
-        region_counts_by_transcript = \
+        self.region_counts_by_transcript = \
             defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
         for bam_read in bam_file:
             # Read aligns to region of interest
@@ -398,7 +398,12 @@ class QualityControl:
                 continue
             region_coordinates, regions_detected = \
                 bedtools_utils.parse_tagBam_region(regions_field)
-            ##
+            for region_info in region_coordinates:
+                curr_region, region_type, transcripts = \
+                    region_info
+                for curr_transcript in transcripts:
+                    transcript_info = region_counts_by_transcript[curr_transcript]
+                    transcript_info[region_type][curr_region] += 1
             ## Rules for counting regions
             ##
             # Count junction reads but do not use them
@@ -642,22 +647,42 @@ class QualityControl:
 
     def get_3p_to_5p(self):
         """
-        Get 3' UTR to 5' UTR ratio.
+        Get 3' UTR to 5' UTR ratio: Computed at the transcript level.
         """
-        ratio_3p_to_5p = 0
-        if (self.qc_results["num_3p_utr"] == self.na_val) or \
-           (self.qc_results["num_5p_utr"] == self.na_val):
-            return ratio_3p_to_5p
-        # Length-normalized 3' UTR number
-        density_3p_utr = \
-            log2(self.qc_results["num_3p_utr"]) - \
-            log2(float(self.total_qc_region_lens["3p_utrs"]))
-        # Length-normalized 5' UTR number
-        density_5p_utr = \
-            log2(self.qc_results["num_5p_utr"]) - \
-            log2(float(self.total_qc_region_lens["5p_utrs"]))
-        ratio_3p_to_5p = density_3p_utr - density_5p_utr
-        return power(2, ratio_3p_to_5p)
+        for transcript in self.region_counts_by_transcripts:
+            transcript_info = \
+                self.region_counts_by_transcripts[transcript]
+            # Skip transcripts that don't have 3p / 5p UTR reads
+            if (len(transcript_info["3p_utr"]) == 0) or \
+               (len(transcript_info["5p_utr"]) == 0):
+                continue
+            # Take sum of 3p UTR reads and their length
+            sum_reads_3p = 0
+            sum_lens_3p = 0
+            for region in transcript_info["3p_utr"]:
+                chrom, start, end, strand = utils.parse_coords(region)
+                num_reads = transcript_info["3p_utr"][region]
+                curr_len = end - start + 1
+                sum_reads_3p += num_reads
+                sum_lens_3p += curr_len
+            # Take sum of 5p UTR reads and their lengths
+            sum_reads_3p = [transcript_info["3p_utr"][r] \
+                            for r in transcript_info["3p_utr"]]
+            sum_lengths_3p = [transcript_info[]
+        # ratio_3p_to_5p = 0
+        # if (self.qc_results["num_3p_utr"] == self.na_val) or \
+        #    (self.qc_results["num_5p_utr"] == self.na_val):
+        #     return ratio_3p_to_5p
+        # # Length-normalized 3' UTR number
+        # density_3p_utr = \
+        #     log2(self.qc_results["num_3p_utr"]) - \
+        #     log2(float(self.total_qc_region_lens["3p_utrs"]))
+        # # Length-normalized 5' UTR number
+        # density_5p_utr = \
+        #     log2(self.qc_results["num_5p_utr"]) - \
+        #     log2(float(self.total_qc_region_lens["5p_utrs"]))
+        # ratio_3p_to_5p = density_3p_utr - density_5p_utr
+        # return power(2, ratio_3p_to_5p)
         
 
     def compute_qc_stats(self):

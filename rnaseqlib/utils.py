@@ -238,6 +238,29 @@ def pathify(filename):
     return os.path.abspath(os.path.expanduser(filename))
 
 
+def parse_coords(coords):
+    """
+    Parse coordinates of form:
+
+      chrom:start-end:strand
+
+    Ensure that start < end.
+
+    where ':strand' is optional.
+    """
+    fields = coords.split(":")
+    if len(fields) < 2:
+        return None
+    strand = None
+    chrom = fields[0]
+    if len(fields) == 3:
+        strand = fields[2]
+    start, end = int(fields[1]), int(fields[2])
+    return chrom, start, end, strand
+    
+    
+
+
 
 
 
