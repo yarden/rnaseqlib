@@ -187,8 +187,6 @@ class QualityControl:
         exon_intron_ratio = self.na_val
         exon_density = self.get_exon_density()
         intron_density = self.get_intron_density()
-        self.logger.info("exon_density: " + str(exon_density))
-        self.logger.info("intron_density: " + str(intron_density))
         if (exon_density != self.na_val) and (intron_density != self.na_val):
             exon_intron_ratio = power(2, exon_density - intron_density)
         return exon_intron_ratio
@@ -402,7 +400,8 @@ class QualityControl:
                 curr_region, region_type, transcripts = \
                     region_info
                 for curr_transcript in transcripts:
-                    transcript_info = region_counts_by_transcript[curr_transcript]
+                    transcript_info = \
+                        self.region_counts_by_transcript[curr_transcript]
                     transcript_info[region_type][curr_region] += 1
             ## Rules for counting regions
             ##
@@ -649,9 +648,9 @@ class QualityControl:
         """
         Get 3' UTR to 5' UTR ratio: Computed at the transcript level.
         """
-        for transcript in self.region_counts_by_transcripts:
+        for transcript in self.region_counts_by_transcript:
             transcript_info = \
-                self.region_counts_by_transcripts[transcript]
+                self.region_counts_by_transcript[transcript]
             # Skip transcripts that don't have 3p / 5p UTR reads
             if (len(transcript_info["3p_utr"]) == 0) or \
                (len(transcript_info["5p_utr"]) == 0):
@@ -668,7 +667,7 @@ class QualityControl:
             # Take sum of 5p UTR reads and their lengths
             sum_reads_3p = [transcript_info["3p_utr"][r] \
                             for r in transcript_info["3p_utr"]]
-            sum_lengths_3p = [transcript_info[]
+        return 0
         # ratio_3p_to_5p = 0
         # if (self.qc_results["num_3p_utr"] == self.na_val) or \
         #    (self.qc_results["num_5p_utr"] == self.na_val):

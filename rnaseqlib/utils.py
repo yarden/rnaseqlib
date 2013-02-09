@@ -4,7 +4,7 @@
 import os
 import sys
 import time
-
+import glob
 import re
 
 from os.path import basename
@@ -66,6 +66,19 @@ def trim_fastq_ext(fastq_filename):
     trimmed_fastq_fname = \
         os.path.join(fastq_dirname, trimmed_basename)
     return trimmed_fastq_fname
+
+
+def trim_gff_ext(gff_filename):
+    """
+    Trim .gff or .gff3 (case-insensitive)
+    """
+    gff_dirname = os.path.dirname(gff_filename)
+    gff_basename = os.path.basename(gff_filename)
+    ext_pattern = re.compile("\.gff(3)?$", re.IGNORECASE)
+    trimmed_basename = ext_pattern.sub("", gff_basename)
+    trimmed_gff_fname = \
+        os.path.join(gff_dirname, trimmed_basename)
+    return trimmed_gff_fname
 
 
 def make_dir(dirpath):
@@ -260,6 +273,21 @@ def parse_coords(coords):
         # Reverse coordinates of start > end
         start, end = end, start
     return chrom, start, end, strand
+
+
+def get_gff_filenames_in_dir(dirname):
+    """
+    Get all file names that end in the given extensions
+    in case-insensitive manner.
+    """
+    dirname = pathify(dirname)
+    #ext_pattern = re.compile("\.gff(3)?$", re.IGNORECASE)
+    filenames = glob.glob(os.path.join(dirname, "*.*"))
+    matching_fnames = \
+        [f for f in filenames \
+         if f.lower().endswith((".gff", ".gff3"))]
+    return matching_fnames
+    
     
     
 

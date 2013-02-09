@@ -134,6 +134,41 @@ def multi_tagBam(bam_filename, intervals_files, intervals_labels,
         logger.critical("tagBam command failed.")
         return None
     return output_filename
+
+
+def coverageBed(bam_filename,
+                intervals_filename,
+                output_filename,
+                logger):
+    """
+    Run coverageBed, mapping BAM against the given intervals
+    filename (a GFF or BED). 
+    """
+    logger.info("Running coverageBed..")
+    logger.info("  Mapping %s against %s" %(bam_filename,
+                                            intervals_filename))
+    logger.info("  Output file: %s" %(output_filename))
+    t1 = time.time()
+    if not os.path.isfile(intervals_filename):
+        logger.critical("Cannot find intervals file %s" %(output_filename))
+    if not os.path.isfile(bam_filename):
+        logger.critical("Cannot find BAM file %s" %(bam_filename))
+    if os.path.isfile(output_filename):
+        logger.info("Found %s, skipping.." %(output_filename))
+    args = {"bam_filename": bam_filename,
+            "intervals_filename": intervals_filename,
+            "output_filename": output_filename}
+    coverageBed_cmd = \
+       "coverageBed -abam %(bam_filename)s -b %(intervals_filename)s -split " \
+       "> %(output_filename)s" %(args)
+    logger.info("Executing: %s" %(coverageBed_cmd))
+    ret_val = os.system(coverageBed_cmd)
+    if ret_val != 0:
+        logger.critical("coverageBed command failed.")
+        return None
+    t2 = time.time()
+    logger.info("coverageBed took %.2f minutes." %((t2 - t1)/60.))
+    return output_filename
     
 
 def count_reads_matching_intervals(bam_filename,

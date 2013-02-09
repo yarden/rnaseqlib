@@ -59,6 +59,8 @@ class Sample:
         self.rmdups_unique_bam_filename = None
         # Sample's RPKM directory
         self.rpkm_dir = None
+        # Sample's events directory
+        self.events_dir = None
         # RPKM tables for the sample
         self.rpkm_tables = defaultdict(lambda: None)
         # Record if a sample is grouped
@@ -279,7 +281,7 @@ class Pipeline:
         utils.make_dir(self.output_dir)
         # Subdirectories of toplevel subdirs
         self.toplevel_subdirs = defaultdict(list)
-        self.toplevel_subdirs["analysis"] = ["rpkm", "insert_lens"]
+        self.toplevel_subdirs["analysis"] = ["rpkm", "insert_lens", "events"]
         for dirname in self.toplevel_dirs:
             dirpath = os.path.join(self.output_dir, dirname)
             self.logger.info(" - Creating: %s" %(dirpath))
@@ -291,6 +293,9 @@ class Pipeline:
         # Variables storing commonly accessed directories
         self.rpkm_dir = os.path.join(self.pipeline_outdirs["analysis"],
                                      "rpkm")
+        self.events_dir = os.path.join(self.pipeline_outdirs["analysis"],
+                                       "events")
+
 
     def load_basic_settings(self):
         """
@@ -335,6 +340,11 @@ class Pipeline:
                 sys.exit(1)
             self.adaptors_filename = \
                 utils.pathify(self.settings_info["mapping"]["adaptors_file"])
+        # Load GFF events dir if any is given
+        self.gff_events_dir = None
+        if "gff_events" in self.settings_info["mapping"]:
+            self.gff_events_dir = \
+                utils.pathify(self.settings_info["mapping"]["gff_events"])
         
 
     def load_groups(self):
@@ -941,6 +951,56 @@ class Pipeline:
         return sample
 
     
+    def output_events_mapping(self, sample):
+        """
+        Output analysis for events.
+        """
+        self.logger.info("Outputting events mapping for sample %s" \
+                         %(sample.label))
+        sample_events_bam_outdir = os.path.join(self.events_dir,
+                                                sample.label,
+                                                "bam")
+        sample_events_bed_outdir = os.path.join(self.events_dir,
+                                                sample.label,
+                                                "bed")
+        utils.make_dir(sample_events_bam_outdir)
+        utils.make_dir(sample_events_bed_outdir)
+        # Read all GFF files
+        self.logger.info("Loading GFF files from: %s" %(self.gff_events_dir))
+        gff_filenames = \
+            utils.get_gff_filenames_in_dir(self.gff_events_dir)
+        gff_labels = [os.path.basename(utils.trim_gff_ext(f)) \
+                      for f in gff_filenames]
+        self.logger.info("GFF filenames: " + str(gff_filenames))
+        self.logger.info("GFF labels: " + str(gff_labels))
+        # Run tagBam against all events, outputting a BAM for each
+        for gff_fname, gff_label in zip(gff_filenames, gff_labels):
+            bam_events_fname = \
+                os.path.join(sample_events_bam_outdir,
+                             "%s.bam" %(gff_label))
+            if os.path.isfile(bam_events_fname):
+                self.logger.info("Found %s, skipping.." %(bam_events_fname))
+            else:
+                # Map BAM reads to events GFF
+                bedtools_utils.multi_tagBam(sample.bam_filename,
+                                            [gff_fname],
+                                            [gff_label],
+                                            bam_events_fname,
+                                            self.logger)
+            # Run coverageBed against all events
+            coverage_events_fname = \
+                os.path.join(sample_events_bed_outdir,
+                             "%s.bed" %(gff_label))
+            if os.path.isfile(coverage_events_fname):
+                self.logger.info("Found %s, skipping.." \
+                                 %(coverage_events_fname))
+            else:
+                bedtools_utils.coverageBed(sample.bam_filename,
+                                           gff_fname,
+                                           coverage_events_fname,
+                                           self.logger)
+
+    
     def run_analysis(self, sample):
         """
         Run analysis on a sample.
@@ -948,5 +1008,8 @@ class Pipeline:
         # Compute RPKMs
         self.logger.info("Computing RPKMs for sample: %s" %(sample.label))
         self.output_rpkms(sample)
+        # Run events analysis: only for CLIP-Seq datasets
+        if sample.sample_type == "clipseq":
+            self.output_events_mapping(sample)
         return sample
         
