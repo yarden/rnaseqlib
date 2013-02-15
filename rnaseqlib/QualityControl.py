@@ -202,13 +202,17 @@ class QualityControl:
         """
         self.logger.info("Getting number of ribosomal reads..")
         bamfile = pysam.Samfile(self.sample.bam_filename, "rb")
+        num_ribo = 0
         # Retrieve all reads on the ribo chromosome
-        ribo_reads = bamfile.fetch(reference=chr_ribo,
-                                   start=None,
-                                   end=None)
-        # Count reads (fetch returns an iterator)
-        # Do not count duplicates
-        num_ribo = count_nondup_reads(ribo_reads)
+        try:
+            ribo_reads = bamfile.fetch(reference=chr_ribo,
+                                       start=None,
+                                       end=None)
+            # Count reads (fetch returns an iterator)
+            # Do not count duplicates
+            num_ribo = count_nondup_reads(ribo_reads)
+        except:
+            self.logger.warning("Could not fetch %s reads" %(chr_ribo))
         return num_ribo
 
 
@@ -416,7 +420,7 @@ class QualityControl:
             # Then check if it's a tRNA
             if "tRNA" in regions_detected:
                 # It's a tRNA
-                region_counts["tRNAs"] += 1
+                region_counts["num_tRNAs"] += 1
                 continue
             # Check if it's in a CDS region
             if "cds_only.merged_exons" in regions_detected:
@@ -443,6 +447,8 @@ class QualityControl:
         self.qc_results["num_introns"] = region_counts["num_introns"]
         self.qc_results["num_3p_utr"] = region_counts["num_3p_utr"]
         self.qc_results["num_5p_utr"] = region_counts["num_5p_utr"]
+        self.logger.info("num 3p utr: %d" %(self.qc_results["num_3p_utr"]))
+        self.logger.info("num 5p utr: %d" %(self.qc_results["num_5p_utr"]))
         self.qc_results["num_tRNAs"] = region_counts["num_tRNAs"]
         self.qc_results["num_junctions"] = region_counts["num_junctions"]
         # Number of exonic reads is defined as
@@ -467,6 +473,7 @@ class QualityControl:
         self.qc_results["num_reads"] = self.get_num_reads()
         self.qc_results["num_mapped"] = self.get_num_mapped()
         self.qc_results["num_unique_mapped"] = self.get_num_unique_mapped()
+        self.qc_results["num_ribo"] = self.get_num_ribo()
 
 
     def get_percent_mapped(self):
