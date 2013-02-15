@@ -144,7 +144,7 @@ def main():
     greeting()
 
     if options.output_dir == None:
-        print "Error: need --output-dir"
+        print "Error: need --output-dir argument."
         parser.print_help()
         sys.exit(1)
         

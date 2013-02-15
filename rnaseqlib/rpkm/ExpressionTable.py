@@ -5,6 +5,7 @@ import os
 import time
 import glob
 import pandas
+pandas.set_option('use_inf_as_null', True)
 
 import scipy
 import numpy as np

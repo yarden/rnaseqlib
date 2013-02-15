@@ -953,7 +953,10 @@ class Pipeline:
     
     def output_events_mapping(self, sample):
         """
-        Output analysis for events.
+        Output mapping for GFF events. Create BED files that give
+        number of reads in each region of the GFF events (computed by
+        coverageBed), as well as BAM files that say what region of
+        GFF events each read maps to (computed by tagBam.)
         """
         self.logger.info("Outputting events mapping for sample %s" \
                          %(sample.label))
@@ -971,8 +974,6 @@ class Pipeline:
             utils.get_gff_filenames_in_dir(self.gff_events_dir)
         gff_labels = [os.path.basename(utils.trim_gff_ext(f)) \
                       for f in gff_filenames]
-        self.logger.info("GFF filenames: " + str(gff_filenames))
-        self.logger.info("GFF labels: " + str(gff_labels))
         # Run tagBam against all events, outputting a BAM for each
         for gff_fname, gff_label in zip(gff_filenames, gff_labels):
             bam_events_fname = \
@@ -999,6 +1000,7 @@ class Pipeline:
                                            gff_fname,
                                            coverage_events_fname,
                                            self.logger)
+        self.logger.info("Events mapping completed.")
 
     
     def run_analysis(self, sample):

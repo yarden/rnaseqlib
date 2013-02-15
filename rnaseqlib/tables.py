@@ -553,7 +553,6 @@ class GeneTable:
             if os.path.isfile(bed_output_filename):
                 print " - BED %s exists, skipping.." %(bed_output_filename)
             attribute_to_use = "Parent"
-            print "ATTRIBUTE USED: ", attribute_to_use
             bedtools_utils.sort_bed(gff_output_filename,
                                     bed_output_filename,
                                     gff_to_bed=True,
