@@ -211,6 +211,7 @@ class QualityControl:
             # Count reads (fetch returns an iterator)
             # Do not count duplicates
             num_ribo = count_nondup_reads(ribo_reads)
+            self.logger.info("NUM RIBO: %d" %(num_ribo))
         except:
             self.logger.warning("Could not fetch %s reads" %(chr_ribo))
         return num_ribo
@@ -526,10 +527,11 @@ class QualityControl:
         """
         percent_ribo = 0
         if self.qc_results["num_ribo"] == self.na_val:
-            self.logger.info("Cannot computer num ribo.")
+            self.logger.info("Cannot compute num ribo.")
             return percent_ribo
         percent_ribo = \
-            self.qc_results["num_ribo"] / float(self.qc_results["num_unique_mapped"])
+            self.qc_results["num_ribo"] / float(self.qc_results["num_mapped"])
+        percent_ribo *= float(100)
         return percent_ribo
 
     
