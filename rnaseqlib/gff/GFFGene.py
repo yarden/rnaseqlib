@@ -15,6 +15,12 @@ class GFFGene:
         self.db = db
         # Map from mRNAs to their children
         #self.mRNAs_to_exons = OrderedDict()
+
+
+    def get_gene_rec(self):
+        gene_rec = self.db[self.gene_id]
+        gene_rec.attributes["gene_id"] = self.gene_id
+        return gene_rec
         
 
     def get_mRNAs(self):
@@ -46,14 +52,16 @@ class GFFGene:
             yield mRNA_part
 
 
-    def make_gene(self):
+    def make_gene_object(self):
         """
         Make a representation of a gene.
         Too expensive; using iterator approach instead.
         """
-        pass
-        #self.recs = [r for r in self.db.children(self.gene_id, level=1)]
-        #for mRNA in self.db.children(self.gene_id, level=1):
-        #    # Exons of the mRNA
-        #    self.mRNAs_to_exons[mRNA.id] = \
-        #        [e for e in self.db.children(mRNA)]
+        mRNAs_to_parts = OrderedDict()
+        for mRNA in self.get_mRNAs():
+            # Exons of the mRNA
+            mRNAs_to_parts[mRNA.id] = {"parts": self.get_mRNA_parts(mRNA.id),
+                                       "record": mRNA}
+        gene_obj = {"gene_rec": self.get_gene_rec(),
+                    "mRNAs": mRNAs_to_parts}
+        return gene_obj

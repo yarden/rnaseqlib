@@ -81,6 +81,30 @@ def create_db(gff_fname, db_fname=None):
     gffutils.create_db(gff_fname, db_fname)
 
 
+def write_rec_to_gff(gff_out, record):
+    gff_out.write("%s\n" %(str(record)))
+
+
+def sanitize_record(record):
+    if record.start > record.stop:
+        record.start, record.stop = \
+            record.stop, record.start
+    return record
+
+
+def fix_up_down_ids(parts):
+    if not (len(parts) == 3 or len(parts) == 2):
+        return parts
+    first_part, last_part = parts[0], parts[-1]
+    # If it's a minus strand event, then the upstream exon
+    # must have a greater coordinate than the downstream
+    if (first_part.id.endswith(".dn") and last_part.id.endswith(".up")) and \
+       (first_part.stop <= last_part.start):
+        first_part.id = "%s.up" %(first_part.id[:-3])
+        last_part.id = "%s.dn" %(last_part.id[:-3])
+    return parts
+
+
 def sanitize_gff(db_fname, output_db_fname, output_dir,
                  event_sanitize=False):
     """
@@ -94,16 +118,22 @@ def sanitize_gff(db_fname, output_db_fname, output_dir,
         gff_out_fname += ".gff"
     gff_out = open(gff_out_fname, "w")
     gff_db = gffdb.GFFDB(db_fname)
-    gff_db.load_all_genes()
-    for rec in gff_db.iter_recs():
-        print rec
-#    for gene_rec in gff_db.iter_by_type("gene"):
-#        gene_id = gene_rec.id
-#        print mRNA
-#    for record in gff_db.db.all():
-#        if record.start > record.stop:
-#            # Switch coords of start > stop
-#            record.start, record.end = record.end, record.start
-    # Create database for new GFF filename
-    # ...
+    print "  - Writing sanitized GFF to: %s" %(gff_out_fname)
+    num_genes = 0
+    for gene in gff_db.get_gene_objects():
+        print "on gene %d" %(num_genes)
+        num_genes += 1
+        gene_rec = gene["gene_rec"]
+        # Write gene record
+        write_rec_to_gff(gff_out, sanitize_record(gene_rec))
+        # Write mRNA of each gene
+        for mRNA in gene["mRNAs"]:
+            mRNA_obj = gene["mRNAs"][mRNA]
+            write_rec_to_gff(gff_out, sanitize_record(mRNA_obj["record"]))
+            parts = list([sanitize_record(part) \
+                          for part in mRNA_obj["parts"]])
+            parts = fix_up_down_ids(parts)
+            for part in parts:
+                write_rec_to_gff(gff_out, part)
+    gff_out.close()
     return gff_out_fname, output_db_fname

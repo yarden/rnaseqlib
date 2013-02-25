@@ -46,7 +46,7 @@ class GFFDB:
                 # Return each mRNA's parts
                 for part in gene.get_mRNA_parts(mRNA.id):
                     yield part
-            
+
 
     def iter_by_type(self, feature_type):
         """
@@ -80,3 +80,12 @@ class GFFDB:
         print "Loaded %d genes in %.2f seconds." %(num_genes,
                                                    (t2 - t1))
         self.num_genes = num_genes
+
+
+    def get_gene_objects(self):
+        """
+        Load expensive representation of genes as OrderedDicts.
+        """
+        self.gene_objects = []
+        for gene in self.genes:
+            yield gene.make_gene_object()
