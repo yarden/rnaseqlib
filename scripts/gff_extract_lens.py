@@ -6,7 +6,6 @@ import sys
 import time
 
 import numpy as np
-
 import pandas
 
 import rnaseqlib
@@ -14,6 +13,7 @@ import rnaseqlib.utils as utils
 
 import misopy
 import misopy.Gene as gene_utils
+
 
 def extract_lens_from_gff(gff_fname, output_dir):
     entries = []
@@ -41,9 +41,9 @@ def extract_lens_from_gff(gff_fname, output_dir):
                                    iso.genomic_end])
         genomic_coords = np.array(genomic_coords)
         genomic_lens = \
-            list(genomic_coords[:, 1] - genomic_coords[:, 0] + 1)
+            map(str, list(genomic_coords[:, 1] - genomic_coords[:, 0] + 1))
         entry = \
-            {"event_id":
+            {"event_name":
              gene.label,
              "mRNA_lens":
              ",".join(iso_lens),
@@ -52,12 +52,13 @@ def extract_lens_from_gff(gff_fname, output_dir):
              "exon_lens":
              ";".join([",".join(exons) for exons in iso_exon_lens]),
              "genomic_lens":
-             ";".join(genomic_lens)}
+             ",".join(genomic_lens)}
         entries.append(entry)
     entries_df = pandas.DataFrame(entries)
     entries_df.to_csv(output_fname,
-                      cols=["event_id", "mRNA_labels",
-                            "mRNA_lens", "exon_lens"],
+                      cols=["event_name", "mRNA_labels",
+                            "mRNA_lens", "exon_lens",
+                            "genomic_lens"],
                       sep="\t",
                       index=False)
 
