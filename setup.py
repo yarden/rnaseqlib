@@ -44,7 +44,11 @@ setup(name = 'rnaseqlib',
                  'scripts/ucsc_table2gff3.pl',
                  # MISO-related scripts
                  'scripts/miso/intersect_events.py',
-                 'scripts/miso/misowrap.py'],
+                 'scripts/miso/misowrap.py',
+                 # GFF related scripts
+                 'scripts/gff_sanitize.py',
+                 'scripts/gff_create_db.py',
+                 'scripts/gff_extract_lens.py'],
       # Required modules
       install_requires = [
 #          "matplotlib >= 1.1.0",

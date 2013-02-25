@@ -9,6 +9,7 @@ import gffutils
 
 import rnaseqlib
 import rnaseqlib.utils as utils
+import rnaseqlib.gff.gffutils_helpers as gffutils_helpers
 
 
 def greeting():
@@ -24,17 +25,7 @@ def create_db(gff_fname, output_dir):
     """
     output_basename = os.path.basename(gff_fname)
     db_fname = os.path.join(output_dir, "%s.db" %(output_basename))
-    print "Creating a GFF database..."
-    print "  - Input GFF: %s" %(gff_fname)
-    print "  - Output file: %s" %(db_fname)
-    t1 = time.time()
-    if os.path.isfile(db_fname):
-        print "GFF database %s exists. Quitting." %(db_fname)
-        sys.exit(0)
-    gffutils.create_db(gff_fname, db_fname)
-    t2 = time.time()
-    print "GFF database creation took %.2f seconds." \
-          %((t2 - t1) / 60.)
+    gffutils_helpers.create_db(gff_fname, db_fname)
 
 
 def main():
