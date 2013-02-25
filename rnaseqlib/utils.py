@@ -81,6 +81,18 @@ def trim_gff_ext(gff_filename):
     return trimmed_gff_fname
 
 
+def endsin_gff(gff_filename):
+    """
+    Return true if filename ends in gff/gff3 (case-insensitive).
+    """
+    gff_basename = os.path.basename(gff_filename)
+    ext_pattern = re.compile("\.gff(3)?$", re.IGNORECASE)
+    result = ext_pattern.search(gff_filename)
+    if result is not None:
+        return True
+    return False
+
+
 def make_dir(dirpath):
     if os.path.isfile(dirpath):
         print "Error: %s is a file!" %(dirpath)

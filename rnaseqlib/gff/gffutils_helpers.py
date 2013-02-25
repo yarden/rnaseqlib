@@ -81,11 +81,29 @@ def create_db(gff_fname, db_fname=None):
     gffutils.create_db(gff_fname, db_fname)
 
 
-def sanitize_gff(db_fname, output_db_fname, output_dir):
+def sanitize_gff(db_fname, output_db_fname, output_dir,
+                 event_sanitize=False):
     """
     Sanitize a GFF file. Return the revised
-    GFF file.
+    GFF file and its database.
     """
+    gff_out_fname = \
+        os.path.join(output_dir,
+                     os.path.basename(db_fname).split(".db")[0])
+    if not utils.endsin_gff(gff_out_fname):
+        gff_out_fname += ".gff"
+    gff_out = open(gff_out_fname, "w")
     gff_db = gffdb.GFFDB(db_fname)
     gff_db.load_all_genes()
-    print "GFF_DB:", gff_db
+    for rec in gff_db.iter_recs():
+        print rec
+#    for gene_rec in gff_db.iter_by_type("gene"):
+#        gene_id = gene_rec.id
+#        print mRNA
+#    for record in gff_db.db.all():
+#        if record.start > record.stop:
+#            # Switch coords of start > stop
+#            record.start, record.end = record.end, record.start
+    # Create database for new GFF filename
+    # ...
+    return gff_out_fname, output_db_fname

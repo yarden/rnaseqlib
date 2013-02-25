@@ -18,6 +18,7 @@ class GFFDB:
         self.db = gffutils.FeatureDB(db)
         self.num_genes = 0
         self.genes = []
+        self.load_all_genes()
 
 
     def __repr__(self):
@@ -27,6 +28,25 @@ class GFFDB:
     def __str__(self):
         return self.__repr__()
 
+
+    def iter_recs(self):
+        """
+        Iterate through all records in gene-centric way.
+
+        Returns records that include the 'gene_id' attribute.
+        """
+        for gene in self.genes:
+            # Return gene record
+            gene_rec = self.db[gene.gene_id]
+            gene_rec.attributes["gene_id"] = gene.gene_id
+            yield gene_rec
+            # Return each mRNA
+            for mRNA in gene.get_mRNAs():
+                yield mRNA
+                # Return each mRNA's parts
+                for part in gene.get_mRNA_parts(mRNA.id):
+                    yield part
+            
 
     def iter_by_type(self, feature_type):
         """
