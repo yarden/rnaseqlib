@@ -419,7 +419,7 @@ class QualityControl:
                 # It's a junction read
                 region_counts["num_junctions"] += 1
             # Then check if it's a tRNA
-            if "tRNA" in regions_detected:
+            if "tRNAs" in regions_detected:
                 # It's a tRNA
                 region_counts["num_tRNAs"] += 1
                 continue
@@ -606,6 +606,7 @@ class QualityControl:
         """
         percent_tRNAs = 0
         if self.qc_results["num_tRNAs"] == self.na_val:
+            self.logger.warning("Cannot find number of tRNAs mapped reads.")
             return percent_tRNAs
         percent_tRNAs = \
             self.qc_results["num_tRNAs"] / float(self.qc_results["num_unique_mapped"])

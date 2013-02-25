@@ -101,9 +101,10 @@ class SampleRawdata:
         self.settings_info = settings_info
         self.sample_type = None
         if self.settings_info is not None:
-            self.sample_type = self.settings_info["pipeline"]["data_type"]
+            self.sample_type = \
+                self.settings_info["pipeline"]["data_type"]
             
-
+            
     def __str__(self):
         return "SampleRawdata(%s, %s, %s)" %(self.label,
                                              self.sample_type,

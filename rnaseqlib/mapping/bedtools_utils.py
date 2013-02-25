@@ -12,7 +12,6 @@ from collections import defaultdict
 import rnaseqlib
 import rnaseqlib.utils as utils
 
-
 def intersect_bam_with_bed(bam_filename,
                            bed_filename,
                            output_filename,
