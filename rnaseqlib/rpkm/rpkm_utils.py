@@ -92,8 +92,8 @@ def output_rpkm(sample,
         exons_bam_fname = exon_utils.map_bam2gff(sample.ribosub_bam_filename,
                                                  const_exons.gff_filename,
                                                  bam2gff_outdir)
-        # Compute RPKMs for sample
-        num_mapped = int(sample.qc.qc_results["num_mapped"])
+        # Compute RPKMs for sample: use number of ribosub mapped reads
+        num_mapped = int(sample.qc.qc_results["num_ribosub_mapped"])
         if num_mapped == 0:
             logger.critical("Cannot compute RPKMs since sample %s has 0 " \
                             "mapped reads." %(sample.label))

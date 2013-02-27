@@ -785,9 +785,11 @@ class Pipeline:
             self.logger.critical("BAM %s file does not end in .bam" \
                                  %(sample.bam_filename))
         bam_basename = os.path.basename(sample.bam_filename)
-        ribosub_bam_filename = os.path.join(sample.processed_bam_dir,
-                                           "%s.ribosub.bam" %(bam_basename[0:-4]))
-        self.logger.info("Getting rRNA-subtracted reads for %s" %(sample.label))
+        ribosub_bam_filename = \
+            os.path.join(sample.processed_bam_dir,
+                         "%s.ribosub.bam" %(bam_basename[0:-4]))
+        self.logger.info("Getting rRNA-subtracted reads for %s" \
+                         %(sample.label))
         self.logger.info("  - Output file: %s" %(ribosub_bam_filename))
         if not os.path.isfile(ribosub_bam_filename):
             # Get the ribosomal rRNA mapping reads
@@ -797,6 +799,9 @@ class Pipeline:
                                             end=None)
             for ribo_read in ribo_reads:
                 ribo_read_ids[ribo_read.qname] = True
+            if len(ribo_read_ids) == 0:
+                self.logger.warning("Could not find any rRNA mapping reads " \
+                                    "in %s" %(sample.bam_filename))
             ribosub_bam = pysam.Samfile(ribosub_bam_filename, "wb",
                                         # Use original file's headers
                                         template=mapped_reads)

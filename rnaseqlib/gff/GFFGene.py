@@ -60,8 +60,9 @@ class GFFGene:
         mRNAs_to_parts = OrderedDict()
         for mRNA in self.get_mRNAs():
             # Exons of the mRNA
-            mRNAs_to_parts[mRNA.id] = {"parts": self.get_mRNA_parts(mRNA.id),
-                                       "record": mRNA}
+            mRNAs_to_parts[mRNA.id] = \
+                {"parts": list(self.get_mRNA_parts(mRNA.id)),
+                 "record": mRNA}
         gene_obj = {"gene_rec": self.get_gene_rec(),
                     "mRNAs": mRNAs_to_parts}
         return gene_obj

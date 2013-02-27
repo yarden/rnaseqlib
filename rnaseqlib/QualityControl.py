@@ -56,6 +56,7 @@ class QualityControl:
                                 "exon_intron_ratio"]
         self.qc_header = ["num_reads", 
                           "num_mapped",
+                          "num_ribosub_mapped",
                           "num_unique_mapped"] + \
                           self.qc_stats_header + \
                           self.regions_header
@@ -146,6 +147,16 @@ class QualityControl:
         num_unique_mapped = \
             count_nondup_reads(self.sample.unique_bam_filename)
         return num_unique_mapped
+
+
+    def get_num_ribosub_mapped(self):
+        """
+        Get number of mapped reads, not counting duplicates, and
+        not counting rRNA reads.
+        """
+        self.logger.info("Getting number of ribosub mapped reads.")        
+        num_ribosub_mapped = count_nondup_reads(self.sample.ribosub_bam_filename)
+        return num_ribosub_mapped
     
 
     def get_exon_intergenic_ratio(self):
@@ -473,6 +484,7 @@ class QualityControl:
         """
         self.qc_results["num_reads"] = self.get_num_reads()
         self.qc_results["num_mapped"] = self.get_num_mapped()
+        self.qc_results["num_ribosub_mapped"] = self.get_num_ribosub_mapped()        
         self.qc_results["num_unique_mapped"] = self.get_num_unique_mapped()
         self.qc_results["num_ribo"] = self.get_num_ribo()
 
