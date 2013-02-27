@@ -21,24 +21,37 @@ def greeting():
     print "See --help for options."
 
 
-def sanitize_gff(db_fname, output_dir, db_subdir):
+# def gffutils_sanitize_gff(db_fname, output_dir, db_subdir):
+#     """
+#     Sanitize a GFF file.
+#     """
+#     db_fname = gffutils_helpers.get_default_db_fname(db_fname)
+#     print "Sanitizing GFF file..."
+#     if db_fname is None:
+#         print "Error: Cannot find a GFF database for %s. Please index " \
+#               "and try again." %(db_fname)
+#         sys.exit(1)
+#     print "  - Input GFF: %s" %(db_fname)
+#     print "  - Output directory: %s" %(output_dir)
+#     # Iterate through GFF file
+#     output_db_fname = \
+#         gffutils_helpers.get_output_db_fname(db_fname,
+#                                              output_dir,
+#                                              db_subdir=db_subdir)
+#     gffutils_helpers.sanitize_gff(db_fname, output_db_fname, output_dir)
+
+
+def sanitize_gff(gff_fname, output_dir):
     """
     Sanitize a GFF file.
     """
-    db_fname = gffutils_helpers.get_default_db_fname(db_fname)
     print "Sanitizing GFF file..."
-    if db_fname is None:
-        print "Error: Cannot find a GFF database for %s. Please index " \
-              "and try again." %(db_fname)
-        sys.exit(1)
-    print "  - Input GFF: %s" %(db_fname)
+    print "  - Input GFF: %s" %(gff_fname)
     print "  - Output directory: %s" %(output_dir)
-    # Iterate through GFF file
-    output_db_fname = \
-        gffutils_helpers.get_output_db_fname(db_fname,
-                                             output_dir,
-                                             db_subdir=db_subdir)
-    gffutils_helpers.sanitize_gff(db_fname, output_db_fname, output_dir)
+    if not os.path.isfile(gff_fname):
+        print "Error: Cannot find GFF %s" %(gff_fname)
+        sys.exit(1)
+    gffutils_helpers.sanitize_gff(gff_fname, output_dir)
 
 
 def main():
@@ -74,8 +87,9 @@ def main():
 
     if options.input_gff is not None:
         gff_fname = utils.pathify(options.input_gff)
-        sanitize_gff(gff_fname, output_dir,
-                     db_subdir=options.db_subdir)
+        sanitize_gff(gff_fname, output_dir)
+#        sanitize_gff(gff_fname, output_dir,
+#                     db_subdir=options.db_subdir)
 
 
 if __name__ == "__main__":

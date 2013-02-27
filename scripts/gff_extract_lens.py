@@ -81,7 +81,7 @@ def greeting():
 def main():
     from optparse import OptionParser
     parser = OptionParser()
-    parser.add_option("--extract", dest="extract", default=None, nargs=1,
+    parser.add_option("--input-gff", dest="input_gff", default=None, nargs=1,
                       help="Extract lengths from GFF file.")
     parser.add_option("--output-dir", dest="output_dir", nargs=1, default=None,
                       help="Output directory.")
@@ -97,8 +97,8 @@ def main():
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
 
-    if options.extract is not None:
-        gff_fname = utils.pathify(options.extract)
+    if options.input_gff is not None:
+        gff_fname = utils.pathify(options.input_gff)
         extract_lens_from_gff(gff_fname, output_dir)
 
 

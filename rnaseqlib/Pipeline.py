@@ -799,16 +799,23 @@ class Pipeline:
                                             end=None)
             for ribo_read in ribo_reads:
                 ribo_read_ids[ribo_read.qname] = True
-            if len(ribo_read_ids) == 0:
+            num_ribo_reads = len(ribo_read_ids)
+            if num_ribo_reads == 0:
                 self.logger.warning("Could not find any rRNA mapping reads " \
                                     "in %s" %(sample.bam_filename))
+            else:
+                self.logger.info("Subtracting %d rRNA reads from %s" \
+                                 %(num_ribo_reads,
+                                   sample.bam_filename))
+                self.logger.info("  - Subtracted BAM: %s" \
+                                 %(ribosub_bam_filename))
             ribosub_bam = pysam.Samfile(ribosub_bam_filename, "wb",
                                         # Use original file's headers
                                         template=mapped_reads)
             for read in mapped_reads:
                 # If the read has any mapping to rRNA, then
                 # skip it
-                if read.qname in ribosub_bam:
+                if read.qname in ribo_read_ids:
                     continue
                 ribosub_bam.write(read)
             ribosub_bam.close()
