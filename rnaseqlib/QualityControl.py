@@ -155,7 +155,8 @@ class QualityControl:
         not counting rRNA reads.
         """
         self.logger.info("Getting number of ribosub mapped reads.")        
-        num_ribosub_mapped = count_nondup_reads(self.sample.ribosub_bam_filename)
+        num_ribosub_mapped = \
+            count_nondup_reads(self.sample.ribosub_bam_filename)
         return num_ribosub_mapped
     
 

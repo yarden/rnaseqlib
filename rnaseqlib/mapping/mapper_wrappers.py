@@ -95,8 +95,9 @@ def get_bowtie_mapping_cmd(bowtie_path,
         # Assume the input is compressed. Pass it through
         # bowtie via gzip
         # The "-c" argument to -gunzip is for printing to stdout
-        mapper_cmd = "gunzip -c %(input_filename)s | %(bowtie_path)s %(bowtie_options)s " \
-                     "%(genome_index_filename)s - | samtools view -bS - -o %(output_filename)s" % args
+        mapper_cmd = \
+            "gunzip -c %(input_filename)s | %(bowtie_path)s %(bowtie_options)s " \
+            "%(genome_index_filename)s - | samtools view -bS - -o %(output_filename)s" % args
     else:
         mapper_cmd = "%s %s " %(bowtie_path, bowtie_options)
         mapper_cmd += " %s %s - | samtools view -Sbh - > %s" \

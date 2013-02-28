@@ -91,3 +91,37 @@ def check_clip_utils(logger,
             sys.exit(1)
     logger.info("Found CLIP utilities.")
     
+
+def output_clip_clusters(logger, bam_filename, output_filename,
+                         cluster_dist=0):
+    """
+    In contrast to merge, cluster does not flatten the cluster of
+    intervals into a new meta-interval; instead, it assigns an unique
+    cluster ID to each record in each cluster.
+
+    Return the output filename or None if it went wrong.
+    """
+    if cluster_dist != 0:
+        raise Exception, "Cluster distance must be 0 for now."
+    # Find clusters in reads:
+    #  (1) Convert BAM file to BED on the fly and sort it
+    #  (2) Run clusterBed
+    #  (3) Merge the cluster
+    # Convert BAM -> BED, sort BED
+    bamToBed_cmd = "bamToBed -i %s -split | sortBed -i - " \
+        %(bam_filename)
+    # Cluster the BED
+    clusterBed_cmd = "clusterBed -i - "
+    # Merge the clusters while recording read IDs in each cluster
+    # Do not make it stranded
+    mergeBed_cmd = "mergeBed -i - -nms"
+    logger.info("Outputting CLIP clusters...")
+    logger.info("  - BAM input: %s" %(bam_filename))
+    logger.info("  - Output file: %s" %(output_filename))
+    bedtools_cmd = "%s | %s | %s > %s" %(bamToBed_cmd,
+                                         clusterBed_cmd,
+                                         mergeBed_cmd,
+                                         output_filename)
+    ret_val = os.system(bedtools_cmd)
+    if ret_val != 0:
+        return None

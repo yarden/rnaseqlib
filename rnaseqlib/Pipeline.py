@@ -1015,6 +1015,54 @@ class Pipeline:
                                            self.logger)
         self.logger.info("Events mapping completed.")
 
+
+    def output_clusters(self, sample, cluster_dist=0):
+        """
+        Output clusters of reads using clusterBed. Output two
+        types of clusters:
+
+        (1) Use rRNA-subtracted BAM to output clusters genome-wide
+            for entire BAM
+        (2) Overlap those clusters from (1) with every event
+            type to produce event-overlapping clusters
+
+        First identify the clusters and how many reads are in them.
+        Then intersect
+        """
+        self.logger.info("Finding clusters for %s" %(sample.label))
+        # Create clusters directory
+        clusters_dir = os.path.join(self.analysis_dir, "clusters")
+        utils.make_dir(clusters_dir)
+        # Create clusters directory for sample
+        sample_clusters_dir = os.path.join(clusters_dir, sample.label)
+        utils.make_dir(sample_clusters_dir)
+        # Use BAM basename (minus the extension)
+        bam_basename = \
+            os.path.basename(sample.ribosub_bam_filename).rsplit(".", 1)[0]
+        sample_clusters_fname = \
+            "%s.clusters.bed" %(os.path.join(sample_clusters_dir,
+                                             bam_basename))
+        # Final command: convert, cluster, merge
+        t1 = time.time()
+        clusters_fname = \
+            clip_utils.output_clip_clusters(self.logger,
+                                            sample.ribosub_bam_filename,
+                                            sample_clusters_fname,
+                                            cluster_dist=cluster_dist)
+        t2 = time.time()
+        if clusters_fname is None:
+            self.logger.critical("Cluster for %s finding failed." \
+                                 %(sample.label))
+            sys.exit(1)
+        self.logger.info("Cluster finding took %.2f minutes" \
+                         %((t2 - t1)/60.))
+        # Merge the resulting clusters with every event file
+        ##
+        ## TODO: for each event type, produce an intersectBed
+        ##       file (using -loj option) of clusters against GFF
+        ##       of the events
+        ## ...
+                                             
     
     def run_analysis(self, sample):
         """
@@ -1023,8 +1071,12 @@ class Pipeline:
         # Compute RPKMs
         self.logger.info("Computing RPKMs for sample: %s" %(sample.label))
         self.output_rpkms(sample)
-        # Run events analysis: only for CLIP-Seq datasets
+        ##
+        ## CLIP-Seq specific analysis steps
+        ##
         if sample.sample_type == "clipseq":
+            # Run events analysis: only for CLIP-Seq datasets
             self.output_events_mapping(sample)
+            # Find CLIP clusters
+            self.output_clusters(sample)
         return sample
-        
