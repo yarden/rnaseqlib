@@ -1031,7 +1031,8 @@ class Pipeline:
         """
         self.logger.info("Finding clusters for %s" %(sample.label))
         # Create clusters directory
-        clusters_dir = os.path.join(self.analysis_dir, "clusters")
+        clusters_dir = \
+            os.path.join(self.pipeline_outdirs["analysis"], "clusters")
         utils.make_dir(clusters_dir)
         # Create clusters directory for sample
         sample_clusters_dir = os.path.join(clusters_dir, sample.label)
