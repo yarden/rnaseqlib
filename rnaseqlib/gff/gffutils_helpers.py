@@ -213,3 +213,10 @@ def sanitize_gff(gff_fname, output_dir):
     t2 = time.time()
     print "Sanitizing took %.2f seconds" %(t2 - t1)
     return gff_out_fname
+
+
+def get_fasta_from_gff(input_gff, output_dir):
+    """
+    Get FASTA sequences from GFF file.
+    """
+    pass

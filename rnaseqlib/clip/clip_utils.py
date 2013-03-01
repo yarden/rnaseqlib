@@ -8,6 +8,7 @@ import time
 import rnaseqlib
 import rnaseqlib.utils as utils
 import rnaseqlib.fastx_utils as fastx_utils
+import rnaseqlib.mapping.bedtools_utils as bedtools_utils
 
 
 def trim_clip_adaptors(fastq_filename,
@@ -122,6 +123,48 @@ def output_clip_clusters(logger, bam_filename, output_filename,
                                          clusterBed_cmd,
                                          mergeBed_cmd,
                                          output_filename)
+    logger.info("Executing: %s" %(bedtools_cmd))
     ret_val = os.system(bedtools_cmd)
     if ret_val != 0:
         return None
+    return output_filename
+
+
+def intersect_clusters_with_gff(logger,
+                                clusters_fname,
+                                gff_filenames,
+                                output_dir):
+    """
+    Intersect CLIP clusters with a set of GFF filenames (e.g. GFFs containing
+    events.
+    """
+    event_clusters_fnames = []
+    logger.info("Intersecting clusters %s with GFFs.." \
+                %(clusters_fname))
+    for gff_fname in gff_filenames:
+        if not os.path.isfile(gff_fname):
+            logger.critical("Cannot find events GFF file %s" \
+                            %(gff_fname))
+            continue
+        gff_label = os.path.basename(utils.trim_gff_ext(gff_fname))
+        event_clusters_fname = \
+            os.path.join(output_dir,
+                         "%s.clusters.bed" %(gff_label))
+        logger.info("  - Processing GFF %s" %(gff_label))
+        # Intersect the clusters for this sample with each
+        # GFF file
+        intersectBed_cmd = \
+            "%s -a %s -b %s -loj -f 1 > %s" \
+            %(bedtools_utils.intersectBed_path,
+              clusters_fname,
+              gff_fname,
+              event_clusters_fname)
+        logger.info("  - Executing: %s" %(intersectBed_cmd))
+        ret_val = os.system(intersectBed_cmd)
+        if ret_val != 0:
+            logger.critical("Cannot intersect clusters with %s" \
+                            %(gff_fname))
+        else:
+            event_clusters_fnames.append(event_clusters_fname)
+    return event_clusters_fnames
+

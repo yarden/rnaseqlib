@@ -1027,7 +1027,7 @@ class Pipeline:
             type to produce event-overlapping clusters
 
         First identify the clusters and how many reads are in them.
-        Then intersect
+        Then intersect clusters with each event GFF file.
         """
         self.logger.info("Finding clusters for %s" %(sample.label))
         # Create clusters directory
@@ -1062,8 +1062,29 @@ class Pipeline:
         ## TODO: for each event type, produce an intersectBed
         ##       file (using -loj option) of clusters against GFF
         ##       of the events
-        ## ...
-                                             
+        # Read all GFF files
+        self.logger.info("Mapping clusters to GFF files from: %s" \
+                         %(self.gff_events_dir))
+        gff_filenames = \
+            utils.get_gff_filenames_in_dir(self.gff_events_dir)
+        # Make directory for clusters intersected with events
+        event_clusters_dir = os.path.join(sample_clusters_dir,
+                                          "by_events")
+        utils.make_dir(event_clusters_dir)
+        clip_utils.intersect_clusters_with_gff(self.logger,
+                                               clusters_fname,
+                                               gff_filenames,
+                                               event_clusters_dir)
+        self.logger.info("Finished outputting clusters.")
+
+
+    def output_motifs(self):
+        """
+        Output motifs for CLIP reads and clusters.
+        """
+        fasta_utils.bam_to_fastx()
+        pass
+                  
     
     def run_analysis(self, sample):
         """
@@ -1080,4 +1101,6 @@ class Pipeline:
             self.output_events_mapping(sample)
             # Find CLIP clusters
             self.output_clusters(sample)
+            # Find motifs
+            self.output_motifs(sample)
         return sample
