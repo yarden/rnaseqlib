@@ -56,14 +56,9 @@ def download_genome_seq(genome,
     """
     print "Downloading genome sequence files for %s" %(genome)
     print "  - Output dir: %s" %(output_dir)
-    output_dir = os.path.join(output_dir, "genome")
-    if os.path.isdir(output_dir):
-        dir_files = os.listdir(output_dir)
-        if len(dir_files) >= 1:
-            print "Directory %s exists and contains files; skipping download of genome..." \
-                %(output_dir)
-            return None
+    output_dir = utils.pathify(os.path.join(output_dir, "genome"))
     utils.make_dir(output_dir)
+    dir_files = os.listdir(output_dir)
     # Change to output directory
     os.chdir(output_dir)
     ##
@@ -72,43 +67,57 @@ def download_genome_seq(genome,
     genome_url = "%s/%s/chromosomes/" %(UCSC_GOLDENPATH_FTP,
                                         genome)
     # Fetch all chromosome sequence files
-    download_utils.wget(os.path.join(genome_url, "*"))
-    # Download only chrom17 / chr13 random
-    #download_utils.wget(os.path.join(genome_url, "chr17.fa.gz"))    
-    #download_utils.wget(os.path.join(genome_url, "chr13_random.fa.gz"))
-    # Remove random chromosome contigs
-    for fname in glob.glob(os.path.join(output_dir, "*.fa.gz")):
-        if "_" in os.path.basename(fname):
-            print "Deleting: %s" %(fname)
-            os.remove(fname)
-    ##
-    ## Uncompress the files
-    ##
-    print "Uncompressing files..."
-    uncompress_cmd = "gunzip %s/*.gz" %(output_dir)
-    t1 = time.time()
-    ret_val = os.system(uncompress_cmd)
-    if ret_val != 0:
-        print "Error: Cannot uncompress files in %s" %(output_dir)
-        sys.exit(1)
-    t2 = time.time()
-    print "Uncompressing took %.2f minutes" %((t2 - t1)/60.)
+    if len(dir_files) >= 1:
+        print "Directory %s exists and contains files; " \
+              "skipping download of genome..." \
+              %(output_dir)
+    else:
+        download_utils.wget(os.path.join(genome_url, "*"))
+        # Remove random chromosome contigs
+        for fname in glob.glob(os.path.join(output_dir, "*.fa.gz")):
+            if "_" in os.path.basename(fname):
+                print "Deleting: %s" %(fname)
+                os.remove(fname)
+        ##
+        ## Uncompress the files
+        ##
+        print "Uncompressing files..."
+        uncompress_cmd = "gunzip %s/*.gz" %(output_dir)
+        print "  - Uncompress cmd: %s" %(uncompress_cmd)
+        t1 = time.time()
+        ret_val = os.system(uncompress_cmd)
+        if ret_val != 0:
+            print "Error: Cannot uncompress files in %s" %(output_dir)
+            sys.exit(1)
+        t2 = time.time()
+        print "Uncompressing took %.2f minutes" %((t2 - t1)/60.)
     # Create a single genome FASTA file by concatenating the
     # chromosomes together
     genome_output_fname = \
         os.path.join(output_dir, "%s.fa" %(genome))
-    print "Concatenating genome chromosomes into one file..."
-    print "  - Output file: %s" %(genome_output_fname)
-    t1 = time.time()
-    concat_chrom_cmd = "cat %s/*.fa > %s" %(output_dir,
-                                            genome_output_fname)
-    # Create an index for resulting genome file
-    print "Indexing genome file..."
-    samtools_index_cmd = "samtools faidx %s" %(genome_output_fname)
-    t2 = time.time()
-    print "Concatenation and indexing took %.2f minutes" \
-          %((t2 - t1)/60.)
-    
+    if not os.path.isfile(genome_output_fname):
+        print "Concatenating genome chromosomes into one file..."
+        print "  - Output file: %s" %(genome_output_fname)
+        t1 = time.time()
+        concat_chrom_cmd = "cat %s/*.fa > %s" %(output_dir,
+                                                genome_output_fname)
+        print "  - Concat cmd: %s" %(concat_chrom_cmd)
+        ret_val = os.system(concat_chrom_cmd)
+        if ret_val != 0:
+            print "Error: Could not concatenate genome chromosomes."
+            sys.exit(1)
+        # Create an index for resulting genome file
+        print "Indexing genome file..."
+        samtools_index_cmd = "samtools faidx %s" %(genome_output_fname)
+        print "  - Index cmd: %s" %(samtools_index_cmd)
+        ret_val = os.system(samtools_index_cmd)
+        if ret_val != 0:
+            print "Error: Could not index genome file."
+            sys.exit(1)
+        t2 = time.time()
+        print "Concatenation and indexing took %.2f minutes" \
+            %((t2 - t1)/60.)
+
 
 def download_misc_seqs(genome, output_dir):
     """

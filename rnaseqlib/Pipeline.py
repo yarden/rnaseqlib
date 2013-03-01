@@ -195,6 +195,9 @@ class Pipeline:
         self.qc_header = []
         self.init_qc()
         self.na_val = "NA"
+        # Set path to genome directory (containing raw genome sequence)
+        self.genome_dir = \
+            os.path.join(self.init_dir, self.rna_base.genome)
 
 
     def load_rna_base(self):
@@ -289,7 +292,10 @@ class Pipeline:
         utils.make_dir(self.output_dir)
         # Subdirectories of toplevel subdirs
         self.toplevel_subdirs = defaultdict(list)
-        self.toplevel_subdirs["analysis"] = ["rpkm", "insert_lens", "events"]
+        self.toplevel_subdirs["analysis"] = ["rpkm",
+                                             "insert_lens",
+                                             "events",
+                                             "seqs"]
         for dirname in self.toplevel_dirs:
             dirpath = os.path.join(self.output_dir, dirname)
             self.logger.info(" - Creating: %s" %(dirpath))
@@ -303,6 +309,8 @@ class Pipeline:
                                      "rpkm")
         self.events_dir = os.path.join(self.pipeline_outdirs["analysis"],
                                        "events")
+        self.seqs_dir = os.path.join(self.pipeline_outdirs["analysis"],
+                                     "seqs")
 
 
     def load_basic_settings(self):
@@ -535,7 +543,6 @@ class Pipeline:
             
     def run_on_samples(self):
         samples_job_ids = []
-        self.logger.info("Running on samples..")
         for sample in self.samples:
             self.logger.info("Processing sample %s" %(sample))
             job_name = "pipeline_run_%s" %(sample.label)
@@ -983,10 +990,10 @@ class Pipeline:
         sample_events_bam_outdir = os.path.join(self.events_dir,
                                                 sample.label,
                                                 "bam")
+        utils.make_dir(sample_events_bam_outdir)
         sample_events_bed_outdir = os.path.join(self.events_dir,
                                                 sample.label,
                                                 "bed")
-        utils.make_dir(sample_events_bam_outdir)
         utils.make_dir(sample_events_bed_outdir)
         # Read all GFF files
         self.logger.info("Loading GFF files from: %s" %(self.gff_events_dir))
@@ -1095,28 +1102,45 @@ class Pipeline:
         self.logger.info("Outputting CLIP sequences for %s" \
                          %(sample.label))
         t1 = time.time()
-        # Output the FASTA sequences corresponding to
+        # Create directory for sample's sequences (part of analysis directory)
+        sample_seqs_dir = os.path.join(self.seqs_dir, sample.label)
+        utils.make_dir(sample_seqs_dir)
+        # Record sample's sequence directory
+        sample.seqs_dir = sample_seqs_dir
+        # Output the FASTA sequences for the sample's BAM file
+        bam_basename = \
+            os.path.basename(sample.ribosub_bam_filename).rsplit(".", 1)[0]
+        bam_seqs_fname = os.path.join(sample_seqs_dir, "%s.fa" %(bam_basename))
+        self.logger.info("Outputting BAM FASTA sequences..")
+        if not os.path.isfile(bam_seqs_fname):
+            self.logger.info("  - Output file: %s" %(bam_seqs_fname))
+            bam_utils.bam_to_fastx(sample.ribosub_bam_filename, bam_seqs_fname)
+        else:
+            self.logger.info("Found %s, skipping.." %(bam_seqs_fname))
+        # Output the FASTA sequences corresponding to 
         # the sample's CLIP clusters
-        sample.clusters_dir
         t2 = time.time()
+        self.logger.info("Outputting of CLIP sequences took %.2f minutes." \
+                         %((t2 - t1)/60.))
 
 
-    def output_motifs(self):
+    def output_motifs(self, sample):
         """
         Output motifs for CLIP reads and clusters.
         """
         # Get the sequence of CLIP samples
         # Get sequence of CLIP
         self.output_clip_sequences(sample)
-        fastx_utils.bam_to_fastx()
+        # Run MEME on motifs
+        #fastx_utils.bam_to_fastx()
                   
     
     def run_analysis(self, sample):
         """
         Run analysis on a sample.
         """
+        self.logger.info("Running analysis on %s" %(sample.label))
         # Compute RPKMs
-        self.logger.info("Computing RPKMs for sample: %s" %(sample.label))
         self.output_rpkms(sample)
         ##
         ## CLIP-Seq specific analysis steps

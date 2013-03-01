@@ -1,5 +1,5 @@
 ##
-## Utilities for interacting with MEME
+## Utilities for running MEME
 ##
 import os
 import sys
