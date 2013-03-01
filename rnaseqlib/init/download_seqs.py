@@ -87,9 +87,27 @@ def download_genome_seq(genome,
     print "Uncompressing files..."
     uncompress_cmd = "gunzip %s/*.gz" %(output_dir)
     t1 = time.time()
-    os.system(uncompress_cmd)
+    ret_val = os.system(uncompress_cmd)
+    if ret_val != 0:
+        print "Error: Cannot uncompress files in %s" %(output_dir)
+        sys.exit(1)
     t2 = time.time()
     print "Uncompressing took %.2f minutes" %((t2 - t1)/60.)
+    # Create a single genome FASTA file by concatenating the
+    # chromosomes together
+    genome_output_fname = \
+        os.path.join(output_dir, "%s.fa" %(genome))
+    print "Concatenating genome chromosomes into one file..."
+    print "  - Output file: %s" %(genome_output_fname)
+    t1 = time.time()
+    concat_chrom_cmd = "cat %s/*.fa > %s" %(output_dir,
+                                            genome_output_fname)
+    # Create an index for resulting genome file
+    print "Indexing genome file..."
+    samtools_index_cmd = "samtools faidx %s" %(genome_output_fname)
+    t2 = time.time()
+    print "Concatenation and indexing took %.2f minutes" \
+          %((t2 - t1)/60.)
     
 
 def download_misc_seqs(genome, output_dir):

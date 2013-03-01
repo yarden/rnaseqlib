@@ -12,6 +12,49 @@ import rnaseqlib.fasta_utils as fasta_utils
 import rnaseqlib.fastq_utils as fastq_utils
 
 
+def write_open_fastx(fastx_filename):
+    """
+    Write FASTQ/FASTA file for writing, optionally
+    in .gz form.
+    """
+    fastx_file = None
+    if fastx_filename.endswith(".gz"):
+        fastx_file = gzip.open(fastx_filename, "wb")
+    else:
+        fastx_file = open(fastx_filename, "w")
+    return fastx_file
+
+##
+## Utilities for extracting FASTX sequences
+## from BAM files. Not intended for handling
+## of paired-end reads.
+##
+def bam_to_rec(in_file):
+    """
+    Generator to convert BAM files into Biopython SeqRecords.
+    """
+    from Bio import SeqIO, Seq, SeqRecord
+    bam_file = pysam.Samfile(in_file, "rb")
+    for read in bam_file:
+        seq = Seq.Seq(read.seq)
+        if read.is_reverse:
+            seq = seq.reverse_complement()
+        rec = SeqRecord.SeqRecord(seq, read.qname, "", "")
+        yield rec
+
+def bam_to_fastx(in_file, out_file, record_type="fasta"):
+    """
+    BAM to FASTX converter, based on code by Brad Chapman.
+
+    By default converts to FASTA record.
+    """
+    from Bio import SeqIO, Seq, SeqRecord
+    out_file = "%s.fa" %(os.path.splitext(in_file)[0])
+    out_handle = write_open_fastx(out_file)
+    SeqIO.write(bam_to_rec(in_file), out_handle, record_type)
+    out_handle.close()
+
+
 def get_fastx_entries(fastx_filename):
     """
     Get entries of FASTQ/FASTA file.

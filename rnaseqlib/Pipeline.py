@@ -69,6 +69,13 @@ class Sample:
             self.sample_type = self.rawdata[0].sample_type
         else:
             self.sample_type = self.rawdata.sample_type
+        ##
+        ## For CLIP-Seq samples
+        ##
+        # Directory where clusters are stored
+        self.clusters_dir = None
+        # BED containing clusters for sample
+        self.clusters_bed_fname = None
             
 
     def __repr__(self):
@@ -1036,6 +1043,8 @@ class Pipeline:
         utils.make_dir(clusters_dir)
         # Create clusters directory for sample
         sample_clusters_dir = os.path.join(clusters_dir, sample.label)
+        # Record sample's clusters directory
+        sample.clusters_dir = sample_clusters_dir
         utils.make_dir(sample_clusters_dir)
         # Use BAM basename (minus the extension)
         bam_basename = \
@@ -1043,6 +1052,8 @@ class Pipeline:
         sample_clusters_fname = \
             "%s.clusters.bed" %(os.path.join(sample_clusters_dir,
                                              bam_basename))
+        # Record sample's clusters BED filename
+        sample.clusters_bed_fname = sample_clusters_fname
         # Final command: convert, cluster, merge
         t1 = time.time()
         clusters_fname = \
@@ -1058,11 +1069,6 @@ class Pipeline:
         self.logger.info("Cluster finding took %.2f minutes" \
                          %((t2 - t1)/60.))
         # Merge the resulting clusters with every event file
-        ##
-        ## TODO: for each event type, produce an intersectBed
-        ##       file (using -loj option) of clusters against GFF
-        ##       of the events
-        # Read all GFF files
         self.logger.info("Mapping clusters to GFF files from: %s" \
                          %(self.gff_events_dir))
         gff_filenames = \
@@ -1078,12 +1084,31 @@ class Pipeline:
         self.logger.info("Finished outputting clusters.")
 
 
+    def output_clip_sequences(self, sample):
+        """
+        Output CLIP-related sequences for sample as FASTA files.
+        Generates:
+        
+        (1) FASTA file for the sample's rRNA-subtracted BAM
+        (2) FASTA files for the clusters called
+        """
+        self.logger.info("Outputting CLIP sequences for %s" \
+                         %(sample.label))
+        t1 = time.time()
+        # Output the FASTA sequences corresponding to
+        # the sample's CLIP clusters
+        sample.clusters_dir
+        t2 = time.time()
+
+
     def output_motifs(self):
         """
         Output motifs for CLIP reads and clusters.
         """
-        fasta_utils.bam_to_fastx()
-        pass
+        # Get the sequence of CLIP samples
+        # Get sequence of CLIP
+        self.output_clip_sequences(sample)
+        fastx_utils.bam_to_fastx()
                   
     
     def run_analysis(self, sample):
