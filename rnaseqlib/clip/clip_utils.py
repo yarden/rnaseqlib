@@ -91,6 +91,36 @@ def check_clip_utils(logger,
             logger.critical("Make %s avaialble and try again." %(program))
             sys.exit(1)
     logger.info("Found CLIP utilities.")
+
+
+def filter_clusters(clusters_bed_fname, output_dir,
+                    num_reads=2,
+                    depth=0):
+    """
+    Filter clusters by number of reads in them and/or depth.
+    """
+    if not clusters_bed_fname.endswith(".bed"):
+        raise Exception, "Error: clusters filename %s must end in .bed" \
+              %(clusters_bed_fname)
+    bed_basename = \
+        os.path.basename(clusters_bed_fname).rsplit(".bed", 1)[0]
+    filtered_clusters_fname = \
+        os.path.join(output_dir, "%s.depth_%d.bed" %(depth))
+    with open(filtered_clusters_fname, "w") as clusters_out:
+        with open(clusters_bed_fname, "r") as clusters_in:
+            for line in clusters_in:
+                fields = line.strip().split("\t")
+                cluster_len = int(fields[2]) - int(fields[1]) + 1
+                cluster_reads = len(fields[3].split(";"))
+                # Check that it meets the number of reads filter
+                if cluster_reads < num_reads:
+                    continue
+                # Check that it meets the depth filter
+                cluster_depth = cluster_reads / float(cluster_len)
+                if cluster_depth < depth:
+                    continue
+                clusters_out.write(line)
+    
     
 
 def output_clip_clusters(logger, bam_filename, output_filename,

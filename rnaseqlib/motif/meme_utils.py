@@ -15,33 +15,40 @@ def get_meme_default_params():
     """
     params = {
         # Use -text output by default (not HTML)
-        "-text": ""
+        "-text": "",
+        "-maxsize": "100000000"
     }
     return params
     
 
-def run_meme(input_fasta_fname, output_dir,
-             user_params=None):
+def run_meme(logger, input_fasta_fname, output_dir,
+             meme_params=None):
     """
     Run MEME against an input FASTA file.
     """
     # Get default parameters for MEME
     params = get_meme_default_params()
-    if user_params is not None:
-        # Update parameters with user given parameters, if any
-        params.update(user_params)
-    print "Running MEME with parameters: ", params
+    # Set output directory for MEME
+    params.update({"-o": output_dir})
+    if meme_params is not None:
+        # Update parameters with user-given parameters, if any
+        params.update(meme_params)
     # Check if MEME is available
     meme_path = utils.which("meme")
     if meme_path is None:
-        print "Error: Cannot find or execute \'meme\' program."
+        logger.critical("Error: Cannot find or execute \'meme\' program.")
         sys.exit(1)
     params_str =  " ".join(["%s %s" %(p, params[p]) for p in params])
     meme_cmd = "%s %s %s" %(meme_path,
                             params_str,
                             input_fasta_fname)
+    logger.info("Calling MEME: ")
+    logger.info("Executing: %s" %(meme_cmd))
+    t1 = time.time()
     ret_val = os.system(meme_cmd)
     if ret_val != 0:
-        print "Error: MEME call failed."
+        logger.critical("Error: MEME call failed.")
         sys.exit(1)
+    t2 = time.time()
+    logger.info("MEME completed in %.2f minutes" %((t2 - t1)/60.))
     return output_dir

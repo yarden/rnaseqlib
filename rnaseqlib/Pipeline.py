@@ -19,6 +19,8 @@ import rnaseqlib.QualityControl as qc
 import rnaseqlib.RNABase as rna_base
 import rnaseqlib.clip.clip_utils as clip_utils
 import rnaseqlib.fastq_utils as fastq_utils
+import rnaseqlib.bam.bam_utils as bam_utils
+import rnaseqlib.motif.meme_utils as meme_utils
 
 # Import all paths
 from rnaseqlib.paths import *
@@ -76,6 +78,8 @@ class Sample:
         self.clusters_dir = None
         # BED containing clusters for sample
         self.clusters_bed_fname = None
+        # BAM sequences in FASTA format
+        self.bam_seqs_fname = None
             
 
     def __repr__(self):
@@ -295,7 +299,8 @@ class Pipeline:
         self.toplevel_subdirs["analysis"] = ["rpkm",
                                              "insert_lens",
                                              "events",
-                                             "seqs"]
+                                             "seqs",
+                                             "motifs"]
         for dirname in self.toplevel_dirs:
             dirpath = os.path.join(self.output_dir, dirname)
             self.logger.info(" - Creating: %s" %(dirpath))
@@ -311,6 +316,8 @@ class Pipeline:
                                        "events")
         self.seqs_dir = os.path.join(self.pipeline_outdirs["analysis"],
                                      "seqs")
+        self.motifs_dir = os.path.join(self.pipeline_outdirs["analysis"],
+                                       "motifs")
 
 
     def load_basic_settings(self):
@@ -1091,7 +1098,8 @@ class Pipeline:
         self.logger.info("Finished outputting clusters.")
 
 
-    def output_clip_sequences(self, sample):
+    def output_clip_sequences(self, sample,
+                              make_unique_recs=False):
         """
         Output CLIP-related sequences for sample as FASTA files.
         Generates:
@@ -1110,29 +1118,70 @@ class Pipeline:
         # Output the FASTA sequences for the sample's BAM file
         bam_basename = \
             os.path.basename(sample.ribosub_bam_filename).rsplit(".", 1)[0]
-        bam_seqs_fname = os.path.join(sample_seqs_dir, "%s.fa" %(bam_basename))
+        bam_seqs_fname = \
+            os.path.join(sample_seqs_dir, "%s.fa" %(bam_basename))
+        sample.bam_seqs_fname = bam_seqs_fname
         self.logger.info("Outputting BAM FASTA sequences..")
         if not os.path.isfile(bam_seqs_fname):
             self.logger.info("  - Output file: %s" %(bam_seqs_fname))
-            bam_utils.bam_to_fastx(sample.ribosub_bam_filename, bam_seqs_fname)
+            bam_utils.bam_to_fastx(self.logger,
+                                   sample.ribosub_bam_filename,
+                                   bam_seqs_fname,
+                                   make_unique_recs=make_unique_recs)
         else:
             self.logger.info("Found %s, skipping.." %(bam_seqs_fname))
-        # Output the FASTA sequences corresponding to 
+        # Output the FASTA sequences corresponding to
         # the sample's CLIP clusters
         t2 = time.time()
         self.logger.info("Outputting of CLIP sequences took %.2f minutes." \
                          %((t2 - t1)/60.))
-
+        
 
     def output_motifs(self, sample):
         """
         Output motifs for CLIP reads and clusters.
         """
+        self.logger.info("Outputting motifs for %s" %(sample.label))
+        meme_params = {
+            # ...
+            "-dna": "",
+            # Minimum motif width
+            #"minw": 4
+            # Maximum motif width
+            "-maxw": 8,
+            # Maximum number of motifs to find
+            "-nmotifs": 10
+            }
         # Get the sequence of CLIP samples
         # Get sequence of CLIP
         self.output_clip_sequences(sample)
-        # Run MEME on motifs
-        #fastx_utils.bam_to_fastx()
+        ##
+        ## Run MEME on motifs
+        ##
+        self.logger.info("Running MEME on sample BAM reads..")
+        # Record sample's motifs output directory
+        sample.motifs_outdir = os.path.join(self.motifs_dir,
+                                            sample.label)
+        utils.make_dir(sample.motifs_outdir)
+        # Record sample's BAM motifs output directory
+        sample.bam_motifs_outdir = \
+            os.path.join(sample.motifs_outdir,
+                         "bam_motifs")
+        utils.make_dir(sample.bam_motifs_outdir)
+        # Record sample's clusters motifs output directory
+        sample.clusters_motifs_outdir = \
+            os.path.join(sample.motifs_outdir,
+                         "clusters_motifs")
+        utils.make_dir(sample.clusters_motifs_outdir)
+        # Directory where to place BAM motifs
+        meme_utils.run_meme(self.logger,
+                            sample.bam_seqs_fname,
+                            sample.bam_motifs_outdir,
+                            meme_params=meme_params)
+#        self.logger.info("Running MEME on clusters sequences..")
+#        meme_utils.run_meme(self.logger,
+#                            ...get clusters FASTA fname...
+#                            sample.clusters_motifs_outdir,
                   
     
     def run_analysis(self, sample):
