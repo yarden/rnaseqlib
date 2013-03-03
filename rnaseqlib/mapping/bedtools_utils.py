@@ -19,6 +19,22 @@ intersectBed_path = utils.which("intersectBed")
 mergeBed_path = utils.which("mergeBed")
 tagBam_path = utils.which("tagBam")
 coverageBed_path = utils.which("coverageBed")
+fastaFromBed_path = utils.which("fastaFromBed")
+
+def fastaFromBed(logger, genome_seq_fname, bed_fname, output_fname):
+    logger.info("Retrieving FASTA from BED...")
+    fastaFromBed_cmd = "%s -fi %s -bed %s -name -fo %s" \
+        %(fastaFromBed_path,
+          genome_seq_fname,
+          bed_fname,
+          output_fname)
+    logger.info("Executing: %s" %(fastaFromBed_cmd))
+    ret_val = os.system(fastaFromBed_cmd)
+    if ret_val != 0:
+        logger.critical("fastaFromBed call failed.")
+        sys.exit(1)
+    return output_fname
+
 
 def intersect_bam_with_bed(bam_filename,
                            bed_filename,

@@ -77,7 +77,11 @@ class Sample:
         # Directory where clusters are stored
         self.clusters_dir = None
         # BED containing clusters for sample
-        self.clusters_bed_fname = None
+        self.clusters_fname = None
+        # Filtered BED of clusters
+        self.filtered_clusters_fname = None
+        # Sequence of filtered BED of clusters
+        self.filtered_clusters_seqs_fname = None
         # BAM sequences in FASTA format
         self.bam_seqs_fname = None
             
@@ -201,7 +205,10 @@ class Pipeline:
         self.na_val = "NA"
         # Set path to genome directory (containing raw genome sequence)
         self.genome_dir = \
-            os.path.join(self.init_dir, self.rna_base.genome)
+            os.path.join(self.init_dir, "genome")
+        self.genome_seq_fname = \
+            os.path.join(self.genome_dir,
+                         "%s.fa" %(self.rna_base.genome))
 
 
     def load_rna_base(self):
@@ -1067,14 +1074,22 @@ class Pipeline:
             "%s.clusters.bed" %(os.path.join(sample_clusters_dir,
                                              bam_basename))
         # Record sample's clusters BED filename
-        sample.clusters_bed_fname = sample_clusters_fname
+        sample.clusters_fname = sample_clusters_fname
         # Final command: convert, cluster, merge
         t1 = time.time()
+        self.logger.info("Filtering clusters..")
         clusters_fname = \
             clip_utils.output_clip_clusters(self.logger,
                                             sample.ribosub_bam_filename,
-                                            sample_clusters_fname,
+                                            sample.clusters_fname,
                                             cluster_dist=cluster_dist)
+        # Filter the clusters
+        sample.filtered_clusters_fname = \
+            clip_utils.filter_clusters(sample.clusters_fname,
+                                       os.path.dirname(clusters_fname))
+        self.logger.info("Filtered clusters outputted to: %s" \
+                         %(sample.filtered_clusters_fname))
+        # Filter the clusters
         t2 = time.time()
         if clusters_fname is None:
             self.logger.critical("Cluster for %s finding failed." \
@@ -1112,9 +1127,12 @@ class Pipeline:
         t1 = time.time()
         # Create directory for sample's sequences (part of analysis directory)
         sample_seqs_dir = os.path.join(self.seqs_dir, sample.label)
-        utils.make_dir(sample_seqs_dir)
         # Record sample's sequence directory
         sample.seqs_dir = sample_seqs_dir
+        utils.make_dir(sample.seqs_dir)
+        sample.clusters_seqs_dir = os.path.join(sample.seqs_dir,
+                                               "clusters")
+        utils.make_dir(sample.clusters_seqs_dir)
         # Output the FASTA sequences for the sample's BAM file
         bam_basename = \
             os.path.basename(sample.ribosub_bam_filename).rsplit(".", 1)[0]
@@ -1132,6 +1150,16 @@ class Pipeline:
             self.logger.info("Found %s, skipping.." %(bam_seqs_fname))
         # Output the FASTA sequences corresponding to
         # the sample's CLIP clusters
+        self.logger.info("Outputting clusters FASTA sequences..")
+        filtered_clusters_basename = \
+            os.path.basename(sample.filtered_clusters_fname).rsplit(".", 1)[0]
+        sample.filtered_clusters_seqs_fname = \
+            os.path.join(sample.clusters_seqs_dir,
+                         "%s.fa" %(filtered_clusters_basename))
+        bedtools_utils.fastaFromBed(self.logger,
+                                    self.genome_seq_fname,
+                                    sample.filtered_clusters_fname,
+                                    sample.filtered_clusters_seqs_fname)
         t2 = time.time()
         self.logger.info("Outputting of CLIP sequences took %.2f minutes." \
                          %((t2 - t1)/60.))
@@ -1148,9 +1176,9 @@ class Pipeline:
             # Minimum motif width
             #"minw": 4
             # Maximum motif width
-            "-maxw": 8,
+            "-maxw": 15,
             # Maximum number of motifs to find
-            "-nmotifs": 10
+            "-nmotifs": 30
             }
         # Get the sequence of CLIP samples
         # Get sequence of CLIP
@@ -1173,15 +1201,11 @@ class Pipeline:
             os.path.join(sample.motifs_outdir,
                          "clusters_motifs")
         utils.make_dir(sample.clusters_motifs_outdir)
-        # Directory where to place BAM motifs
+        self.logger.info("Running MEME on clusters sequences...")
         meme_utils.run_meme(self.logger,
-                            sample.bam_seqs_fname,
-                            sample.bam_motifs_outdir,
+                            sample.filtered_clusters_seqs_fname,
+                            sample.clusters_motifs_outdir,
                             meme_params=meme_params)
-#        self.logger.info("Running MEME on clusters sequences..")
-#        meme_utils.run_meme(self.logger,
-#                            ...get clusters FASTA fname...
-#                            sample.clusters_motifs_outdir,
                   
     
     def run_analysis(self, sample):

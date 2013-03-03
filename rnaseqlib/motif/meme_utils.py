@@ -39,9 +39,18 @@ def run_meme(logger, input_fasta_fname, output_dir,
         logger.critical("Error: Cannot find or execute \'meme\' program.")
         sys.exit(1)
     params_str =  " ".join(["%s %s" %(p, params[p]) for p in params])
-    meme_cmd = "%s %s %s" %(meme_path,
-                            params_str,
-                            input_fasta_fname)
+    fasta_basename = \
+        os.path.basename(input_fasta_fname).rsplit(".", 1)[0]
+    meme_output_fname = \
+        os.path.join(output_dir, "%s.meme" %(fasta_basename))
+    if os.path.isfile(meme_output_fname):
+        logger.info("Found MEME file %s, skipping..." \
+                    %(meme_output_fname))
+        return meme_output_fname
+    meme_cmd = "%s %s %s &> %s" %(meme_path,
+                                  params_str,
+                                  input_fasta_fname,
+                                  meme_output_fname)
     logger.info("Calling MEME: ")
     logger.info("Executing: %s" %(meme_cmd))
     t1 = time.time()
@@ -51,4 +60,4 @@ def run_meme(logger, input_fasta_fname, output_dir,
         sys.exit(1)
     t2 = time.time()
     logger.info("MEME completed in %.2f minutes" %((t2 - t1)/60.))
-    return output_dir
+    return meme_output_fname

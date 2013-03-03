@@ -4,6 +4,7 @@
 import os
 import sys
 import time
+import subprocess
 
 import rnaseqlib
 import rnaseqlib.utils as utils
@@ -94,8 +95,10 @@ def check_clip_utils(logger,
 
 
 def filter_clusters(clusters_bed_fname, output_dir,
-                    num_reads=2,
-                    depth=0):
+                    num_reads=8,
+                    depth=0,
+                    min_size=12,
+                    max_size=500):
     """
     Filter clusters by number of reads in them and/or depth.
     """
@@ -105,7 +108,10 @@ def filter_clusters(clusters_bed_fname, output_dir,
     bed_basename = \
         os.path.basename(clusters_bed_fname).rsplit(".bed", 1)[0]
     filtered_clusters_fname = \
-        os.path.join(output_dir, "%s.depth_%d.bed" %(depth))
+        os.path.join(output_dir, "%s.num_reads_%d.depth_%d.bed" \
+                     %(bed_basename,
+                       num_reads,
+                       depth))
     with open(filtered_clusters_fname, "w") as clusters_out:
         with open(clusters_bed_fname, "r") as clusters_in:
             for line in clusters_in:
@@ -119,12 +125,18 @@ def filter_clusters(clusters_bed_fname, output_dir,
                 cluster_depth = cluster_reads / float(cluster_len)
                 if cluster_depth < depth:
                     continue
+                # Check that it meets the cluster size filter
+                if cluster_len < min_size:
+                    continue
+                if cluster_len > max_size:
+                    continue
                 clusters_out.write(line)
-    
+    return filtered_clusters_fname
     
 
 def output_clip_clusters(logger, bam_filename, output_filename,
-                         cluster_dist=0):
+                         cluster_dist=0,
+                         skip_junctions=True):
     """
     In contrast to merge, cluster does not flatten the cluster of
     intervals into a new meta-interval; instead, it assigns an unique
@@ -134,29 +146,60 @@ def output_clip_clusters(logger, bam_filename, output_filename,
     """
     if cluster_dist != 0:
         raise Exception, "Cluster distance must be 0 for now."
+    logger.info("Outputting CLIP clusters...")
+    logger.info("  - BAM input: %s" %(bam_filename))
+    logger.info("  - Output file: %s" %(output_filename))
+    logger.info("  - Cluster dist: %d" %(cluster_dist))
+    logger.info("  - Skip junctions: %s" %(str(skip_junctions)))
     # Find clusters in reads:
     #  (1) Convert BAM file to BED on the fly and sort it
     #  (2) Run clusterBed
     #  (3) Merge the cluster
     # Convert BAM -> BED, sort BED
-    bamToBed_cmd = "bamToBed -i %s -split | sortBed -i - " \
+    bamToBed_cmd = "bamToBed -i %s -cigar | sortBed -i - " \
         %(bam_filename)
     # Cluster the BED
-    clusterBed_cmd = "clusterBed -i - "
-    # Merge the clusters while recording read IDs in each cluster
-    # Do not make it stranded
-    mergeBed_cmd = "mergeBed -i - -nms"
-    logger.info("Outputting CLIP clusters...")
-    logger.info("  - BAM input: %s" %(bam_filename))
-    logger.info("  - Output file: %s" %(output_filename))
-    bedtools_cmd = "%s | %s | %s > %s" %(bamToBed_cmd,
-                                         clusterBed_cmd,
-                                         mergeBed_cmd,
-                                         output_filename)
-    logger.info("Executing: %s" %(bedtools_cmd))
-    ret_val = os.system(bedtools_cmd)
-    if ret_val != 0:
-        return None
+    clusterBed_cmd = "%s | clusterBed -i - " %(bamToBed_cmd)
+    # Parse the resulting clusters, skipping junction reads if asked
+    cluster_proc = subprocess.Popen(clusterBed_cmd, shell=True,
+                                    stdin=sys.stdin,
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE)
+    # Open stream to mergeBed command and write clusters to it
+    mergeBed_cmd = "mergeBed -i - -nms -scores max"
+    output_file = open(output_filename, "w")
+    merge_proc = subprocess.Popen(mergeBed_cmd, shell=True,
+                                  stdin=subprocess.PIPE,
+                                  stdout=output_file)
+    # Process each cluster line and feed it to mergeBed
+    for line in iter(cluster_proc.stdout.readline, ''):
+        fields = line.strip().split("\t")
+        cigar = fields[6]
+        if skip_junctions and ("N" in cigar):
+            # Skip junctions if asked
+            continue
+        # Make the score be the cluster number
+        fields[3], fields[4] = \
+            fields[-1], fields[3]
+        processed_line = "%s\n" %("\t".join(fields))
+        merge_proc.stdin.write(processed_line)
+    merge_proc.communicate()
+    output_file.close()
+    # Post process the merged clusters
+    # Rename the current file
+    orig_merged_fname = "%s.orig" %(output_filename)
+    os.rename(output_filename, orig_merged_fname)
+    # Get rid of semi-colon separated cluster names
+    with open(orig_merged_fname, "r") as orig_merged:
+        with open(output_filename, "w") as output_file:
+            for line in orig_merged:
+                merged_fields = line.strip().split("\t")
+                # Remove semicolon separated read names
+                merged_fields[3] = merged_fields[3].split(";")[0]
+                merged_line = "%s\n" %("\t".join(merged_fields))
+                output_file.write(merged_line)
+    # Remove temporary file
+    os.remove(orig_merged_fname)
     return output_filename
 
 
@@ -189,6 +232,9 @@ def intersect_clusters_with_gff(logger,
               clusters_fname,
               gff_fname,
               event_clusters_fname)
+        if os.path.isfile(event_clusters_fname):
+            logger.info("Found %s, skipping.." %(event_clusters_fname))
+            event_clusters_fnames.append(event_clusters_fname)
         logger.info("  - Executing: %s" %(intersectBed_cmd))
         ret_val = os.system(intersectBed_cmd)
         if ret_val != 0:
