@@ -47,10 +47,10 @@ def run_meme(logger, input_fasta_fname, output_dir,
         logger.info("Found MEME file %s, skipping..." \
                     %(meme_output_fname))
         return meme_output_fname
-    meme_cmd = "%s %s %s &> %s" %(meme_path,
-                                  params_str,
-                                  input_fasta_fname,
-                                  meme_output_fname)
+    meme_cmd = "%s %s %s > %s" %(meme_path,
+                                 params_str,
+                                 input_fasta_fname,
+                                 meme_output_fname)
     logger.info("Calling MEME: ")
     logger.info("Executing: %s" %(meme_cmd))
     t1 = time.time()

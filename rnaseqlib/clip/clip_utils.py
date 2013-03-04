@@ -94,17 +94,18 @@ def check_clip_utils(logger,
     logger.info("Found CLIP utilities.")
 
 
-def filter_clusters(clusters_bed_fname, output_dir,
+def filter_clusters(logger, clusters_bed_fname, output_dir,
                     num_reads=8,
                     depth=0,
                     min_size=12,
-                    max_size=500):
+                    max_size=100):
     """
     Filter clusters by number of reads in them and/or depth.
     """
     if not clusters_bed_fname.endswith(".bed"):
-        raise Exception, "Error: clusters filename %s must end in .bed" \
-              %(clusters_bed_fname)
+        logger.critical("Error: clusters filename %s must end in .bed" \
+                        %(clusters_bed_fname))
+        sys.exit(1)
     bed_basename = \
         os.path.basename(clusters_bed_fname).rsplit(".bed", 1)[0]
     filtered_clusters_fname = \
@@ -112,12 +113,13 @@ def filter_clusters(clusters_bed_fname, output_dir,
                      %(bed_basename,
                        num_reads,
                        depth))
+    num_passing_filter = 0
     with open(filtered_clusters_fname, "w") as clusters_out:
         with open(clusters_bed_fname, "r") as clusters_in:
             for line in clusters_in:
                 fields = line.strip().split("\t")
                 cluster_len = int(fields[2]) - int(fields[1]) + 1
-                cluster_reads = len(fields[3].split(";"))
+                cluster_reads = len(fields[4].split(","))
                 # Check that it meets the number of reads filter
                 if cluster_reads < num_reads:
                     continue
@@ -131,6 +133,10 @@ def filter_clusters(clusters_bed_fname, output_dir,
                 if cluster_len > max_size:
                     continue
                 clusters_out.write(line)
+                num_passing_filter += 1
+    if num_passing_filter == 0:
+        logger.critical("0 clusters pass filter.")
+        sys.exit(1)
     return filtered_clusters_fname
     
 
@@ -158,6 +164,9 @@ def output_clip_clusters(logger, bam_filename, output_filename,
     # Convert BAM -> BED, sort BED
     bamToBed_cmd = "bamToBed -i %s -cigar | sortBed -i - " \
         %(bam_filename)
+    # If asked to skip junctions, remove them from BED
+    if skip_junctions:
+        bamToBed_cmd += " | awk \'$7 !~ \"N\" { print $0 }\'"
     # Cluster the BED
     clusterBed_cmd = "%s | clusterBed -i - " %(bamToBed_cmd)
     # Parse the resulting clusters, skipping junction reads if asked
@@ -166,13 +175,13 @@ def output_clip_clusters(logger, bam_filename, output_filename,
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE)
     # Open stream to mergeBed command and write clusters to it
-    mergeBed_cmd = "mergeBed -i - -nms -scores max"
+    mergeBed_cmd = "mergeBed -i - -nms -scores collapse"
     output_file = open(output_filename, "w")
     merge_proc = subprocess.Popen(mergeBed_cmd, shell=True,
                                   stdin=subprocess.PIPE,
                                   stdout=output_file)
     # Process each cluster line and feed it to mergeBed
-    for line in iter(cluster_proc.stdout.readline, ''):
+    for line in iter(cluster_proc.stdout.readline, ""):
         fields = line.strip().split("\t")
         cigar = fields[6]
         if skip_junctions and ("N" in cigar):

@@ -1067,9 +1067,11 @@ class Pipeline:
         # Record sample's clusters directory
         sample.clusters_dir = sample_clusters_dir
         utils.make_dir(sample_clusters_dir)
+        # BAM file to use: rRNA-subtracted or uniquely mapped
+        bam_fname_to_use = sample.unique_bam_filename
         # Use BAM basename (minus the extension)
         bam_basename = \
-            os.path.basename(sample.ribosub_bam_filename).rsplit(".", 1)[0]
+            os.path.basename(bam_fname_to_use).rsplit(".", 1)[0]
         sample_clusters_fname = \
             "%s.clusters.bed" %(os.path.join(sample_clusters_dir,
                                              bam_basename))
@@ -1080,12 +1082,13 @@ class Pipeline:
         self.logger.info("Filtering clusters..")
         clusters_fname = \
             clip_utils.output_clip_clusters(self.logger,
-                                            sample.ribosub_bam_filename,
+                                            bam_fname_to_use,
                                             sample.clusters_fname,
                                             cluster_dist=cluster_dist)
         # Filter the clusters
         sample.filtered_clusters_fname = \
-            clip_utils.filter_clusters(sample.clusters_fname,
+            clip_utils.filter_clusters(self.logger,
+                                       sample.clusters_fname,
                                        os.path.dirname(clusters_fname))
         self.logger.info("Filtered clusters outputted to: %s" \
                          %(sample.filtered_clusters_fname))
