@@ -138,9 +138,9 @@ def filter_clusters(logger, clusters_bed_fname, output_dir,
         logger.critical("0 clusters pass filter.")
         sys.exit(1)
     return filtered_clusters_fname
-    
 
-def output_clip_clusters(logger, bam_filename, output_filename,
+
+def output_clip_clusters(logger, bed_filename, output_filename,
                          cluster_dist=0,
                          skip_junctions=True):
     """
@@ -153,22 +153,14 @@ def output_clip_clusters(logger, bam_filename, output_filename,
     if cluster_dist != 0:
         raise Exception, "Cluster distance must be 0 for now."
     logger.info("Outputting CLIP clusters...")
-    logger.info("  - BAM input: %s" %(bam_filename))
+    logger.info("  - BED input: %s" %(bed_filename))
     logger.info("  - Output file: %s" %(output_filename))
     logger.info("  - Cluster dist: %d" %(cluster_dist))
-    logger.info("  - Skip junctions: %s" %(str(skip_junctions)))
-    # Find clusters in reads:
-    #  (1) Convert BAM file to BED on the fly and sort it
-    #  (2) Run clusterBed
-    #  (3) Merge the cluster
-    # Convert BAM -> BED, sort BED
-    bamToBed_cmd = "bamToBed -i %s -cigar | sortBed -i - " \
-        %(bam_filename)
-    # If asked to skip junctions, remove them from BED
-    if skip_junctions:
-        bamToBed_cmd += " | awk \'$7 !~ \"N\" { print $0 }\'"
+    # Find clusters in BED representation of reads:
+    #  (1) Run clusterBed
+    #  (2) Merge the cluster
     # Cluster the BED
-    clusterBed_cmd = "%s | clusterBed -i - " %(bamToBed_cmd)
+    clusterBed_cmd = "clusterBed -i %s" %(bed_filename)
     # Parse the resulting clusters, skipping junction reads if asked
     cluster_proc = subprocess.Popen(clusterBed_cmd, shell=True,
                                     stdin=sys.stdin,

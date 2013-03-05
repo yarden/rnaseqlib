@@ -84,6 +84,8 @@ class Sample:
         self.filtered_clusters_seqs_fname = None
         # BAM sequences in FASTA format
         self.bam_seqs_fname = None
+        # Reads as BED filenames for various BEDs
+        self.reads_bed_fnames = {}
             
 
     def __repr__(self):
@@ -308,6 +310,7 @@ class Pipeline:
                                              "events",
                                              "seqs",
                                              "motifs",
+                                             "bed",
                                              "tracks"]
         for dirname in self.toplevel_dirs:
             dirpath = os.path.join(self.output_dir, dirname)
@@ -328,6 +331,8 @@ class Pipeline:
                                        "motifs")
         self.tracks_dir = os.path.join(self.pipeline_outdirs["analysis"],
                                        "tracks")
+        self.bed_dir = os.path.join(self.pipeline_outdirs["analysis"],
+                                    "bed")
 
 
     def load_basic_settings(self):
@@ -1047,13 +1052,41 @@ class Pipeline:
         self.logger.info("Events mapping completed.")
 
 
+    def output_reads_as_bed(self, sample,
+                            extend_read_to_len=30,
+                            skip_junctions=True):
+        """
+        Output reads as BED.
+        """
+        # Convert both the rRNA-subtracted and uniquely mapped
+        # BAMs 
+        bams_to_convert = {"ribosub_bam": sample.ribosub_bam_filename,
+                           "unique_bam": sample.unique_bam_filename}
+        self.logger.info("Outputting reads as BED for %s" %(sample.label))
+        sample_bed_dir = os.path.join(self.bed_dir, sample.label)
+        utils.make_dir(sample_bed_dir)
+        for bam_label in bams_to_convert:
+            bam_fname = bams_to_convert[bam_label]
+            bam_basename = \
+                os.path.basename(bam_fname).rsplit(".", 1)[0]
+            bed_fname = \
+                os.path.join(sample_bed_dir, "%s.bed" %(bam_basename))
+            sample.reads_bed_fnames[bam_label] = bed_fname
+            if os.path.isfile(bed_fname):
+                self.logger.info("Found %s, skipping.." %(bed_fname))
+                continue
+            bam_utils.bam_to_bed(bam_fname, bed_fname,
+                                 extend_read_to_len=extend_read_to_len,
+                                 skip_junctions=skip_junctions)
+        self.logger.info("Done outputting reads as BED.")
+
+
     def output_clusters(self, sample, cluster_dist=0):
         """
         Output clusters of reads using clusterBed. Output two
         types of clusters:
 
-        (1) Use rRNA-subtracted BAM to output clusters genome-wide
-            for entire BAM
+        (1) Use rRNA-subtracted BED file to find clusters
         (2) Overlap those clusters from (1) with every event
             type to produce event-overlapping clusters
 
@@ -1070,14 +1103,13 @@ class Pipeline:
         # Record sample's clusters directory
         sample.clusters_dir = sample_clusters_dir
         utils.make_dir(sample_clusters_dir)
-        # BAM file to use: rRNA-subtracted or uniquely mapped
-        bam_fname_to_use = sample.unique_bam_filename
-        # Use BAM basename (minus the extension)
-        bam_basename = \
-            os.path.basename(bam_fname_to_use).rsplit(".", 1)[0]
+        # BED file to use
+        bed_fname_to_use = sample.reads_bed_fnames["ribosub_bam"]
+        bed_basename = \
+            os.path.basename(bed_fname_to_use).rsplit(".", 1)[0]
         sample_clusters_fname = \
             "%s.clusters.bed" %(os.path.join(sample_clusters_dir,
-                                             bam_basename))
+                                             bed_basename))
         # Record sample's clusters BED filename
         sample.clusters_fname = sample_clusters_fname
         # Final command: convert, cluster, merge
@@ -1085,7 +1117,7 @@ class Pipeline:
         self.logger.info("Filtering clusters..")
         clusters_fname = \
             clip_utils.output_clip_clusters(self.logger,
-                                            bam_fname_to_use,
+                                            bed_fname_to_use,
                                             sample.clusters_fname,
                                             cluster_dist=cluster_dist)
         # Filter the clusters
@@ -1186,9 +1218,6 @@ class Pipeline:
             # Maximum number of motifs to find
             "-nmotifs": 30
             }
-        # Get the sequence of CLIP samples
-        # Get sequence of CLIP
-        self.output_clip_sequences(sample)
         ##
         ## Run MEME on motifs
         ##
@@ -1231,13 +1260,13 @@ class Pipeline:
             bam_basename = bam_basename.rsplit(".bam", 1)[0]
             bigWig_fname = os.path.join(tracks_outdir,
                                         "%s.bigWig" %(bam_basename))
+            if os.path.isfile(bigWig_fname):
+                self.logger.info("Found %s, skipping.." %(bigWig_fname))
+                continue
             # Convert BAM file to bigWig file
             bam_utils.bam_to_bigWig_file(bam_fname,
                                          bigWig_fname,
                                          self.rna_base.genome)
-            if os.path.isfile(bigWig_fname):
-                self.logger.info("Found %s, skipping.." %(bigWig_fname))
-                continue
             self.logger.info("  - Output file: %s" %(bigWig_fname))
         self.logger.info("Done outputting bigWigs.")
                   
@@ -1257,6 +1286,8 @@ class Pipeline:
             self.output_bigWigs(sample)
             # Run events analysis: only for CLIP-Seq datasets
             self.output_events_mapping(sample)
+            # Convert BAM reads to BED
+            self.output_reads_as_bed(sample)
             # Find CLIP clusters
             self.output_clusters(sample)
             # Find motifs
