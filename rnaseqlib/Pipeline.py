@@ -1115,10 +1115,20 @@ class Pipeline:
         # Final command: convert, cluster, merge
         t1 = time.time()
         self.logger.info("Filtering clusters..")
+        # Use Ensembl genes to annotate the clusters
+        genes_gff_fname = \
+            os.path.join(self.rna_base.ucsc_tables_dir,
+                         "ensGene.gff3")
+        if not os.path.isfile(genes_gff_fname):
+            self.logger.critical("Cannot annotate clusters with genes " \
+                                 "since GFF %s not found." \
+                                 %(genes_gff_fname))
+            sys.exit(1)
         clusters_fname = \
             clip_utils.output_clip_clusters(self.logger,
                                             bed_fname_to_use,
                                             sample.clusters_fname,
+                                            genes_gff_fname,
                                             cluster_dist=cluster_dist)
         # Filter the clusters
         sample.filtered_clusters_fname = \

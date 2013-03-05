@@ -6,6 +6,8 @@ import sys
 import time
 import subprocess
 
+import pybedtools
+
 import rnaseqlib
 import rnaseqlib.utils as utils
 import rnaseqlib.fastx_utils as fastx_utils
@@ -118,7 +120,8 @@ def filter_clusters(logger, clusters_bed_fname, output_dir,
         with open(clusters_bed_fname, "r") as clusters_in:
             for line in clusters_in:
                 fields = line.strip().split("\t")
-                cluster_len = int(fields[2]) - int(fields[1]) + 1
+                # BED length does not include the stop
+                cluster_len = int(fields[2]) - int(fields[1]) 
                 cluster_reads = len(fields[4].split(","))
                 # Check that it meets the number of reads filter
                 if cluster_reads < num_reads:
@@ -140,10 +143,22 @@ def filter_clusters(logger, clusters_bed_fname, output_dir,
     return filtered_clusters_fname
 
 
-def output_clip_clusters(logger, bed_filename, output_filename,
+def output_clip_clusters(logger,
+                         bed_filename,
+                         output_filename,
+                         genes_gff_fname,
                          cluster_dist=0,
                          skip_junctions=True):
     """
+    Output clusters in BED-like format:
+
+      chrom, start, end, cluster_id, score, strand
+
+    where:
+
+      score is the number of reads in the cluster.
+      strand is determined by the gene it aligns to.
+
     In contrast to merge, cluster does not flatten the cluster of
     intervals into a new meta-interval; instead, it assigns an unique
     cluster ID to each record in each cluster.
@@ -159,7 +174,7 @@ def output_clip_clusters(logger, bed_filename, output_filename,
     # Find clusters in BED representation of reads:
     #  (1) Run clusterBed
     #  (2) Merge the cluster
-    # Cluster the BED
+    # Cluster the BED 
     clusterBed_cmd = "clusterBed -i %s" %(bed_filename)
     # Parse the resulting clusters, skipping junction reads if asked
     cluster_proc = subprocess.Popen(clusterBed_cmd, shell=True,
@@ -179,14 +194,16 @@ def output_clip_clusters(logger, bed_filename, output_filename,
         if skip_junctions and ("N" in cigar):
             # Skip junctions if asked
             continue
-        # Make the score be the cluster number
+        # Make the score of BED be the cluster ID (cluster number)
         fields[3], fields[4] = \
             fields[-1], fields[3]
         processed_line = "%s\n" %("\t".join(fields))
         merge_proc.stdin.write(processed_line)
     merge_proc.communicate()
     output_file.close()
-    # Post process the merged clusters
+    ##
+    ## Post process the merged clusters to find gene strand
+    ##
     # Rename the current file
     orig_merged_fname = "%s.orig" %(output_filename)
     os.rename(output_filename, orig_merged_fname)
@@ -199,9 +216,93 @@ def output_clip_clusters(logger, bed_filename, output_filename,
                 merged_fields[3] = merged_fields[3].split(";")[0]
                 merged_line = "%s\n" %("\t".join(merged_fields))
                 output_file.write(merged_line)
-    # Remove temporary file
+    # Map clusters to genes
+    genes_merged_fname = "%s.genes" %(output_filename)
+    os.rename(output_filename, genes_merged_fname)
+    output_clip_clusters_with_genes(genes_merged_fname,
+                                    genes_gff_fname,
+                                    output_filename)
+    # Remove temporary files
     os.remove(orig_merged_fname)
+    os.remove(genes_merged_fname)
     return output_filename
+
+
+def output_clip_clusters_with_genes(input_fname,
+                                    genes_gff_fname,
+                                    output_fname):
+    """
+    Output clusters with gene annotations.
+    """
+    def get_gff_gene_id(gff_entry):
+        # Keep only ID of GFF gene entry
+        gff_entry.attrs = "ID=%s" %(gff_entry.attrs["ID"])
+        return gff_entry
+    input_bed = pybedtools.BedTool(input_fname)
+    # Take gene features only from GFF
+    genes_gff = \
+        pybedtools.BedTool(genes_gff_fname).filter(lambda x: \
+                                                   x.fields[2] == "gene")
+    # Keep only gene IDs
+    genes_gff_filtered = genes_gff.each(get_gff_gene_id)
+    # Intersect clusters with genes GFF annotation
+    intersected_bed = input_bed.intersect(genes_gff_filtered, wao=True)
+    # Collapse the genes that each cluster aligns to so that
+    # you have one line per cluster
+    group_cols = [1, 2, 3, 4]
+    combined_cols = [5, 9, 10, 12, 14, 15]
+    grouped_bed = \
+        intersected_bed.groupby(g=group_cols,
+                                c=combined_cols,
+                                ops=["collapse"] * len(combined_cols))
+    output_file = open(output_fname, "w")
+    for line in grouped_bed:
+        chrom, start, end = \
+            line.fields[0], line.fields[1], line.fields[2]
+        cluster_id = line.fields[3]
+        read_ids = line.fields[4]
+        # Compute number of reads in cluster
+        num_reads = len(read_ids.split(","))
+        target_chrom = line.fields[5]
+        gene_ids = "."
+        target_strands = line.fields[7]
+        if target_strands == ".":
+            # No gene could be assigned for cluster, so
+            # assume + strand
+            target_strands = "+"
+        else:
+            gff_gene_fields = line.fields[8].split(",")
+            genes = []
+            for gff_attrs in gff_gene_fields:
+                curr_gene = dict([tuple(gff_gene.split("=")) \
+                                  for gff_gene in gff_attrs.split(";")])
+                genes.append(curr_gene["ID"])
+            gene_ids = ",".join(genes)
+        # Assign strands: if there are multiple ones,
+        # just take the first
+        assigned_strand = target_strands.split(",")[0]
+        # Output clusters
+        cluster_fields = [chrom,
+                          start,
+                          end,
+                          cluster_id,
+                          num_reads,
+                          assigned_strand,
+                          gene_ids]
+        cluster_line = "%s\n" %("\t".join(map(str, cluster_fields)))
+        output_file.write(cluster_line)
+    output_file.close()
+
+
+# $ grep gene ~/jaen/test/mm9/ucsc/ensGene.gff3 | head -n 200000 | intersectBed -a ~/jaen/Musashi-seq/clip-pipeline-output/analysis/clusters/clip_KH2MSI1_NoDox/accepted_hits.ribosub.sorted.clusters.bed -b stdin -wao | head -n 500 | groupBy -g 1,2,3,4 -c 9,10,12,14,15 -o collapse,collapse,collapse,collapse,collapse | grep 6266729
+# chr1	6202501	6202530	317	6196278	6266729	+	Name=ENSMUSG00000025907;ID=ENSMUSG00000025907;Alias=ENSMUSG00000025907	29
+# chr1	6204921	6204950	318	6204693,6196278	6205373,6266729	-,+	Name=ENSMUSG00000073741;ID=ENSMUSG00000073741;Alias=ENSMUSG00000073741,Name=ENSMUSG00000025907;ID=ENSMUSG00000025907;Alias=ENSMUSG00000025907	29,29
+# chr1	6205260	6205289	319	6204693,6196278	6205373,6266729	-,+	Name=ENSMUSG00000073741;ID=ENSMUSG00000073741;Alias=ENSMUSG00000073741,Name=ENSMUSG00000025907;ID=ENSMUSG00000025907;Alias=ENSMUSG00000025907	29,29
+# chr1	6220114	6220143	320	6196278	6266729	+	Name=ENSMUSG00000025907;ID=ENSMUSG00000025907;Alias=ENSMUSG00000025907	29
+# chr1	6230757	6230786	321	6196278	6266729	+	Name=ENSMUSG00000025907;ID=ENSMUSG00000025907;Alias=ENSMUSG00000025907	29
+# chr1	6232787	6232816	322	6196278	6266729	+	Name=ENSMUSG00000025907;ID=ENSMUSG00000025907;Alias=ENSMUSG00000025907	29
+# chr1	6233566	6233607	323	6196278	6266729	+	Name=ENSMUSG00000025907;ID=ENSMUSG00000025907;Alias=ENSMUSG00000025907	41
+# chr1	6233875	6233904	324	6196278	6266729	+	Name=ENSMUSG00000025907;ID=ENSMUSG00000025907;Alias=ENSMUSG00000025907	29
 
 
 def intersect_clusters_with_gff(logger,
