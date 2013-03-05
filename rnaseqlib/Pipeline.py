@@ -1211,9 +1211,37 @@ class Pipeline:
         t2 = time.time()
         self.logger.info("Outputting of CLIP sequences took %.2f minutes." \
                          %((t2 - t1)/60.))
+
+
+    def output_homer_motifs(self, sample,
+                            motif_lens=[4,5,6,8,10,12,15]):
+        """
+        Run Homer on sample to get motifs.
+        """
+        self.logger.info("Outputting Homer motifs for %s" %(sample.label))
+        homer_params = {
+            # Use RNA mode
+            "-rna": "",
+            # Lengths of motifs to find
+            "-len": ",".join(map(str, motif_lens)),
+            }
+        # Record sample's motifs output directory
+        sample.motifs_outdir = os.path.join(self.motifs_dir,
+                                            sample.label)
+        utils.make_dir(sample.motifs_outdir)
+        # Record sample's clusters motifs output directory
+        sample.clusters_motifs_outdir = \
+            os.path.join(sample.motifs_outdir,
+                         "clusters_motifs")
+        utils.make_dir(sample.clusters_motifs_outdir)
+        self.logger.info("Running Homer on clusters sequences...")
+        meme_utils.run_meme(self.logger,
+                            sample.filtered_clusters_seqs_fname,
+                            sample.clusters_motifs_outdir,
+                            meme_params=meme_params)
         
 
-    def output_motifs(self, sample):
+    def output_meme_motifs(self, sample):
         """
         Output motifs for CLIP reads and clusters.
         """

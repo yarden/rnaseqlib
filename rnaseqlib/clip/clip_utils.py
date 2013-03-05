@@ -122,7 +122,7 @@ def filter_clusters(logger, clusters_bed_fname, output_dir,
                 fields = line.strip().split("\t")
                 # BED length does not include the stop
                 cluster_len = int(fields[2]) - int(fields[1]) 
-                cluster_reads = len(fields[4].split(","))
+                cluster_reads = int(fields[4])
                 # Check that it meets the number of reads filter
                 if cluster_reads < num_reads:
                     continue
