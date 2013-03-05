@@ -11,6 +11,27 @@ import rnaseqlib
 import rnaseqlib.fastx_utils as fastx_utils
 
 
+
+##
+## Utilities for converting bam to UCSC formats like
+## bigWig
+## 
+def bam_to_bigWig_file(bam_fname, bigWig_fname, genome):
+    """
+    Convert a bam file to bigWig
+    """
+    try:
+        import pybedtools
+        from pybedtools.contrib.bigwig import bam_to_bigwig
+    except:
+        print "Cannot convert BAM to Wig without pybedtools."
+        return None
+    bam_to_bigwig(bam=bam_fname,
+                  genome=genome,
+                  output=bigWig_fname)
+    return None
+    
+
 ##
 ## Utilities for extracting FASTX sequences
 ## from BAM files. Not intended for handling

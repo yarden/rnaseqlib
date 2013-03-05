@@ -307,7 +307,8 @@ class Pipeline:
                                              "insert_lens",
                                              "events",
                                              "seqs",
-                                             "motifs"]
+                                             "motifs",
+                                             "tracks"]
         for dirname in self.toplevel_dirs:
             dirpath = os.path.join(self.output_dir, dirname)
             self.logger.info(" - Creating: %s" %(dirpath))
@@ -325,6 +326,8 @@ class Pipeline:
                                      "seqs")
         self.motifs_dir = os.path.join(self.pipeline_outdirs["analysis"],
                                        "motifs")
+        self.tracks_dir = os.path.join(self.pipeline_outdirs["analysis"],
+                                       "tracks")
 
 
     def load_basic_settings(self):
@@ -1209,6 +1212,34 @@ class Pipeline:
                             sample.filtered_clusters_seqs_fname,
                             sample.clusters_motifs_outdir,
                             meme_params=meme_params)
+
+
+    def output_bigWigs(self, sample):
+        """
+        Output UCSC-friendly bigWigs for all samples.
+        """
+        tracks_outdir = os.path.join(self.tracks_dir, sample.label)
+        utils.make_dir(tracks_outdir)
+        self.logger.info("Outputting bigWig for %s.." %(sample.label))
+        # Output a bigWig for the rRNA-subtracted BAM
+        # and for the uniquely mapping BAM
+        bams_to_convert = [sample.ribosub_bam_filename,
+                           sample.unique_bam_filename]
+        for bam_fname in bams_to_convert:
+            bam_basename = \
+                os.path.basename(sample.ribosub_bam_filename)
+            bam_basename = bam_basename.rsplit(".bam", 1)[0]
+            bigWig_fname = os.path.join(tracks_outdir,
+                                        "%s.bigWig" %(bam_basename))
+            # Convert BAM file to bigWig file
+            bam_utils.bam_to_bigWig_file(bam_fname,
+                                         bigWig_fname,
+                                         self.rna_base.genome)
+            if os.path.isfile(bigWig_fname):
+                self.logger.info("Found %s, skipping.." %(bigWig_fname))
+                continue
+            self.logger.info("  - Output file: %s" %(bigWig_fname))
+        self.logger.info("Done outputting bigWigs.")
                   
     
     def run_analysis(self, sample):
@@ -1222,10 +1253,12 @@ class Pipeline:
         ## CLIP-Seq specific analysis steps
         ##
         if sample.sample_type == "clipseq":
+            # Output a bigWig file for the sample
+            self.output_bigWigs(sample)
             # Run events analysis: only for CLIP-Seq datasets
             self.output_events_mapping(sample)
             # Find CLIP clusters
             self.output_clusters(sample)
             # Find motifs
-            self.output_motifs(sample)
+            #self.output_motifs(sample)
         return sample
