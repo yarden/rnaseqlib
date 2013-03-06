@@ -20,7 +20,9 @@ import rnaseqlib.RNABase as rna_base
 import rnaseqlib.clip.clip_utils as clip_utils
 import rnaseqlib.fastq_utils as fastq_utils
 import rnaseqlib.bam.bam_utils as bam_utils
+import rnaseqlib.motif.homer_utils as homer_utils
 import rnaseqlib.motif.meme_utils as meme_utils
+
 
 # Import all paths
 from rnaseqlib.paths import *
@@ -1086,7 +1088,7 @@ class Pipeline:
         Output clusters of reads using clusterBed. Output two
         types of clusters:
 
-        (1) Use rRNA-subtracted BED file to find clusters
+        (1) Use unique BED file to find clusters
         (2) Overlap those clusters from (1) with every event
             type to produce event-overlapping clusters
 
@@ -1104,7 +1106,8 @@ class Pipeline:
         sample.clusters_dir = sample_clusters_dir
         utils.make_dir(sample_clusters_dir)
         # BED file to use
-        bed_fname_to_use = sample.reads_bed_fnames["ribosub_bam"]
+        #bed_fname_to_use = sample.reads_bed_fnames["ribosub_bam"]
+        bed_fname_to_use = sample.reads_bed_fnames["unique_bam"]
         bed_basename = \
             os.path.basename(bed_fname_to_use).rsplit(".", 1)[0]
         sample_clusters_fname = \
@@ -1170,6 +1173,9 @@ class Pipeline:
         (1) FASTA file for the sample's rRNA-subtracted BAM
         (2) FASTA files for the clusters called
         """
+        #####
+        ##### TODO: REVISE ME
+        #####
         self.logger.info("Outputting CLIP sequences for %s" \
                          %(sample.label))
         t1 = time.time()
@@ -1214,72 +1220,34 @@ class Pipeline:
 
 
     def output_homer_motifs(self, sample,
-                            motif_lens=[4,5,6,8,10,12,15]):
+                            motif_lens=[5,6,8,10,12]):
         """
         Run Homer on sample to get motifs.
         """
         self.logger.info("Outputting Homer motifs for %s" %(sample.label))
         homer_params = {
-            # Use RNA mode
-            "-rna": "",
             # Lengths of motifs to find
-            "-len": ",".join(map(str, motif_lens)),
+            "-len": ",".join(map(str, motif_lens))
             }
         # Record sample's motifs output directory
         sample.motifs_outdir = os.path.join(self.motifs_dir,
                                             sample.label)
         utils.make_dir(sample.motifs_outdir)
-        # Record sample's clusters motifs output directory
-        sample.clusters_motifs_outdir = \
-            os.path.join(sample.motifs_outdir,
-                         "clusters_motifs")
-        utils.make_dir(sample.clusters_motifs_outdir)
         self.logger.info("Running Homer on clusters sequences...")
-        meme_utils.run_meme(self.logger,
-                            sample.filtered_clusters_seqs_fname,
-                            sample.clusters_motifs_outdir,
-                            meme_params=meme_params)
+        self.logger.info("without -rna: ")
+        homer_utils.run_homer(self.logger,
+                              sample.filtered_clusters_fname,
+                              self.rna_base.genome,
+                              os.path.join(sample.motifs_outdir, "no_rna"),
+                              homer_params)
+        homer_params["-rna"] = ""
+        self.logger.info("with -rna: ")
+        homer_utils.run_homer(self.logger,
+                              sample.filtered_clusters_fname,
+                              self.rna_base.genome,
+                              os.path.join(sample.motifs_outdir, "rna"),
+                              homer_params)
         
-
-    def output_meme_motifs(self, sample):
-        """
-        Output motifs for CLIP reads and clusters.
-        """
-        self.logger.info("Outputting motifs for %s" %(sample.label))
-        meme_params = {
-            # ...
-            "-dna": "",
-            # Minimum motif width
-            #"minw": 4
-            # Maximum motif width
-            "-maxw": 15,
-            # Maximum number of motifs to find
-            "-nmotifs": 30
-            }
-        ##
-        ## Run MEME on motifs
-        ##
-        self.logger.info("Running MEME on sample BAM reads..")
-        # Record sample's motifs output directory
-        sample.motifs_outdir = os.path.join(self.motifs_dir,
-                                            sample.label)
-        utils.make_dir(sample.motifs_outdir)
-        # Record sample's BAM motifs output directory
-        sample.bam_motifs_outdir = \
-            os.path.join(sample.motifs_outdir,
-                         "bam_motifs")
-        utils.make_dir(sample.bam_motifs_outdir)
-        # Record sample's clusters motifs output directory
-        sample.clusters_motifs_outdir = \
-            os.path.join(sample.motifs_outdir,
-                         "clusters_motifs")
-        utils.make_dir(sample.clusters_motifs_outdir)
-        self.logger.info("Running MEME on clusters sequences...")
-        meme_utils.run_meme(self.logger,
-                            sample.filtered_clusters_seqs_fname,
-                            sample.clusters_motifs_outdir,
-                            meme_params=meme_params)
-
 
     def output_bigWigs(self, sample):
         """
@@ -1329,5 +1297,48 @@ class Pipeline:
             # Find CLIP clusters
             self.output_clusters(sample)
             # Find motifs
-            #self.output_motifs(sample)
+            self.output_homer_motifs(sample)
         return sample
+
+
+
+    # def output_meme_motifs(self, sample):
+    #     """
+    #     Output motifs for CLIP reads and clusters.
+    #     """
+    #     self.logger.info("Outputting motifs for %s" %(sample.label))
+    #     meme_params = {
+    #         # ...
+    #         "-dna": "",
+    #         # Minimum motif width
+    #         #"minw": 4
+    #         # Maximum motif width
+    #         "-maxw": 15,
+    #         # Maximum number of motifs to find
+    #         "-nmotifs": 30
+    #         }
+    #     ##
+    #     ## Run MEME on motifs
+    #     ##
+    #     self.logger.info("Running MEME on sample BAM reads..")
+    #     # Record sample's motifs output directory
+    #     sample.motifs_outdir = os.path.join(self.motifs_dir,
+    #                                         sample.label)
+    #     utils.make_dir(sample.motifs_outdir)
+    #     # Record sample's BAM motifs output directory
+    #     sample.bam_motifs_outdir = \
+    #         os.path.join(sample.motifs_outdir,
+    #                      "bam_motifs")
+    #     utils.make_dir(sample.bam_motifs_outdir)
+    #     # Record sample's clusters motifs output directory
+    #     sample.clusters_motifs_outdir = \
+    #         os.path.join(sample.motifs_outdir,
+    #                      "clusters_motifs")
+    #     utils.make_dir(sample.clusters_motifs_outdir)
+    #     self.logger.info("Running MEME on clusters sequences...")
+    #     meme_utils.run_meme(self.logger,
+    #                         sample.filtered_clusters_seqs_fname,
+    #                         sample.clusters_motifs_outdir,
+    #                         meme_params=meme_params)
+
+        

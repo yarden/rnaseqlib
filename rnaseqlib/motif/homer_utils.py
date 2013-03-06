@@ -22,15 +22,17 @@ def run_homer(logger, bed_fname, genome, output_dir,
         logger.critical("Error: Cannot find or execute Homer program.")
         sys.exit(1)
     params_str =  " ".join(["%s %s" %(p, params[p]) for p in params])
+    utils.make_dir(output_dir)
     # If there's a Homer results directory in the target
     # directory, then don't rerun Homer
     if os.path.isdir(os.path.join(output_dir, "homerResults")):
         logger.info("Found Homer results, skipping..")
         return output_dir
-    homer_cmd = "%s %s %s > %s" %(homer_path,
-                                  bed_fname,
-                                  genome,
-                                  output_dir)
+    homer_cmd = "%s %s %s %s %s" %(homer_path,
+                                   bed_fname,
+                                   genome,
+                                   output_dir,
+                                   params_str)
     logger.info("Calling Homer: ")
     logger.info("Executing: %s" %(homer_cmd))
     t1 = time.time()
