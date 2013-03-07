@@ -99,10 +99,12 @@ def check_clip_utils(logger,
 def filter_clusters(logger, clusters_bed_fname, output_dir,
                     num_reads=8,
                     depth=0,
-                    min_size=12,
-                    max_size=100):
+                    min_size=20,
+                    max_size=500):
     """
     Filter clusters by number of reads in them and/or depth.
+
+    Depth calculated as reads per 100 bp.
     """
     if not clusters_bed_fname.endswith(".bed"):
         logger.critical("Error: clusters filename %s must end in .bed" \
@@ -111,10 +113,13 @@ def filter_clusters(logger, clusters_bed_fname, output_dir,
     bed_basename = \
         os.path.basename(clusters_bed_fname).rsplit(".bed", 1)[0]
     filtered_clusters_fname = \
-        os.path.join(output_dir, "%s.num_reads_%d.depth_%d.bed" \
+        os.path.join(output_dir,
+                     "%s.num_reads_%d.depth_%d.mins_%d_maxs_%d.bed" \
                      %(bed_basename,
                        num_reads,
-                       depth))
+                       depth,
+                       min_size,
+                       max_size))
     num_passing_filter = 0
     with open(filtered_clusters_fname, "w") as clusters_out:
         with open(clusters_bed_fname, "r") as clusters_in:
@@ -125,9 +130,11 @@ def filter_clusters(logger, clusters_bed_fname, output_dir,
                 cluster_reads = int(fields[4])
                 # Check that it meets the number of reads filter
                 if cluster_reads < num_reads:
-                    continue
-                # Check that it meets the depth filter
-                cluster_depth = cluster_reads / float(cluster_len)
+                    continue  
+                # Check that it meets the depth filter, when
+                # normalizing cluster length to 100
+                cluster_depth = \
+                    cluster_reads / (float(cluster_len)/100.)
                 if cluster_depth < depth:
                     continue
                 # Check that it meets the cluster size filter
@@ -217,7 +224,7 @@ def output_clip_clusters(logger,
                 merged_line = "%s\n" %("\t".join(merged_fields))
                 output_file.write(merged_line)
     # Map clusters to genes
-    genes_merged_fname = "%s.genes" %(output_filename)
+    genes_merged_fname = "%s.genes" %(output_filename) 
     os.rename(output_filename, genes_merged_fname)
     output_clip_clusters_with_genes(genes_merged_fname,
                                     genes_gff_fname,
@@ -310,8 +317,8 @@ def intersect_clusters_with_gff(logger,
                                 gff_filenames,
                                 output_dir):
     """
-    Intersect CLIP clusters with a set of GFF filenames (e.g. GFFs containing
-    events.
+    Intersect CLIP clusters with a set of GFF filenames
+    (e.g. GFFs containing events.)
     """
     event_clusters_fnames = []
     logger.info("Intersecting clusters %s with GFFs.." \
@@ -337,6 +344,7 @@ def intersect_clusters_with_gff(logger,
         if os.path.isfile(event_clusters_fname):
             logger.info("Found %s, skipping.." %(event_clusters_fname))
             event_clusters_fnames.append(event_clusters_fname)
+            continue
         logger.info("  - Executing: %s" %(intersectBed_cmd))
         ret_val = os.system(intersectBed_cmd)
         if ret_val != 0:

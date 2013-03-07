@@ -23,29 +23,28 @@ import rnaseqlib.bam.bam_utils as bam_utils
 import rnaseqlib.motif.homer_utils as homer_utils
 import rnaseqlib.motif.meme_utils as meme_utils
 
-
 # Import all paths
 from rnaseqlib.paths import *
 
 import cluster_utils.cluster as cluster
 
 class Sample:
-    """
+    """ 
     A sample to run on. For paired-end, represents a
     pair of samples. For single end, represents a
-    single sample.
-    """
+    single sample. 
+    """ 
     def __init__(self, label, rawdata):
-        self.label = label
+        self.label = label  
         # QC information for this sample
-        self.qc = None
+        self.qc = None 
         # For paired-end samples, samples_info is a list
-        # of samples.
+        # of samples. 
         # For single-end samples, it is just one object.
         self.rawdata = rawdata
         self.paired = False
         self.sample_type = None
-        # Bowtie mapping for sample
+        # Bowtie mapping for sample   
         self.bowtie_filename = None
         # Tophat mapping for sample
         self.tophat_filename = None
@@ -61,14 +60,14 @@ class Sample:
         self.rmdups_bam_filename = None
         # Unique BAM after duplicate-subtraction filename
         self.rmdups_unique_bam_filename = None
-        # Sample's RPKM directory
+        # Sample's RPKM directory  
         self.rpkm_dir = None
         # Sample's events directory
         self.events_dir = None
         # RPKM tables for the sample
         self.rpkm_tables = defaultdict(lambda: None)
         # Record if a sample is grouped
-        if type(self.rawdata) == list:
+        if type(self.rawdata) == list: 
             self.paired = True
             self.sample_type = self.rawdata[0].sample_type
         else:
@@ -79,9 +78,11 @@ class Sample:
         # Directory where clusters are stored
         self.clusters_dir = None
         # BED containing clusters for sample
-        self.clusters_fname = None
+        # Computed for rRNA-subtracted BAM and for
+        # unique BAM
+        self.clusters_fnames = {}
         # Filtered BED of clusters
-        self.filtered_clusters_fname = None
+        self.filtered_clusters_fnames = {}
         # Sequence of filtered BED of clusters
         self.filtered_clusters_seqs_fname = None
         # BAM sequences in FASTA format
@@ -161,12 +162,12 @@ class Pipeline:
         self.is_paired_end = False
         self.sample_to_group = None
         self.group_to_samples = None
-        self.samples = []
+        self.samples = [] 
         # Adaptors filename (for CLIP)
         self.adaptors_filename = None
         # Collapsed sequence filename (for CLIP)
         self.collapsed_seq_filename = None
-        # Cluster objects to use
+        # Cluster objects to use 
         self.my_cluster = None
         # Pipeline output subdirectories
         self.pipeline_outdirs = {}
@@ -187,7 +188,7 @@ class Pipeline:
                                        os.path.join(self.output_dir, "logs"))
         # Check settings are correct
         self.load_pipeline_settings()
-        # Top-level output dirs
+        # Top-level output dirs 
         self.toplevel_dirs = ["rawdata",
                               "mapping",
                               "qc",
@@ -261,7 +262,7 @@ class Pipeline:
                                              self.rna_base)
         # Load RPKMs into combined RPKM tables for all samples
         # Create a mapping from table name to RPKM DataFrame
-        # that includes all samples
+        # that includes all samples 
         self.rpkm_tables = defaultdict(lambda: None)
         for table_name in self.rna_base.rpkm_table_names:
             curr_sample = self.samples[0]
@@ -298,13 +299,13 @@ class Pipeline:
         Structure is:
 
         output_dir
-          - rawdata: trimmed reads, etc.
+          - rawdata: trimmed reads, etc.  
           - mapping: mapped data files
           - qc: quality control output
           - analysis: analysis output
         """
         self.logger.info("Initializing the pipeline output directories.")
-        utils.make_dir(self.output_dir)
+        utils.make_dir(self.output_dir) 
         # Subdirectories of toplevel subdirs
         self.toplevel_subdirs = defaultdict(list)
         self.toplevel_subdirs["analysis"] = ["rpkm",
@@ -461,7 +462,7 @@ class Pipeline:
         Load rawdata information related to each sample.
         """
         # Mapping from label to samples info
-        all_samples_rawdata = []
+        all_samples_rawdata = [] 
         for seq_entry in self.sequence_filenames:
             seq_filename, sample_label = seq_entry
             # Ensure file exists
@@ -1034,7 +1035,7 @@ class Pipeline:
                 self.logger.info("Found %s, skipping.." %(bam_events_fname))
             else:
                 # Map BAM reads to events GFF
-                bedtools_utils.multi_tagBam(sample.bam_filename,
+                bedtools_utils.multi_tagBam(sample.unique_bam_filename,
                                             [gff_fname],
                                             [gff_label],
                                             bam_events_fname,
@@ -1047,7 +1048,7 @@ class Pipeline:
                 self.logger.info("Found %s, skipping.." \
                                  %(coverage_events_fname))
             else:
-                bedtools_utils.coverageBed(sample.bam_filename,
+                bedtools_utils.coverageBed(sample.unique_bam_filename,
                                            gff_fname,
                                            coverage_events_fname,
                                            self.logger)
@@ -1105,63 +1106,71 @@ class Pipeline:
         # Record sample's clusters directory
         sample.clusters_dir = sample_clusters_dir
         utils.make_dir(sample_clusters_dir)
-        # BED file to use
-        #bed_fname_to_use = sample.reads_bed_fnames["ribosub_bam"]
-        bed_fname_to_use = sample.reads_bed_fnames["unique_bam"]
-        bed_basename = \
-            os.path.basename(bed_fname_to_use).rsplit(".", 1)[0]
-        sample_clusters_fname = \
-            "%s.clusters.bed" %(os.path.join(sample_clusters_dir,
-                                             bed_basename))
-        # Record sample's clusters BED filename
-        sample.clusters_fname = sample_clusters_fname
-        # Final command: convert, cluster, merge
-        t1 = time.time()
-        self.logger.info("Filtering clusters..")
-        # Use Ensembl genes to annotate the clusters
-        genes_gff_fname = \
-            os.path.join(self.rna_base.ucsc_tables_dir,
-                         "ensGene.gff3")
-        if not os.path.isfile(genes_gff_fname):
-            self.logger.critical("Cannot annotate clusters with genes " \
-                                 "since GFF %s not found." \
-                                 %(genes_gff_fname))
-            sys.exit(1)
-        clusters_fname = \
-            clip_utils.output_clip_clusters(self.logger,
-                                            bed_fname_to_use,
-                                            sample.clusters_fname,
-                                            genes_gff_fname,
-                                            cluster_dist=cluster_dist)
-        # Filter the clusters
-        sample.filtered_clusters_fname = \
-            clip_utils.filter_clusters(self.logger,
-                                       sample.clusters_fname,
-                                       os.path.dirname(clusters_fname))
-        self.logger.info("Filtered clusters outputted to: %s" \
-                         %(sample.filtered_clusters_fname))
-        # Filter the clusters
-        t2 = time.time()
-        if clusters_fname is None:
-            self.logger.critical("Cluster for %s finding failed." \
-                                 %(sample.label))
-            sys.exit(1)
-        self.logger.info("Cluster finding took %.2f minutes" \
-                         %((t2 - t1)/60.))
-        # Merge the resulting clusters with every event file
-        self.logger.info("Mapping clusters to GFF files from: %s" \
-                         %(self.gff_events_dir))
-        gff_filenames = \
-            utils.get_gff_filenames_in_dir(self.gff_events_dir)
-        # Make directory for clusters intersected with events
-        event_clusters_dir = os.path.join(sample_clusters_dir,
-                                          "by_events")
-        utils.make_dir(event_clusters_dir)
-        clip_utils.intersect_clusters_with_gff(self.logger,
-                                               clusters_fname,
-                                               gff_filenames,
-                                               event_clusters_dir)
-        self.logger.info("Finished outputting clusters.")
+        ##
+        ## For rRNA-subtracted BAM and the unique BAM,
+        ## find the clusters and intersect clusters with
+        ## GFF events
+        ##
+        for bam_label in ["ribosub_bam", "unique_bam"]:
+            self.logger.info("Computing clusters for BAM type %s" \
+                             %(bam_label))
+            bed_fname_to_use = sample.reads_bed_fnames[bam_label]
+            bed_basename = \
+                os.path.basename(bed_fname_to_use).rsplit(".", 1)[0]
+            sample.clusters_fnames[bam_label] = \
+                "%s.clusters.bed" %(os.path.join(sample_clusters_dir,
+                                                 bed_basename))
+            # Final command: convert, cluster, merge
+            t1 = time.time()
+            self.logger.info("Filtering clusters..")
+            # Use Ensembl genes to annotate the clusters
+            genes_gff_fname = \
+                os.path.join(self.rna_base.ucsc_tables_dir,
+                             "ensGene.gff3")
+            if not os.path.isfile(genes_gff_fname):
+                self.logger.critical("Cannot annotate clusters with genes " \
+                                     "since GFF %s not found." \
+                                     %(genes_gff_fname))
+                sys.exit(1)
+            clusters_fname = \
+                clip_utils.output_clip_clusters(self.logger,
+                                                bed_fname_to_use,
+                                                sample.clusters_fnames[bam_label],
+                                                genes_gff_fname,
+                                                cluster_dist=cluster_dist)
+            # Filter the clusters
+            sample.filtered_clusters_fnames[bam_label] = \
+                clip_utils.filter_clusters(self.logger,
+                                           sample.clusters_fnames[bam_label],
+                                           os.path.dirname(clusters_fname))
+            self.logger.info("Filtered clusters outputted to: %s" \
+                             %(sample.filtered_clusters_fnames[bam_label]))
+            # Filter the clusters
+            t2 = time.time()
+            if clusters_fname is None:
+                self.logger.critical("Cluster for %s finding failed." \
+                                     %(sample.label))
+                sys.exit(1)
+            self.logger.info("Cluster finding took %.2f minutes" \
+                             %((t2 - t1)/60.))
+            ##
+            ## Merge the resulting clusters with every event file
+            ##
+            self.logger.info("Mapping clusters to GFF files from: %s" \
+                             %(self.gff_events_dir))
+            gff_filenames = \
+                utils.get_gff_filenames_in_dir(self.gff_events_dir)
+            # Make directory for clusters intersected with events
+            event_clusters_dir = os.path.join(sample_clusters_dir,
+                                              "by_events",
+                                              bam_label)
+            utils.make_dir(event_clusters_dir)
+            # Intersect current clusters with GFF events
+            clip_utils.intersect_clusters_with_gff(self.logger,
+                                                   clusters_fname,
+                                                   gff_filenames,
+                                                   event_clusters_dir)
+            self.logger.info("Finished outputting clusters.")
 
 
     def output_clip_sequences(self, sample,
@@ -1233,21 +1242,25 @@ class Pipeline:
         sample.motifs_outdir = os.path.join(self.motifs_dir,
                                             sample.label)
         utils.make_dir(sample.motifs_outdir)
-        self.logger.info("Running Homer on clusters sequences...")
-        self.logger.info("without -rna: ")
-        homer_utils.run_homer(self.logger,
-                              sample.filtered_clusters_fname,
-                              self.rna_base.genome,
-                              os.path.join(sample.motifs_outdir, "no_rna"),
-                              homer_params)
-        homer_params["-rna"] = ""
-        self.logger.info("with -rna: ")
-        homer_utils.run_homer(self.logger,
-                              sample.filtered_clusters_fname,
-                              self.rna_base.genome,
-                              os.path.join(sample.motifs_outdir, "rna"),
-                              homer_params)
-        
+        ##
+        ## Run Homer on rRNA-subtracted BAM and unique BAM
+        ##
+        for bam_label in sample.filtered_clusters_fnames:
+            self.logger.info("Running Homer on clusters sequences...")
+            self.logger.info("without -rna: ")
+            homer_utils.run_homer(self.logger,
+                                  sample.filtered_clusters_fnames[bam_label],
+                                  self.rna_base.genome,
+                                  os.path.join(sample.motifs_outdir, "no_rna"),
+                                  homer_params)
+            homer_params["-rna"] = ""
+            self.logger.info("with -rna: ")
+            homer_utils.run_homer(self.logger,
+                                  sample.filtered_clusters_fnames[bam_label],
+                                  self.rna_base.genome,
+                                  os.path.join(sample.motifs_outdir, "rna"),
+                                  homer_params)
+
 
     def output_bigWigs(self, sample):
         """
