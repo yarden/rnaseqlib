@@ -48,7 +48,8 @@ setup(name = 'rnaseqlib',
                  # GFF related scripts
                  'scripts/gff_sanitize.py',
                  'scripts/gff_create_db.py',
-                 'scripts/gff_extract_lens.py'],
+                 'scripts/gff_extract_lens.py',
+                 'scripts/gff_extract_event_seqs.py'],
       # Required modules
       install_requires = [
 #          "matplotlib >= 1.1.0",

@@ -36,6 +36,30 @@ def fastaFromBed(logger, genome_seq_fname, bed_fname, output_fname):
     return output_fname
 
 
+def intersect_bed_with_gene_regions(bed_filename,
+                                    ucsc_tables_dir,
+                                    output_bed_fname):
+    """
+    Take a BED file and intersect it with a set of gene
+    regions from the GFF gene annotation file.
+
+    Output a BED file with annotations.
+    """
+    # Read GFF annotation fname: on the fly
+    # concatenate introns, exons, cds_only exons, and
+    # the three_prime_utr/five_prime_utr annotations of
+    # of the tables into one BED file.
+    # ...
+    # Intersect bed with pybedtools
+    # ...
+    # groupby combine the columns to have the gene name(s)
+    # and the region type(s) that it overlaps with
+    # ...
+    # Output result as BED
+    # ...
+    return output_bed_fname
+
+
 def intersect_bam_with_bed(bam_filename,
                            bed_filename,
                            output_filename,

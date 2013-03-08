@@ -1229,7 +1229,7 @@ class Pipeline:
 
 
     def output_homer_motifs(self, sample,
-                            motif_lens=[5,6,8,10,12]):
+                            motif_lens=[5,6,8]):
         """
         Run Homer on sample to get motifs.
         """
@@ -1310,7 +1310,7 @@ class Pipeline:
             # Find CLIP clusters
             self.output_clusters(sample)
             # Find motifs
-            self.output_homer_motifs(sample)
+            #self.output_homer_motifs(sample)
         return sample
 
 

@@ -301,6 +301,9 @@ def output_clip_clusters_with_genes(input_fname,
     output_file.close()
 
 
+
+
+
 # $ grep gene ~/jaen/test/mm9/ucsc/ensGene.gff3 | head -n 200000 | intersectBed -a ~/jaen/Musashi-seq/clip-pipeline-output/analysis/clusters/clip_KH2MSI1_NoDox/accepted_hits.ribosub.sorted.clusters.bed -b stdin -wao | head -n 500 | groupBy -g 1,2,3,4 -c 9,10,12,14,15 -o collapse,collapse,collapse,collapse,collapse | grep 6266729
 # chr1	6202501	6202530	317	6196278	6266729	+	Name=ENSMUSG00000025907;ID=ENSMUSG00000025907;Alias=ENSMUSG00000025907	29
 # chr1	6204921	6204950	318	6204693,6196278	6205373,6266729	-,+	Name=ENSMUSG00000073741;ID=ENSMUSG00000073741;Alias=ENSMUSG00000073741,Name=ENSMUSG00000025907;ID=ENSMUSG00000025907;Alias=ENSMUSG00000025907	29,29

@@ -8,8 +8,7 @@ import time
 import glob
 
 import tempfile
-
-import gffutils
+#import gffutils
 
 import rnaseqlib
 import rnaseqlib.utils as utils
@@ -20,6 +19,16 @@ import misopy
 import misopy.gff_utils as miso_gff_utils
 import misopy.Gene as gene_utils
 
+
+def output_fasta_seqs_from_gff(gff_fname,
+                               fasta_input_fname,
+                               fasta_output_fname):
+    """
+    Output FASTA sequence from GFF.
+    """
+    gff_tool = pybedtools.BedTool(gff_output_fname)
+    gff_tool.sequence(fi=fasta_input_fname, s=True).saveas(fasta_output_fname)
+    
 
 def get_default_db_fname(gff_fname, db_dirname="gff_db"):
     """
@@ -186,7 +195,6 @@ def sanitize_gff(gff_fname, output_dir):
     """
     gff_out_fname = os.path.join(output_dir, os.path.basename(gff_fname))
     genes = gene_utils.load_genes_from_gff(gff_fname,
-                                           reverse_recs=True,
                                            include_introns=True)
     t1 = time.time()
     with open(gff_out_fname, "w") as gff_out_file:

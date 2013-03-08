@@ -66,8 +66,6 @@ def get_flanking_introns_coords(gene_obj):
     up_exon = exons[0]
     skipped_exon = exons[1]
     dn_exon = exons[2]
-    print "UP EXON: ", up_exon
-    print "DN EXON: ", dn_exon
     
     # Get all flanking intronic sequence
     up_intron_coords = (up_exon.end + 1,
@@ -179,8 +177,8 @@ def fetch_seq_from_gff(gff_fname, fasta_fname, output_dir,
                                    reverse_recs=True)
     file_basename = re.sub("\.gff3?", "",
                            os.path.basename(gff_fname))
-    output_basename = os.path.join(output_dir,
-                                   file_basename)
+    output_basename = "%s.event_seqs" \
+        %(os.path.join(output_dir, file_basename))
     gff_output_fname = "%s.gff" %(output_basename)
     fasta_output_fname = "%s.fa" %(output_basename)
     print "Outputting GFF coordinates to: %s" %(gff_output_fname)
@@ -265,13 +263,36 @@ def fetch_seq_from_gff(gff_fname, fasta_fname, output_dir,
             gff_out.write(rec)
     gff_out_file.close()
     # Output FASTA sequences
-#    output_fasta_seqs_from_gff(gff_output_fname, fasta_output_fname)
+    output_fasta_seqs_from_gff(gff_output_fname,
+                               fasta_fname,
+                               fasta_output_fname)
 
 
-def output_fasta_seqs_from_gff(gff_fname, fasta_output_fname):
-    gff_tool = pybedtools.BedTool(gff_output_fname)
-    gff_tool.sortBed()
-    
+def output_fasta_seqs_from_gff(gff_fname,
+                               fasta_input_fname,
+                               fasta_output_fname,
+                               s=True,
+                               name=True,
+                               use_gff_id=True):
+    """
+    Output FASTA sequence from GFF.
+    """
+    def assign_id_to_gff_field(gff_rec):
+        rec_coords = "%s:%s-%s:%s" %(gff_rec[0],
+                                     str(gff_rec.start),
+                                     str(gff_rec.stop),
+                                     gff_rec.strand)
+        gff_rec[2] = "%s;%s" %(gff_rec.attrs["ID"], rec_coords)
+        return gff_rec
+    gff_tool = pybedtools.BedTool(gff_fname)
+    if use_gff_id:
+        # Use the GFF ID= field to label the FASTA sequences
+        gff_tool = gff_tool.each(assign_id_to_gff_field)
+    gff_tool.sequence(fi=fasta_input_fname,
+                      s=s,
+                      fo=fasta_output_fname,
+                      name=True)
+
 
 
 def error_check_intronic_coords(a, b, c, d,
