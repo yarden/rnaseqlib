@@ -17,6 +17,8 @@ import misopy.Gene as gene_utils
 import string
 from string import maketrans
 
+import pybedtools
+
 
 def coords_from_relative_regions(skipped_exon,
                                  adjacent_exon,
@@ -188,7 +190,8 @@ def fetch_seq_from_gff(gff_fname, fasta_fname, output_dir,
     if os.path.isfile(fasta_output_fname):
         print "  - Overwriting existing file"
     genes = gene_utils.load_genes_from_gff(gff_fname)
-    gff_out = gff_utils.Writer(open(gff_output_fname, "w"))
+    gff_out_file = open(gff_output_fname, "w")
+    gff_out = gff_utils.Writer(gff_out_file)
     for gene_id in genes:
         gene_info = genes[gene_id]
         gene_tree = gene_info["hierarchy"]
@@ -198,10 +201,13 @@ def fetch_seq_from_gff(gff_fname, fasta_fname, output_dir,
         # For mRNA entries, extract the flanking introns of the
         # alternative exon if asked
         event_recs = get_event_recs_from_gene(gene_obj, gene_tree)
-        print "event recs:" 
-        print event_recs
+        long_mRNA_id = event_recs["long_mRNA"].get_id()
         if event_recs is None:
             continue
+        # Write out up, se, and dn exons
+        recs_to_write.extend([event_recs["up_exon"]["record"],
+                              event_recs["se_exon"]["record"],
+                              event_recs["dn_exon"]["record"]])
         if with_flanking_introns:
             introns_coords = \
                 get_flanking_introns_coords(gene_obj)
@@ -215,56 +221,58 @@ def fetch_seq_from_gff(gff_fname, fasta_fname, output_dir,
             # Fetch downstream intron sequence
             dn_intron_start, dn_intron_end = \
                 introns_coords["dn_intron"]
-            print "UPINTRON START/END: ", up_intron_start, up_intron_end
-            print "DNINTRON START/END: ", dn_intron_start, dn_intron_end
             dn_intron_len = dn_intron_end - dn_intron_start + 1
             # If given custom coordinates, use them instead of entire up/down
             # flanking intronic coordinates.
+            se_exon_rec = event_recs["se_exon"]["record"]
             if flanking_introns_coords is not None:
                 # (start,end) of upstream intron sequence
                 a, b = \
                     int(flanking_introns_coords[0]), int(flanking_introns_coords[1])
                 c, d = \
                     int(flanking_introns_coords[2]), int(flanking_introns_coords[3])
-                print "INPUT COORDS: ", a, b, c, d
                 a, b, c, d = error_check_intronic_coords(a, b, c, d,
                                                          up_intron_len, dn_intron_len)
-                print "REVISED COORDS:", a, b, c, d
                 # Coordinates relative to 5' splice site of sequence to be fetched
                 # The start of upstream intron sequence is negative from the 5' ss
-                print "upintron start,upintron end: ", up_intron_start, up_intron_end
-                print "dnintron start,dnintron end: ", dn_intron_start, dn_intron_end
-                print " - " * 5
-                se_exon_rec = event_recs["se_exon"]["record"]
                 up_intron_start = se_exon_rec.start + a
                 up_intron_end = se_exon_rec.start + b
-                print "UP REVISED: "
-                print "->: ", up_intron_start, up_intron_end                
                 dn_intron_start = se_exon_rec.end + c
                 dn_intron_end = se_exon_rec.end + d
-                print "DN REVISED: "
-                print dn_intron_start, dn_intron_end
-                # if dn_intron_seq != None:
-                #     seq_id = ":".join(map(str, [chrom, start, end, strand]))
-                #     seq_id += "_dn_intron"
-                #     output_line = ">%s;%s\n%s\n" %(name, seq_id, dn_intron_seq)
-                #     output_file.write(output_line)
-                # else:
-                #     print "WARNING: Could not fetch downstream intron seq %s, %s, %s" \
-                #         %(start, end, strand)
-        print "quitting"
-        sys.exit(1)
+            # Make GFF records for up/dn intronic sequences
+            chrom = se_exon_rec.seqid
+            source = se_exon_rec.source
+            rec_type = "intron"
+            strand = se_exon_rec.strand
+            up_intron_str = "%s.up_intron" %(long_mRNA_id)
+            up_intron_rec = \
+                gff_utils.GFF(chrom, source, "intron",
+                              up_intron_start, up_intron_end,
+                              strand=strand,
+                              attributes={"ID": [up_intron_str],
+                                          "Parent": [gene_obj.label]})
+            dn_intron_str = "%s.dn_intron" %(long_mRNA_id)
+            dn_intron_rec = \
+                gff_utils.GFF(chrom, source, "intron",
+                              dn_intron_start, dn_intron_end,
+                              strand=strand,
+                              attributes={"ID": [dn_intron_str],
+                                          "Parent": [gene_obj.label]})
+            recs_to_write.append(up_intron_rec)
+            recs_to_write.append(dn_intron_rec)
+        # Write out records to GFF
+        for rec in recs_to_write:
+            gff_out.write(rec)
+    gff_out_file.close()
+    # Output FASTA sequences
+#    output_fasta_seqs_from_gff(gff_output_fname, fasta_output_fname)
 
-        # Write GFF records corresponding to annotations
 
-        # Retrieve the flanking intron coordinates, if asked
-        #     seq_id = ":".join(map(str, [chrom, start, end, strand]))
-        #     output_line = ">%s;%s;ID=%s;Parent=%s\n%s\n" \
-        #         %(name, seq_id,
-        #           rec_id,
-        #           parent_id,
-        #           seq)
-        #     output_file.write(output_line)
+def output_fasta_seqs_from_gff(gff_fname, fasta_output_fname):
+    gff_tool = pybedtools.BedTool(gff_output_fname)
+    gff_tool.sortBed()
+    
+
 
 def error_check_intronic_coords(a, b, c, d,
                                 up_intron_len,
@@ -290,9 +298,7 @@ def error_check_intronic_coords(a, b, c, d,
               %(up_intron_len)
         print "Trimming by %d nt" %(trim_len)
         # Make 'a' shorter by adding to it
-        print "UP DIFF: ", up_diff, " adding ", up_diff + trim_len
         a -= (up_diff + trim_len)
-        print "SET A TO: ", a
     dn_diff = abs(d - dn_intron_len)
     if (d > dn_intron_len):
         print "\'d\' coordinate must be less than %d (downstream intron length." \
@@ -301,7 +307,6 @@ def error_check_intronic_coords(a, b, c, d,
         # Make 'd' shorter by subtracting from it
         d += (dn_diff - trim_len)
     return a, b, c, d
-    
 
     
 def fetch_seq(chrom_file,
