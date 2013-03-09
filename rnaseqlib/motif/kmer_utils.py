@@ -28,10 +28,17 @@ class Kmers:
         self.fasta_fname = fasta_fname
         # Mapping from kmers to fasta files to their counts
         self.kmer_counts = defaultdict(int)
+        # Mapping from kmers to fasta files 
         # Get the set of kmers
         self.kmers = enumerate_kmers(kmer_len)
         # Counts file for jf
         self.jf_counts_fname = None
+
+    def get_dinuc_shuffled_fasta(self, output_dir):
+        """
+        Get a dinucleotide shuffled FASTA file.
+        """
+        pass
 
 
     def count_kmers(self, output_dir, method="jf"):
@@ -102,7 +109,6 @@ class Kmers:
             self.kmer_counts[kmer] = counts
 
 
-
 def enumerate_kmers(kmer_len):
     """
     Return all kmers as strings.
@@ -113,7 +119,7 @@ def enumerate_kmers(kmer_len):
     return kmers
     
 
-def get_dinuc_shuffles(seq, num_shuffles):
+def get_dinuc_shuffles(seq, num_shuffles=1):
     """
     Given a sequence, return num_shuffles-many
     dinucleotide matched shuffles of it.
@@ -122,6 +128,17 @@ def get_dinuc_shuffles(seq, num_shuffles):
                 for n in range(num_shuffles)]
     return shuffles
 
+
+def output_dinuc_shuffled_fasta(fasta_fname, shuffled_fasta_fname):
+    """
+    Given a FASTA file, output a dinucleotide shuffled version of it.
+    """
+    write_open_fastx(shuffled_fasta_fname)
+    for fastx_entry in fastx_utils.get_fastx_entries(fastx_fname):
+        fastx_name, fastx_seq = fastx_entry
+        shuffled_seq = get_dinuc_shuffles(fastx_seq)
+        
+        
 
 def get_enriched_kmers_rel_to_bg(fasta_fname,
                                  control_fasta_fname):
@@ -153,6 +170,7 @@ def get_enriched_kmers(fasta_fname,
     """
     Given a FASTA file, generate dinucleotide shuffles.
     """
+    Kmers(kmer_len, fasta_fname)
     ktable = load_fastx_into_ktable(fasta_fname, kmer_len)
     print ktable
     # Count kmers in a set of sequence

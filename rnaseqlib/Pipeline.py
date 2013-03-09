@@ -1182,9 +1182,6 @@ class Pipeline:
         (1) FASTA file for the sample's rRNA-subtracted BAM
         (2) FASTA files for the clusters called
         """
-        #####
-        ##### TODO: REVISE ME
-        #####
         self.logger.info("Outputting CLIP sequences for %s" \
                          %(sample.label))
         t1 = time.time()
@@ -1219,10 +1216,12 @@ class Pipeline:
         sample.filtered_clusters_seqs_fname = \
             os.path.join(sample.clusters_seqs_dir,
                          "%s.fa" %(filtered_clusters_basename))
+        #### REPLACE THIS WITH PYBEDTOOLS
         bedtools_utils.fastaFromBed(self.logger,
                                     self.genome_seq_fname,
                                     sample.filtered_clusters_fname,
-                                    sample.filtered_clusters_seqs_fname)
+                                    sample.filtered_clusters_seqs_fname,
+                                    stranded=True)
         t2 = time.time()
         self.logger.info("Outputting of CLIP sequences took %.2f minutes." \
                          %((t2 - t1)/60.))
@@ -1309,8 +1308,10 @@ class Pipeline:
             self.output_reads_as_bed(sample)
             # Find CLIP clusters
             self.output_clusters(sample)
+            # Output CLIP sequences
+            self.output_clip_sequences(sample)
             # Find motifs
-            #self.output_homer_motifs(sample)
+            self.output_homer_motifs(sample)
         return sample
 
 

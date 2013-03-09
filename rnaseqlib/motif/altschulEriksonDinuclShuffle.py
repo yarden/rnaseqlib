@@ -117,6 +117,9 @@ def shuffleEdgeList(L):
   return L
 
 def dinuclShuffle(s):
+  s = s.upper()
+  if "T" in s:
+      s = s.replace("T", "U")
   ok = 0
   while not ok:
     ok,edgeList,nuclList,lastCh = eulerian(s)

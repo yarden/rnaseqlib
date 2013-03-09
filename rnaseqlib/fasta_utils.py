@@ -32,6 +32,13 @@ def read_fasta(fname):
     if name: yield (name, ''.join(seq))
         
 
+def write_fasta(fasta_out, fasta_recs):
+    for rec in fasta_recs:
+        header, seq = rec
+        fasta_out.write("%s\n" %(header))
+        fasta_out.write("%s\n" %(seq))
+
+
 # class fasta_sequence:
 #     """
 #         fasta sequence with a header
@@ -80,9 +87,3 @@ def read_fasta(fname):
 #         results.append(fasta_sequence(header,seq))
 #     return results
     
-
-# def write_fasta(fasta_out, fasta_recs):
-#     for rec in fasta_recs:
-#         header, seq = rec
-#         fasta_out.write("%s\n" %(header))
-#         fasta_out.write("%s\n" %(seq))
