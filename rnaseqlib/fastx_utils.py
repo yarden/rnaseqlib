@@ -55,16 +55,24 @@ def bam_to_fastx(in_file, out_file, record_type="fasta"):
     out_handle.close()
 
 
-def get_fastx_entries(fastx_filename):
+def get_fastx_entries(fastx_filename,
+                      fasta=False,
+                      fastq=False):
     """
     Get entries of FASTQ/FASTA file.
+
+    if fasta=True, read file as fasta regardless of extension.
+    if fastq=True, read file as fastq regardless of extension
     """
+    entries = []
     if (fastx_filename.endswith(".fasta") or \
-        fastx_filename.endswith(".fasta.gz")):
+        fastx_filename.endswith(".fa") or \
+        fastx_filename.endswith(".fasta.gz")) or fasta:
         # It's a FASTA file
         entries = fasta_utils.read_fasta(fastx_filename)
     elif (fastx_filename.endswith(".fastq") or \
-          fastx_filename.endswith(".fastq.gz")):
+          fastx_filename.endswith(".fq") or \
+          fastx_filename.endswith(".fastq.gz")) or fastq:
         # It's a FASTQ file
         entries = fastq_utils.read_fastq(fastx_filename)
     return entries

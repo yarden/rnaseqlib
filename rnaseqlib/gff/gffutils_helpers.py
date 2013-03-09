@@ -12,7 +12,7 @@ import tempfile
 
 import rnaseqlib
 import rnaseqlib.utils as utils
-
+import rnaseqlib.fastx_utils as fastx_utils
 import rnaseqlib.gff.GFFDB as gffdb
 
 import misopy
@@ -20,14 +20,30 @@ import misopy.gff_utils as miso_gff_utils
 import misopy.Gene as gene_utils
 
 
-def output_fasta_seqs_from_gff(gff_fname,
-                               fasta_input_fname,
-                               fasta_output_fname):
+def output_gff_event_seqs(event_ids, input_fasta_fname, output_fasta_fname):
     """
-    Output FASTA sequence from GFF.
+    Given a set of event ids, pull out their sequences from an
+    input fasta filename and output these to a separate FASTA file.
     """
-    gff_tool = pybedtools.BedTool(gff_output_fname)
-    gff_tool.sequence(fi=fasta_input_fname, s=True).saveas(fasta_output_fname)
+    num_events = len(event_ids)
+    print "Retrieving sequences for %d events" %(num_events)
+    def is_event_fasta(fasta_name):
+        """
+        Return true if the event is a FASTA one.
+        """
+        # If there's any event such that the
+        # FASTA record starts with that event's name, then
+        # the FASTA record should be outputted
+        return len(filter(lambda e: \
+                          fasta_name.startswith(e),
+                          event_ids)) > 0
+    with open(output_fasta_fname, "w") as fasta_out:
+        for entry in fastx_utils.get_fastx_entries(input_fasta_fname):
+            fasta_name, fasta_seq = entry
+            if is_event_fasta(fasta_name[1:]):
+                print "relevant record: ", entry
+                fasta_out.write("%s\n" %(fasta_name))
+                fasta_out.write("%s\n" %(fasta_seq))
     
 
 def get_default_db_fname(gff_fname, db_dirname="gff_db"):

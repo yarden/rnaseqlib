@@ -150,6 +150,49 @@ def filter_clusters(logger, clusters_bed_fname, output_dir,
     return filtered_clusters_fname
 
 
+def shuffle_clusters(logger,
+                     clusters_fname,
+                     output_fname,
+                     genes_gff_fname,
+                     num_shuffles=100):
+    """
+    Create shuffled versions of clusters using bedtools
+    shuffleBed.
+
+    Takes as input:
+
+      - clusters_fname: BED file of clusters (with gene IDs for each cluster)
+      - output_fname: BED file to output shuffled coordinates to. Index the
+        shuffled entries by cluster_id so that they can be matched later.
+      - genes_gff_fname: Genes annotation in GFF format. Used to retrieve the
+        gene start/end of each cluster.
+    """
+    logger.info("Shuffling clusters...")
+    logger.info("  - Clusters BED: %s" %(clusters_fname))
+    logger.info("  - Output file: %s" %(output_fname))
+    logger.info("  - Number of shuffles: %d" %(num_shuffles))
+    # Create mapping from cluster to gene start/end
+    genes = pybedtools.BedTool(genes_gff_fname)
+    # Extract the start/end coordinates as BED (ensure that they are
+    # 0-based here!) create a mapping from cluster ID to gene start/end
+    clusters_to_gene_coords = {}
+    # ...
+    
+    # Shuffle the clusters:
+    # For each cluster, use the current cluster positions
+    # as the -exc parameter and the gene start/end positions
+    # as the -inc parameter to shuffleBed.
+    ##
+    ## For each cluster:
+    ##   - Step 1: in memory, create a BedTool that has the start/end
+    ##             positions of each cluster
+    ##
+    ##   - Step 2: run shuffleBed for this cluster
+    ## 
+    #pybedtools.shuffle()
+    
+    
+
 def output_clip_clusters(logger,
                          bed_filename,
                          output_filename,
