@@ -150,6 +150,28 @@ def filter_clusters(logger, clusters_bed_fname, output_dir,
     return filtered_clusters_fname
 
 
+
+def intersect_clusters_with_genes_gff(clusters_bed_fname,
+                                      genes_gff_fname):
+    """
+    Intersect clusters (in BED format) with a genes GFF file.
+
+    Return mapping from clusters to gene/start end positions.
+    """
+    # Create mapping from cluster to gene start/end
+    genes = pybedtools.BedTool(genes_gff_fname)
+    # Extract the start/end coordinates as BED (ensure that they are
+    # 0-based here!) create a mapping from cluster ID to gene start/end
+    clusters = pybedtools.BedTool(clusters_fname)
+    # Intersect clusters with genes (stranded)
+    intersected_clusters = clusters.intersect(genes, wao=True, s=True)
+    group_cols = [1, 2, 3, 4]
+    combined_cols = [5, 9, 10, 12, 14, 15]
+    grouped_bed = \
+        intersected_bed.groupby(g=group_cols,
+                                c=combined_cols,
+                                ops=["collapse"] * len(combined_cols))
+
 def shuffle_clusters(logger,
                      clusters_fname,
                      output_fname,
@@ -167,21 +189,54 @@ def shuffle_clusters(logger,
       - genes_gff_fname: Genes annotation in GFF format. Used to retrieve the
         gene start/end of each cluster.
     """
-    logger.info("Shuffling clusters...")
-    logger.info("  - Clusters BED: %s" %(clusters_fname))
-    logger.info("  - Output file: %s" %(output_fname))
-    logger.info("  - Number of shuffles: %d" %(num_shuffles))
+#    logger.info("Shuffling clusters...")
+#    logger.info("  - Clusters BED: %s" %(clusters_fname))
+#    logger.info("  - Output file: %s" %(output_fname))
+#    logger.info("  - Number of shuffles: %d" %(num_shuffles))
+    # Clusters to process
+    clusters = pybedtools.BedTool(clusters_fname)
     # Create mapping from cluster to gene start/end
     genes = pybedtools.BedTool(genes_gff_fname)
-    # Extract the start/end coordinates as BED (ensure that they are
-    # 0-based here!) create a mapping from cluster ID to gene start/end
-    clusters_to_gene_coords = {}
-    # ...
-    
+    # Keep only the gene GFF entries
+    genes = genes.filter(lambda f: f[2] == "gene")
+    # Map gene IDs to BED start/end coordinates
+    gene_ids_to_coords = {}
+    for gene in genes:
+        gene_ids_to_coords[gene.attrs["ID"]] = gene
     # Shuffle the clusters:
     # For each cluster, use the current cluster positions
     # as the -exc parameter and the gene start/end positions
     # as the -inc parameter to shuffleBed.
+    for cluster_bed in clusters:
+        # Pick the first gene the cluster maps to
+        cluster_gene = cluster_bed.fields[6].split(",")[0]
+        gene_bed = gene_ids_to_coords[cluster_gene]
+        print "Shuffling: ", gene_bed, gene_bed.strand, type(gene_bed.strand)
+        
+        # gene_interval = \
+        #     pybedtools.create_interval_from_list([gene_bed.chrom,
+        #                                           str(gene_bed.start),
+        #                                           str(gene_bed.stop),
+        #                                           cluster_gene,
+        #                                           ".",
+        #                                           # Use strand of cluster
+        #                                           cluster_bed.strand])
+        # gene_bedtool = pybedtools.BedTool([gene_interval])
+        # cluster_interval = \
+        #     pybedtools.create_interval_from_list([cluster_bed.chrom,
+        #                                           str(cluster_bed.start),
+        #                                           str(cluster_bed.stop),
+        #                                           cluster_gene,
+        #                                           ".",
+        #                                           cluster_bed.strand])
+        # cluster_bedtool = pybedtools.BedTool([cluster_interval])
+        # print
+        # shuffles = gene_bedtool.shuffle(genome="mm9",
+        #                                 inc=
+        #                                 exc=cluster_interval)
+        # print shuffles, " <<"
+        # break
+
     ##
     ## For each cluster:
     ##   - Step 1: in memory, create a BedTool that has the start/end
@@ -400,3 +455,7 @@ def intersect_clusters_with_gff(logger,
             event_clusters_fnames.append(event_clusters_fname)
     return event_clusters_fnames
 
+
+if __name__ == "__main__":
+    # test shuffle_clusters
+    pass

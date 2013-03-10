@@ -179,6 +179,13 @@ def fetch_seq_from_gff(gff_fname, fasta_fname, output_dir,
                            os.path.basename(gff_fname))
     output_basename = "%s.event_seqs" \
         %(os.path.join(output_dir, file_basename))
+    if flanking_introns_coords is not None:
+        output_basename = "%s.flank_intronic_%s_%s_%s_%s" \
+            %(output_basename,
+              flanking_introns_coords[0],
+              flanking_introns_coords[1],
+              flanking_introns_coords[2],
+              flanking_introns_coords[3])
     gff_output_fname = "%s.gff" %(output_basename)
     fasta_output_fname = "%s.fa" %(output_basename)
     print "Outputting GFF coordinates to: %s" %(gff_output_fname)
@@ -288,11 +295,10 @@ def output_fasta_seqs_from_gff(gff_fname,
     if use_gff_id:
         # Use the GFF ID= field to label the FASTA sequences
         gff_tool = gff_tool.each(assign_id_to_gff_field)
-    gff_tool.sequence(fi=fasta_input_fname,
-                      s=s,
-                      fo=fasta_output_fname,
-                      name=True)
-
+    seqs = gff_tool.sequence(fi=fasta_input_fname,
+                             s=s,
+                             fo=fasta_output_fname,
+                             name=True)
 
 
 def error_check_intronic_coords(a, b, c, d,

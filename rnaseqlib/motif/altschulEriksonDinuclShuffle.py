@@ -116,7 +116,7 @@ def shuffleEdgeList(L):
     barrier -= 1
   return L
 
-def dinuclShuffle(s):
+def dinuclShuffle(s, DNA=False):
   s = s.upper()
   if "T" in s:
       s = s.replace("T", "U")
@@ -140,6 +140,8 @@ def dinuclShuffle(s):
     prevCh = ch
   L.append(s[-1])
   t = string.join(L,"")
+  if DNA:
+      t = t.replace("U", "T")
   return t
  
 

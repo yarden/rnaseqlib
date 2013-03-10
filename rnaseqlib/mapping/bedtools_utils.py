@@ -7,10 +7,14 @@ import time
 import shlex
 import subprocess
 
+import numpy as np
+
 from collections import defaultdict
 
 import rnaseqlib
 import rnaseqlib.utils as utils
+
+import pybedtools
 
 ##
 ## Paths to bedtools programs
@@ -21,18 +25,53 @@ tagBam_path = utils.which("tagBam")
 coverageBed_path = utils.which("coverageBed")
 fastaFromBed_path = utils.which("fastaFromBed")
 
-def fastaFromBed(logger, genome_seq_fname, bed_fname, output_fname):
+
+def sample_intervals(start, end, interval_size,
+                     num_intervals=1
+                     exclude_interval=None):
+    """
+    Sample interval of size 'interval_size' on [start, end)
+    using a naive sampling approach.
+    """
+    intervals = []
+    last_start = end - interval_size
+    for n in range(num_intervals):
+        interval_start = np.random.randint(low=start,
+                                           high=last_start)
+        # 
+        interval_end = interval_start + interval_size
+        if exclude_interval is not None:
+            # Check that the exclusion interval is not present
+            # if we were given one
+            exclude_start, exclude_end = exclude_interval
+            if pybedtools.overlap(interval_start, interval_end,
+                                  exclude_start, exclude_end):
+                
+        
+    
+
+def fastaFromBed(logger,
+                 genome_seq_fname,
+                 bed_fname,
+                 output_fname,
+                 s=False):
     logger.info("Retrieving FASTA from BED...")
-    fastaFromBed_cmd = "%s -fi %s -bed %s -name -fo %s" \
-        %(fastaFromBed_path,
-          genome_seq_fname,
-          bed_fname,
-          output_fname)
-    logger.info("Executing: %s" %(fastaFromBed_cmd))
-    ret_val = os.system(fastaFromBed_cmd)
-    if ret_val != 0:
-        logger.critical("fastaFromBed call failed.")
-        sys.exit(1)
+    try:
+        bed_file = pybedtools.BedTool(bed_fname)
+        result = bed_file.sequence(fi=genome_seq_fname,
+                                   bed=bed_fname,
+                                   fo=output_fname,
+                                   s=s)
+        if not os.path.isfile(result.seqfn):
+            # If the output FASTA filename is not present,
+            # assume the call failed
+            logger.critical("fastaFromBed call failed.")
+            sys.exit(1)
+    except pybedtools.helpers.BEDToolsError as bed_error:
+        if bed_error[1].startswith("WARNING"):
+            logger.info("BEDTools produced warning: continuing anyway.")
+        else:
+            logger.critical("BEDTools failed.")
     return output_fname
 
 
@@ -49,7 +88,6 @@ def intersect_bed_with_gene_regions(bed_filename,
     # concatenate introns, exons, cds_only exons, and
     # the three_prime_utr/five_prime_utr annotations of
     # of the tables into one BED file.
-    # ...
     # Intersect bed with pybedtools
     # ...
     # groupby combine the columns to have the gene name(s)
@@ -473,3 +511,4 @@ def parse_tagBam_region(regions_field, trans_prefix="ENS"):
         map(lambda x: x.split(":")[0],
             filter(lambda x: ":" in x, read_categories))
     return region_coordinates, regions_detected
+

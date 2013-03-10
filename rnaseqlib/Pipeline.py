@@ -83,8 +83,10 @@ class Sample:
         self.clusters_fnames = {}
         # Filtered BED of clusters
         self.filtered_clusters_fnames = {}
-        # Sequence of filtered BED of clusters
-        self.filtered_clusters_seqs_fname = None
+        # Sequence filenames of BED clusters
+        self.clusters_seqs_fnames = {}
+        # Sequence filenames of filtered BED clusters
+        self.filtered_clusters_seqs_fnames = {}
         # BAM sequences in FASTA format
         self.bam_seqs_fname = None
         # Reads as BED filenames for various BEDs
@@ -1208,23 +1210,63 @@ class Pipeline:
                                    make_unique_recs=make_unique_recs)
         else:
             self.logger.info("Found %s, skipping.." %(bam_seqs_fname))
-        # Output the FASTA sequences corresponding to
-        # the sample's CLIP clusters
-        self.logger.info("Outputting clusters FASTA sequences..")
-        filtered_clusters_basename = \
-            os.path.basename(sample.filtered_clusters_fname).rsplit(".", 1)[0]
-        sample.filtered_clusters_seqs_fname = \
-            os.path.join(sample.clusters_seqs_dir,
-                         "%s.fa" %(filtered_clusters_basename))
-        #### REPLACE THIS WITH PYBEDTOOLS
-        bedtools_utils.fastaFromBed(self.logger,
-                                    self.genome_seq_fname,
-                                    sample.filtered_clusters_fname,
-                                    sample.filtered_clusters_seqs_fname,
-                                    stranded=True)
+        # Output the FASTA sequences for the sample's CLIP clusters
+        # First for all clusters
+        self.output_clip_clusters_seqs(sample, "all")
+        # Then for the filtered clusters
+        self.output_clip_clusters_seqs(sample, "filtered")        
         t2 = time.time()
         self.logger.info("Outputting of CLIP sequences took %.2f minutes." \
                          %((t2 - t1)/60.))
+        
+
+    def output_clip_clusters_seqs(self, sample, clusters_type):
+        """
+        Output CLIP clusters sequences for the given sample.
+
+        - sample: sample to process
+        - clusters_type: 'all' (all clusters) or 'filtered' (for just filtered
+          clusters).
+        """
+        clusters_seqs_fnames = {}
+        input_clusters_fnames = None
+        if clusters_type == "all":
+            input_clusters_fnames = sample.clusters_fnames
+        elif clusters_type == "filtered":
+            input_clusters_fnames = sample.filtered_clusters_fnames
+        else:
+            raise Exception, "Cannot process clusters type %s" %(clusters_type)
+        for bam_type in input_clusters_fnames:
+            clusters_fname = input_clusters_fnames[bam_type]
+            self.logger.info("Outputting clusters FASTA sequences..")
+            self.logger.info("  For clusters type: %s" %(clusters_type))
+            self.logger.info("  For bam_type: %s" %(bam_type))
+            clusters_basename = \
+                os.path.basename(clusters_fname).rsplit(".", 1)[0]
+            clusters_seqs_fnames[bam_type] = \
+                os.path.join(sample.clusters_seqs_dir,
+                             "%s.fa" %(clusters_basename))
+            # Cluster sequences should be treated as stranded
+            bedtools_utils.fastaFromBed(self.logger,
+                                        self.genome_seq_fname,
+                                        clusters_fname,
+                                        clusters_seqs_fnames[bam_type],
+                                        s=True)
+        # Record the cluster sequence filenames that were outputted
+        # in the sample
+        if clusters_type == "all":
+            sample.clusters_seqs_fnames = clusters_seqs_fnames
+        elif clusters_type == "filtered":
+            sample.filtered_clusters_seqs_fnames = clusters_seqs_fnames
+
+
+    def output_enriched_motifs(self, sample):
+        """
+        Output enriched motifs by simple motif analysis.
+        """
+        self.logger.info("Outputting enriched motifs for %s" \
+                         %(sample.label))
+        pass
 
 
     def output_homer_motifs(self, sample,
@@ -1310,6 +1352,8 @@ class Pipeline:
             self.output_clusters(sample)
             # Output CLIP sequences
             self.output_clip_sequences(sample)
+            # Output enriched motifs by simple motif analysis
+            self.output_enriched_motifs(sample)
             # Find motifs
             self.output_homer_motifs(sample)
         return sample

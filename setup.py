@@ -58,7 +58,11 @@ setup(name = 'rnaseqlib',
           "pysam >= 0.6.0",
           "misopy >= 0.4.6",
           "pandas >= 0.8.1",
+          # pybedtools
+          "pybedtools",
           "cutadapt",
+          # Khmer: kmer counter 
+          #"khmer",
           ],
       platforms = 'ALL',
       keywords = ['bioinformatics', 'sequence analysis',
