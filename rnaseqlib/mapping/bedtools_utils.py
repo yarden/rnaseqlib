@@ -96,7 +96,7 @@ def fastaFromBed(logger,
             logger.critical("fastaFromBed call failed.")
             sys.exit(1)
     except pybedtools.helpers.BEDToolsError as bed_error:
-        if bed_error[1].startswith("WARNING"):
+        if "WARNING" in str(bed_error):
             logger.info("BEDTools produced warning: continuing anyway.")
         else:
             logger.critical("BEDTools failed.")

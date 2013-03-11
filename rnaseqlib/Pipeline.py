@@ -1269,13 +1269,14 @@ class Pipeline:
             sample.filtered_clusters_seqs_fnames = clusters_seqs_fnames
 
 
-    def output_enriched_motifs(self, sample):
+    def output_enriched_kmers(self, sample, kmer_lens=[4,5,6,8,10,12]):
         """
-        Output enriched motifs by simple motif analysis.
+        Output enriched kmers by kmer counting methods.
         """
         self.logger.info("Outputting enriched motifs for %s" \
                          %(sample.label))
-        self.logger.info("Creating shuffled versions of motifs...")
+        # Count kmers in all the enriched kmers
+        
 
 
     def output_homer_motifs(self, sample,
@@ -1362,7 +1363,7 @@ class Pipeline:
             # Output CLIP sequences
             self.output_clip_sequences(sample)
             # Output enriched motifs by simple motif analysis
-            self.output_enriched_motifs(sample)
+            self.output_enriched_kmers(sample)
             # Find motifs
             self.output_homer_motifs(sample)
         return sample

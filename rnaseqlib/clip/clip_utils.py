@@ -252,7 +252,11 @@ def output_shuffled_clusters(logger,
     logger.info("  - Number of shuffles: %d" %(num_shuffles))
     utils.make_dir(output_dir)
     clusters_basename = os.path.basename(clusters_fname).rsplit(".", 1)[0]
-    # File containing the sampled clusters coordinates
+    # File containing the sampled clusters coordinates (BED)
+    sampled_clusters_coords_fname = \
+        os.path.join(output_dir,
+                     "%s.sampled_clusters.bed" %(clusters_basename))
+    # File containing the sampled clusters sequences (FASTA)
     sampled_clusters_fname = \
         os.path.join(output_dir,
                      "%s.sampled_clusters.fa" %(clusters_basename))
@@ -263,6 +267,7 @@ def output_shuffled_clusters(logger,
     # Keep only the gene GFF entries
     genes = genes.filter(lambda f: f[2] == "gene")
     # Map gene IDs to BED start/end coordinates
+    t1 = time.time()
     gene_ids_to_coords = {}
     for gene in genes:
         gene_ids_to_coords[gene.attrs["ID"]] = gene
@@ -274,27 +279,35 @@ def output_shuffled_clusters(logger,
         get_shuffled_clusters_intervals(clusters,
                                         gene_ids_to_coords,
                                         num_shuffles)
+    t2 = time.time()
+    logger.info("Shuffling took %.2f minutes." %((t2 - t1)/60.))
     # Make BEDTool out of cluster intervals
     sampled_clusters_bed = pybedtools.BedTool(sampled_clusters_intervals)
-    sampled_clusters_bed.sequence(fi=genome_seq_fname,
-                                  fo=sampled_clusters_fname,
-                                  name=True,
-                                  s=True)
-    num_clusters = len(clusters)
-    num_clusters_sampled = len(sampled_clusters_bed) / num_shuffles
-    logger.info("Sampled %d intervals for each of %d out of %d clusters." \
-                %(num_shuffles,
-                  num_clusters_sampled,
-                  num_clusters))
-    logger.info("Outputting shuffled cluster sequences to: %s" \
+    logger.info("Outputting shuffled coordinates to %s" \
+                %(sampled_clusters_coords_fname))
+    with open(sampled_clusters_coords_fname, "w") as sampled_coords_file:
+        for bed in sampled_clusters_bed:
+            sampled_coords_file.write(str(bed))
+    logger.info("Done!")
+    # Make BedTool out of coordinates
+    sampled_clusters_bed = pybedtools.BedTool(sampled_clusters_coords_fname)
+    logger.info("Outputting shuffled sequences to: %s" \
                 %(sampled_clusters_fname))
-    logger.info("Outputting sequence to: %s" %(sampled_clusters_fname))
-    logger.info("  - Outputting %d sequences" %(len(sampled_clusters_bed)))
-    # Output shuffled clusters as FASTA
-    #for cluster_bed in clusters:
-        # Pick the first gene the cluster maps to
-    #    cluster_gene = cluster_bed.fields[6].split(",")[0]
-    #    gene_bed = gene_ids_to_coords[cluster_gene]
+    t1 = time.time()
+    try:
+        sampled_clusters_bed.sequence(fi=genome_seq_fname,
+                                      fo=sampled_clusters_fname,
+                                      name=True,
+                                      s=True)
+    except pybedtools.helpers.BEDToolsError as bed_error:
+        if "WARNING" in str(bed_error):
+            logger.info("BEDTools produced warning: continuing anyway.")
+        else:
+            logger.critical("BEDTools failed.")
+    t2 = time.time()
+    logger.info("Outputting took %.2f minutes." %((t2 - t1)/60.))
+    logger.info("Cleaning up temporary BED")
+    os.remove(sampled_clusters_coords_fname)
     #    print "Shuffling: ", gene_bed, gene_bed.strand, type(gene_bed.strand)
         # Choose a random starting position
         # gene_interval = \
