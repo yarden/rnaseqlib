@@ -22,6 +22,7 @@ import rnaseqlib.fastq_utils as fastq_utils
 import rnaseqlib.bam.bam_utils as bam_utils
 import rnaseqlib.motif.homer_utils as homer_utils
 import rnaseqlib.motif.meme_utils as meme_utils
+import rnaseqlib.motif.kmer_utils as kmer_utils
 
 # Import all paths
 from rnaseqlib.paths import *
@@ -1269,14 +1270,42 @@ class Pipeline:
             sample.filtered_clusters_seqs_fnames = clusters_seqs_fnames
 
 
-    def output_enriched_kmers(self, sample, kmer_lens=[4,5,6,8,10,12]):
+    def output_motifs(self, sample):
+        """
+        Wrapper to all motif finding methods.
+        """
+        sample.motifs_outdir = os.path.join(self.motifs_dir,
+                                            sample.label)
+        utils.make_dir(sample.motifs_outdir)
+        # Find enriched kmers 
+        self.output_enriched_kmers(sample)
+        # Find motifs
+        self.output_homer_motifs(sample)
+                  
+
+    def output_enriched_kmers(self, sample,
+                              kmer_lens=[4,5,6,8,10,12],
+                              num_shuffles=100):
         """
         Output enriched kmers by kmer counting methods.
         """
         self.logger.info("Outputting enriched motifs for %s" \
                          %(sample.label))
-        # Count kmers in all the enriched kmers
-        
+        # Enriched kmers directory
+        sample.kmers_dir = os.path.join(sample.motifs_outdir, "kmers")
+        utils.make_dir(sample.kmers_dir)
+        # Output enriched Kmers for both types of filtered clusters
+        for bam_type in sample.filtered_clusters_seqs_fnames:
+            clusters_fname = sample.filtered_clusters_seqs_fnames[bam_type]
+            output_dir = os.path.join(sample.kmers_dir,
+                                      "kmers_%s" %(bam_type))
+            utils.make_dir(output_dir)
+            kmer_utils.output_dinuc_enriched_kmers(self.logger,
+                                                   clusters_fname,
+                                                   output_dir,
+                                                   kmer_lens,
+                                                   num_shuffles=100)
+        # Record sample's motifs output directory
 
 
     def output_homer_motifs(self, sample,
@@ -1289,10 +1318,6 @@ class Pipeline:
             # Lengths of motifs to find
             "-len": ",".join(map(str, motif_lens))
             }
-        # Record sample's motifs output directory
-        sample.motifs_outdir = os.path.join(self.motifs_dir,
-                                            sample.label)
-        utils.make_dir(sample.motifs_outdir)
         ##
         ## Run Homer on rRNA-subtracted BAM and unique BAM
         ##
@@ -1339,7 +1364,7 @@ class Pipeline:
                                          self.rna_base.genome)
             self.logger.info("  - Output file: %s" %(bigWig_fname))
         self.logger.info("Done outputting bigWigs.")
-                  
+
     
     def run_analysis(self, sample):
         """
@@ -1362,10 +1387,8 @@ class Pipeline:
             self.output_clusters(sample)
             # Output CLIP sequences
             self.output_clip_sequences(sample)
-            # Output enriched motifs by simple motif analysis
-            self.output_enriched_kmers(sample)
-            # Find motifs
-            self.output_homer_motifs(sample)
+            # Output motifs for sample
+            self.output_motifs(sample)
         return sample
 
 

@@ -283,28 +283,53 @@ def load_fastx_into_ktable(fastx_fname, kmer_len):
     for fastx_entry in fastx_utils.get_fastx_entries(fastx_fname):
         fastx_name, fastx_seq = fastx_entry
         # Skip very short sequences
-        if len(fastx_seq) < kmer_len: continue
+        if len(fastx_seq) < kmer_len:
+            continue
         ktable.consume(fastx_seq)
     t2 = time.time()
-    print "Loading up of seqs into ktable took %.2f seconds" %(t2 - t1)
+    print "Loading up of seqs into ktable took %.2f seconds." %(t2 - t1)
     return ktable
 
 
-def get_enriched_kmers(fasta_fname,
-                       kmer_len=4,
-                       dinuc_matched=True,
-                       num_shuffles=10,
-                       rna=True):
+# def get_enriched_kmers(fasta_fname,
+#                        kmer_len=4,
+#                        dinuc_matched=True,
+#                        num_shuffles=10,
+#                        rna=True):
+#     """
+#     Given a FASTA file, generate dinucleotide shuffles.
+#     """
+#     Kmers(kmer_len, fasta_fname)
+#     ktable = load_fastx_into_ktable(fasta_fname, kmer_len)
+#     # Count kmers in a set of sequence
+# #    for n in range(0, ktable.n_entries()):
+# #        print ktable.reverse_hash(n), ktable.get(n)
+# #        time.sleep(1)
+
+
+def output_dinuc_enriched_kmers(logger,
+                                fasta_fname,
+                                output_dir,
+                                kmer_lens,
+                                num_shuffles=100):
     """
-    Given a FASTA file, generate dinucleotide shuffles.
+    Output enriched kmers in a FASTA file relative to
+    a dinucleotide shuffled version of it.
     """
-    Kmers(kmer_len, fasta_fname)
-    ktable = load_fastx_into_ktable(fasta_fname, kmer_len)
-    print ktable
-    # Count kmers in a set of sequence
-    for n in range(0, ktable.n_entries()):
-        print ktable.reverse_hash(n), ktable.get(n)
-#        time.sleep(1)
+    logger.info("Output dinucleotide enriched Kmers..")
+    logger.info("  - Input FASTA: %s" %(fasta_fname))
+    logger.info("  - Output dir: %s" %(output_dir))
+    utils.make_dir(output_dir)
+    kmers = Kmers(8, fasta_fname=fasta_fname)
+    # Get the enriched kmers
+    results = kmers.get_enriched_kmers(fasta_fname,
+                                       num_shuffles=num_shuffles)
+    output_basename = \
+        "%s.kmers.counts" %(os.path.basename(fasta_fname))
+    enrichment_fname = os.path.join(output_dir, output_basename)
+    # Output enrichment result
+    logger.info("Outputting enriched Kmers to: %s" %(enrichment_fname))
+    kmers.output_enriched_kmers(results, enrichment_fname)
 
 
 if __name__ == "__main__":
