@@ -216,6 +216,10 @@ class Pipeline:
         self.genome_seq_fname = \
             os.path.join(self.genome_dir,
                          "%s.fa" %(self.rna_base.genome))
+        # Use Ensembl genes to annotate the clusters
+        self.genes_gff_fname = \
+            os.path.join(self.rna_base.ucsc_tables_dir,
+                         "ensGene.gff3")
 
 
     def load_rna_base(self):
@@ -1125,20 +1129,16 @@ class Pipeline:
             # Final command: convert, cluster, merge
             t1 = time.time()
             self.logger.info("Filtering clusters..")
-            # Use Ensembl genes to annotate the clusters
-            genes_gff_fname = \
-                os.path.join(self.rna_base.ucsc_tables_dir,
-                             "ensGene.gff3")
-            if not os.path.isfile(genes_gff_fname):
+            if not os.path.isfile(self.genes_gff_fname):
                 self.logger.critical("Cannot annotate clusters with genes " \
                                      "since GFF %s not found." \
-                                     %(genes_gff_fname))
+                                     %(self.genes_gff_fname))
                 sys.exit(1)
             clusters_fname = \
                 clip_utils.output_clip_clusters(self.logger,
                                                 bed_fname_to_use,
                                                 sample.clusters_fnames[bam_label],
-                                                genes_gff_fname,
+                                                self.genes_gff_fname,
                                                 cluster_dist=cluster_dist)
             # Filter the clusters
             sample.filtered_clusters_fnames[bam_label] = \
@@ -1252,6 +1252,15 @@ class Pipeline:
                                         clusters_fname,
                                         clusters_seqs_fnames[bam_type],
                                         s=True)
+            # Output shuffled clusters sequences
+            shuffled_clusters_seqs_dir = \
+                os.path.join(sample.clusters_seqs_dir, "shuffled")
+            clip_utils.output_shuffled_clusters(self.logger,
+                                                clusters_fname,
+                                                shuffled_clusters_seqs_dir,
+                                                self.genes_gff_fname,
+                                                self.genome_seq_fname)
+                                               
         # Record the cluster sequence filenames that were outputted
         # in the sample
         if clusters_type == "all":
@@ -1266,7 +1275,7 @@ class Pipeline:
         """
         self.logger.info("Outputting enriched motifs for %s" \
                          %(sample.label))
-        pass
+        self.logger.info("Creating shuffled versions of motifs...")
 
 
     def output_homer_motifs(self, sample,
