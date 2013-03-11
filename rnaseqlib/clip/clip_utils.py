@@ -174,7 +174,7 @@ def intersect_clusters_with_genes_gff(clusters_bed_fname,
 
 def shuffle_clusters(logger,
                      clusters_fname,
-                     output_fname,
+                     output_dir,
                      genes_gff_fname,
                      num_shuffles=100):
     """
@@ -188,11 +188,22 @@ def shuffle_clusters(logger,
         shuffled entries by cluster_id so that they can be matched later.
       - genes_gff_fname: Genes annotation in GFF format. Used to retrieve the
         gene start/end of each cluster.
+
+    Outputs:
+      - FASTA file with the shuffled cluster sequences
     """
 #    logger.info("Shuffling clusters...")
 #    logger.info("  - Clusters BED: %s" %(clusters_fname))
 #    logger.info("  - Output file: %s" %(output_fname))
 #    logger.info("  - Number of shuffles: %d" %(num_shuffles))
+    clusters_basename = os.path.basename(clusters_fname).rsplit(".", 1)[0]
+    # File containing the sampled clusters coordinates
+    sampled_clusters_fname = \
+        os.path.join(output_dir,
+                     "%s.sampled_clusters.fa" %(clusters_basename))
+    if os.path.isfile(sampled_clusters_fname):
+        pass
+        #logger.info("Found %s, skipping" %(sampled_clusters_fname)
     # Clusters to process
     clusters = pybedtools.BedTool(clusters_fname)
     # Create mapping from cluster to gene start/end
@@ -206,13 +217,74 @@ def shuffle_clusters(logger,
     # Shuffle the clusters:
     # For each cluster, use the current cluster positions
     # as the -exc parameter and the gene start/end positions
-    # as the -inc parameter to shuffleBed.
+    # as then -inc parameter to shuffleBed.
+    # Record number of clusters for which we could sample
+    # random regions
+    num_clusters_sampled = 0
+    num_clusters = 0
+    # Set of all intervals sampled by 
+    sampled_cluster_intervals = []
     for cluster_bed in clusters:
+        num_clusters += 1
         # Pick the first gene the cluster maps to
         cluster_gene = cluster_bed.fields[6].split(",")[0]
+        if cluster_gene == ".":
+            # Cluster does not overlap with gene, so skip it
+            continue
         gene_bed = gene_ids_to_coords[cluster_gene]
-        print "Shuffling: ", gene_bed, gene_bed.strand, type(gene_bed.strand)
-        
+        cluster_size = cluster_bed.stop - cluster_bed.start
+        cluster_interval = (cluster_bed.start,
+                            cluster_bed.stop)
+        cluster_coords = "%s:%d-%d:%s" %(cluster_bed.chrom,
+                                         cluster_bed.start,
+                                         cluster_bed.stop,
+                                         cluster_bed.strand)
+        # Name of cluster
+        cluster_id = cluster_bed.fields[4]
+        intervals = \
+            bedtools_utils.sample_intervals(gene_bed.start, gene_bed.stop,
+                                            cluster_size,
+                                            num_intervals=10,
+                                            exclude_interval=cluster_interval)
+        if intervals is None:
+            print "Could not find interval for: ", cluster_bed
+            continue
+        num_clusters_sampled += 1
+        # Record these as BED intervals
+        for shuffle_num, curr_interval in enumerate(intervals):
+            coords_str = "%s:%d-%d:%s" %(cluster_bed.chrom,
+                                         curr_interval[0],
+                                         curr_interval[1],
+                                         cluster_bed.strand)
+            # The name of the interval is:
+            # shuffled_coordinates;cluster_id;shuffle_num;cluster_coords;gene_id
+            interval_name = "%s;%s;%d;%s;%s" %(coords_str,
+                                               cluster_id,
+                                               shuffle_num,
+                                               cluster_coords,
+                                               cluster_id)
+            curr_interval_bed = \
+                pybedtools.create_interval_from_list([cluster_bed.chrom,
+                                                      str(curr_interval[0]),
+                                                      str(curr_interval[1]),
+                                                      interval_name,
+                                                      ".",
+                                                      str(cluster_bed.strand)])
+            sampled_cluster_intervals.append(curr_interval_bed)
+            print curr_interval_bed
+    print "Sampled %d intervals for %d out of %d clusters." \
+        %(num_shuffles,
+          num_clusters_sampled,
+          num_clusters)
+    # Make BEDTool out of cluster intervals
+    sampled_clusters_bed = pybedtools.BedTool(sampled_cluster_intervals)
+    print [x.fields for x in list(sampled_clusters_bed[0:10])]
+    #for cluster_bed in clusters:
+        # Pick the first gene the cluster maps to
+    #    cluster_gene = cluster_bed.fields[6].split(",")[0]
+    #    gene_bed = gene_ids_to_coords[cluster_gene]
+    #    print "Shuffling: ", gene_bed, gene_bed.strand, type(gene_bed.strand)
+        # Choose a random starting position
         # gene_interval = \
         #     pybedtools.create_interval_from_list([gene_bed.chrom,
         #                                           str(gene_bed.start),
@@ -245,7 +317,6 @@ def shuffle_clusters(logger,
     ##   - Step 2: run shuffleBed for this cluster
     ## 
     #pybedtools.shuffle()
-    
     
 
 def output_clip_clusters(logger,

@@ -13,6 +13,7 @@ from collections import defaultdict
 
 import rnaseqlib
 import rnaseqlib.utils as utils
+import rnaseqlib.coords_utils as coords_utils
 
 import pybedtools
 
@@ -27,27 +28,54 @@ fastaFromBed_path = utils.which("fastaFromBed")
 
 
 def sample_intervals(start, end, interval_size,
-                     num_intervals=1
-                     exclude_interval=None):
+                     num_intervals=1,
+                     exclude_interval=None,
+                     max_num_tries=100):
     """
     Sample interval of size 'interval_size' on [start, end)
     using a naive sampling approach.
     """
     intervals = []
     last_start = end - interval_size
+    possible_interval_size = last_start - start
+    if possible_interval_size < interval_size:
+        # Possible interval to sample from too small
+        # to get something of size 'interval_size'
+        return None
     for n in range(num_intervals):
-        interval_start = np.random.randint(low=start,
-                                           high=last_start)
-        # 
-        interval_end = interval_start + interval_size
-        if exclude_interval is not None:
-            # Check that the exclusion interval is not present
-            # if we were given one
-            exclude_start, exclude_end = exclude_interval
-            if pybedtools.overlap(interval_start, interval_end,
-                                  exclude_start, exclude_end):
-                
-        
+        interval_accepted = False
+        # Sample intervals until one is accepted
+        curr_interval = None
+        num_tries = 0
+        while not interval_accepted:
+            # If the number of tries exceeds a limit, raise
+            # exception
+            if num_tries >= max_num_tries:
+                # print "Cannot sample interval on %d, %d " \
+                #       "while excluding %d, %d" \
+                #                  %(start,
+                #                    end,
+                #                    exclude_interval[0],
+                #                    exclude_interval[1])
+                return None
+            interval_start = np.random.randint(low=start,
+                                               high=last_start)
+            interval_end = interval_start + interval_size
+            curr_interval = (interval_start, interval_end)
+            if exclude_interval is not None:
+                # Check that the exclusion interval is not present
+                # if we were given one.
+                interval_overlap = coords_utils.overlap(curr_interval,
+                                                        exclude_interval)
+                if interval_overlap <= 0:
+                    # No overlap with exclusion interval, so accept it
+                    interval_accepted = True
+            else:
+                interval_accepted = True
+            num_tries += 1
+        # Accumulate accepted intervals
+        intervals.append(curr_interval)
+    return intervals
     
 
 def fastaFromBed(logger,

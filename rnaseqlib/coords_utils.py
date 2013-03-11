@@ -6,10 +6,10 @@
 import pybedtools
 
 
-def coords_overlap(first_coords, second_coords):
+def overlap(first_coords, second_coords):
     """
     Return overlap between two intervals.
     """
     overlap = pybedtools.overlap(first_coords[0], second_coords[0],
-                                 first_coords[1], second_coords[2])
+                                 first_coords[1], second_coords[1])
     return overlap
