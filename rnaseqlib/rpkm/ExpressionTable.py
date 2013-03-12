@@ -382,7 +382,6 @@ class ExpressionTable:
         if delimiter == None:
             delimiter = self.delimiter
         print "Loading RPKM table from: %s" %(rpkm_filename)
-
         # Load table
         self.data = pandas.read_table(rpkm_filename,
                                       sep=delimiter)

@@ -7,6 +7,8 @@ import time
 import glob
 import re
 
+import operator
+
 from os.path import basename
 from urlparse import urlsplit
 
@@ -208,6 +210,24 @@ def unique_list(l):
         uniq_l.append(elt)
         seen[elt] = True
     return uniq_l
+
+
+def min_item(values):
+    """
+    Return minimum value index, minimum value
+    """
+    min_index, min_value = min(enumerate(values),
+                               key=operator.itemgetter(1))
+    return min_index, min_value
+
+
+def max_item(values):
+    """
+    Return maximum value index, maximum value
+    """
+    max_index, max_value = max(enumerate(values),
+                               key=operator.itemgetter(1))
+    return max_index, max_value
 
 
 def get_pairwise_from_sets(first_samples, second_samples):

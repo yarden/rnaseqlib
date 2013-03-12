@@ -95,7 +95,8 @@ class Kmers:
             # Take ratio of target count to mean of shuffled values
             target_to_shuffled_ratio = \
                 kmer_entry["counts"] / kmer_entry["shuffled_mean"]
-            kmer_entry.update({"target_to_shuffled": target_to_shuffled_ratio})
+            kmer_entry.update({"target_to_shuffled":
+                               target_to_shuffled_ratio})
             kmer_entries.append(kmer_entry)
         kmer_df = pandas.DataFrame(kmer_entries)
         print "Outputting kmer counts to: %s" %(output_fname)
@@ -129,7 +130,7 @@ class Kmers:
         all_shuffled_counts = []
         for shuffled_fname in shuffled_fasta_fnames:
             shuffled_counts = self.count_kmers(shuffled_fname,
-                                                    output_dir)
+                                               output_dir)
             all_shuffled_counts.append(shuffled_counts)
         result_counts = {"counts": kmer_counts,
                          "shuffled_counts": all_shuffled_counts}
@@ -163,6 +164,9 @@ class Kmers:
                 jf_utils.jf_counts_to_dict(self.jf_counts_fname)
         else:
             raise Exception, "Do not support %s" %(method)
+        # Sort the kmers by counts
+        kmer_counts = sorted(kmer_counts.iteritems(),
+                             key=operator.itemgetter(1))
         return kmer_counts
 
 

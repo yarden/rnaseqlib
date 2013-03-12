@@ -41,7 +41,6 @@ def output_gff_event_seqs(event_ids, input_fasta_fname, output_fasta_fname):
         for entry in fastx_utils.get_fastx_entries(input_fasta_fname):
             fasta_name, fasta_seq = entry
             if is_event_fasta(fasta_name[1:]):
-                print "relevant record: ", entry
                 fasta_out.write("%s\n" %(fasta_name))
                 fasta_out.write("%s\n" %(fasta_seq))
     
