@@ -289,22 +289,6 @@ def load_fastx_into_ktable(fastx_fname, kmer_len):
     return ktable
 
 
-# def get_enriched_kmers(fasta_fname,
-#                        kmer_len=4,
-#                        dinuc_matched=True,
-#                        num_shuffles=10,
-#                        rna=True):
-#     """
-#     Given a FASTA file, generate dinucleotide shuffles.
-#     """
-#     Kmers(kmer_len, fasta_fname)
-#     ktable = load_fastx_into_ktable(fasta_fname, kmer_len)
-#     # Count kmers in a set of sequence
-# #    for n in range(0, ktable.n_entries()):
-# #        print ktable.reverse_hash(n), ktable.get(n)
-# #        time.sleep(1)
-
-
 def output_dinuc_enriched_kmers(logger,
                                 fasta_fname,
                                 output_dir,
@@ -333,26 +317,11 @@ def output_dinuc_enriched_kmers(logger,
 
 
 if __name__ == "__main__":
-    #f = os.path.expanduser("~/jaen/gff-events/mm9/with_introns/sanitized/seqs/erbin.fa")
-    #f = os.path.expanduser("~/jaen/gff-events/mm9/with_introns/sanitized/seqs/SE_shortest_noAceView.mm9.with_introns.event_seqs.flank_intronic_-260_-10_10_260.fa")
-    #get_enriched_kmers(f, kmer_len=4)
-    #kmers = Kmers(5, fasta_fname=f)
-    #kmers.count_kmers("./")
-    #print kmers.get_counts("AAAA")
-    #print kmers.get_sorted_kmers_by_count()
-
-    #import rnaseqlib.gff.gffutils_helpers as gff_helpers
-    #gff_helpers.get_gff_event_seqs(["chr13:104623578:104625108:-@chr13:104620268:104620411:-@chr13:104617987:104618103:-"],
-    #                               f,
-    #                               "./events.fa")
-
-    f = os.path.expanduser("~/jaen/FGC0202_s_5.ribosub.sorted.clusters.num_reads_8.depth_0.mins_20_maxs_500.fa")
-    #f = os.path.expanduser("~/jaen/FGC0202_s_5.ribosub.sorted.clusters.fa")
-    #output_dinuc_shuffled_fasta(f, "./shuffled.fa")
-    kmers = Kmers(8, fasta_fname=f)
+    pass
+    #kmers = Kmers(8, fasta_fname=f)
     # Get enriched kmers
-    results = kmers.get_enriched_kmers("./", num_shuffles=20)
-    kmers.output_enriched_kmers(results, "./results.counts")
+    #results = kmers.get_enriched_kmers("./", num_shuffles=20)
+    #kmers.output_enriched_kmers(results, "./results.counts")
 
     
         
