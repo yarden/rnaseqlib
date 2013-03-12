@@ -63,9 +63,7 @@ class Kmers:
             shuffled_basename = "%s.shuffle_%d.fa" %(shuffled_basename,
                                                      shuffle_num)
             shuffled_fname = os.path.join(output_dir, shuffled_basename)
-            if os.path.isfile(shuffled_fname):
-                print "Found %s, not regenerating..." %(shuffled_fname)
-            else:
+            if not os.path.isfile(shuffled_fname):
                 output_dinuc_shuffled_fasta(self.fasta_fname,
                                             shuffled_fname)
             shuffled_fnames.append(shuffled_fname)
@@ -320,16 +318,18 @@ def output_dinuc_enriched_kmers(logger,
     logger.info("  - Input FASTA: %s" %(fasta_fname))
     logger.info("  - Output dir: %s" %(output_dir))
     utils.make_dir(output_dir)
-    kmers = Kmers(8, fasta_fname=fasta_fname)
-    # Get the enriched kmers
-    results = kmers.get_enriched_kmers(fasta_fname,
-                                       num_shuffles=num_shuffles)
-    output_basename = \
-        "%s.kmers.counts" %(os.path.basename(fasta_fname))
-    enrichment_fname = os.path.join(output_dir, output_basename)
-    # Output enrichment result
-    logger.info("Outputting enriched Kmers to: %s" %(enrichment_fname))
-    kmers.output_enriched_kmers(results, enrichment_fname)
+    for kmer_len in kmer_lens:
+        kmers = Kmers(kmer_len, fasta_fname=fasta_fname)
+        # Get the enriched kmers
+        results = kmers.get_enriched_kmers(output_dir,
+                                           num_shuffles=num_shuffles)
+        output_basename = \
+            "%s.%d_kmers.counts" %(os.path.basename(fasta_fname),
+                                   kmer_len)
+        enrichment_fname = os.path.join(output_dir, output_basename)
+        # Output enrichment result
+        logger.info("Outputting enriched Kmers to: %s" %(enrichment_fname))
+        kmers.output_enriched_kmers(results, enrichment_fname)
 
 
 if __name__ == "__main__":

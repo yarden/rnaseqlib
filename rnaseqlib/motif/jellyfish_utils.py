@@ -50,13 +50,15 @@ def jf_count_kmers(fastx_fname, kmer_len,
         sys.exit(1)
     # Count kmers, use temporary file for db
     fastx_basename = os.path.basename(fastx_fname)
+    output_dir = os.path.join(output_dir, "jf_counts")
+    utils.make_dir(output_dir)
     db_fname = "%s.jf" %(os.path.join(output_dir, fastx_basename))
     output_fname = "%s_counts" %(db_fname)
     if os.path.isfile(db_fname):
-        print "Overwriting %s" %(db_fname)
+        #print "Overwriting %s" %(db_fname)
         os.remove(db_fname)
     if os.path.isfile(output_fname):
-        print "Overwriting %s" %(output_fname)
+        #print "Overwriting %s" %(output_fname)
         os.remove(output_fname)
     count_cmd = "%s count -m %d -o %s -s %d %s" \
         %(jf_path,
@@ -64,7 +66,7 @@ def jf_count_kmers(fastx_fname, kmer_len,
           db_fname,
           hash_size,
           fastx_fname)
-    print "Counting kmers with jf: %s" %(count_cmd)
+    #print "Counting kmers with jf: %s" %(count_cmd)
     ret_val = os.system(count_cmd)
     if ret_val != 0:
         raise Exception, "jellyfish count call failed."

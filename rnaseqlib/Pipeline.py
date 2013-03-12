@@ -1284,7 +1284,7 @@ class Pipeline:
                   
 
     def output_enriched_kmers(self, sample,
-                              kmer_lens=[4,5,6,8,10,12],
+                              kmer_lens=[4,5,6,7,8],
                               num_shuffles=100):
         """
         Output enriched kmers by kmer counting methods.
