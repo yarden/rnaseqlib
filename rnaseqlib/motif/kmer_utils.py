@@ -164,9 +164,6 @@ class Kmers:
                 jf_utils.jf_counts_to_dict(self.jf_counts_fname)
         else:
             raise Exception, "Do not support %s" %(method)
-        # Sort the kmers by counts
-        kmer_counts = sorted(kmer_counts.iteritems(),
-                             key=operator.itemgetter(1))
         return kmer_counts
 
 
@@ -177,9 +174,9 @@ class Kmers:
         pass
 
             
-    def get_counts(self, kmer):
+    def get_counts(self, kmer, as_df=False):
         """
-        Get counts for kmer
+        Get counts for kmer. 
         """
         if len(kmer) != self.kmer_len:
             print "WARNING: %s is not of indexed length %d" \
@@ -230,6 +227,24 @@ class Kmers:
             # Kmer counts
             counts = ktable.get(n)
             self.kmer_counts[kmer] = counts
+
+
+def counts_to_df(counts, label=None):
+    """
+    Convert a dictionary of counts to a pandas DataFrame.
+    If label is given, make the 'counts' field into 'label_counts'.
+    """
+    entries = []
+    for kmer in counts:
+        entry = {"kmer": kmer}
+        if label is not None:
+            entry["counts"] = counts[kmer]
+        else:
+            entry["counts_%s" %(label)] = counts[kmer]
+        entries.append(entry)
+    df = pandas.DataFrame(df)
+    return df
+        
 
 
 def enumerate_kmers(kmer_len):

@@ -5,6 +5,7 @@
 import os
 import sys
 import time
+import operator
 
 import rnaseqlib
 import rnaseqlib.motif.kmer_utils as kmer_utils
@@ -32,11 +33,24 @@ class MotifSet:
         # Define Kmer tables for each kmer length
         self.exp_kmer_tables = []
         self.control_kmer_tables = []
+        
+
+    def get_enriched_kmers(self, kmer_len, exp_counts, control_counts):
+        """
+        Get kmers enriched in the experimental sample compared to
+        the control for a particular kmer length.
+        """
+        all_kmers = kmer_utils.enumerate_kmers(kmer_len)
+        # Make kmers into dataframe
+        exp_df = kmer_utils.counts_to_df(exp_counts)
+        control_df = kmer_utils.counts_to_df(control_exps)
+        print exp_df
+        print control_df
 
 
-    def get_enriched_kmers():
+    def output_enriched_kmers(self):
         for kmer_len in self.kmer_lens:
-            print "Counts for: ", kmer_len
+            print "Counting kmers of length %d" %(kmer_len)
             exp_kmers = \
                 kmer_utils.Kmers(kmer_len,
                                  fasta_fname=self.exp_seqs_fname)
@@ -45,20 +59,23 @@ class MotifSet:
                                  fasta_fname=self.control_seqs_fname)
             # Count kmers in exp and control sequences
             exp_counts = \
-                exp_kmers.count_kmers(self.exps_seqs_fname,
+                exp_kmers.count_kmers(self.exp_seqs_fname,
                                       self.output_dir)
             control_counts = \
                 control_kmers.count_kmers(self.control_seqs_fname,
                                           self.output_dir)
             # Sort the kmers by counts
-            exp_hits = sorted(exp_counts.iteritems(),
-                              key=operator.itemgetter(1))
-            control_hits = sorted(control_counts.iteritems(),
-                                  key=operator.itemgetter(1))
-            print "EXP HITS TOP 10"
-            print exp_hits[0:10]
-            print "CONTROL HITS TOP 10"
-            print control_hits[0:10]
+            self.get_enriched_kmers(kmer_len, exp_counts, control_counts)
+            # exp_hits = sorted(exp_counts.iteritems(),
+            #                   key=operator.itemgetter(1),
+            #                   reverse=True)
+            # control_hits = sorted(control_counts.iteritems(),
+            #                       key=operator.itemgetter(1),
+            #                       reverse=True)
+            # print "EXP HITS TOP 10"
+            # print exp_hits[0:10]
+            # print "CONTROL HITS TOP 10"
+            # print control_hits[0:10]
             
         
 

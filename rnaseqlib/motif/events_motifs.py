@@ -8,7 +8,7 @@ import glob
 
 import rnaseqlib
 import rnaseqlib.utils as utils
-import rnaseqlib.motif.MotifSet as MotifSet
+import rnaseqlib.motif.MotifSet as motif_set
 
 import rnaseqlib.gff.gffutils_helpers as gff_helpers
 
@@ -29,7 +29,8 @@ import rnaseqlib.gff.gffutils_helpers as gff_helpers
 def compare_events_motifs(exp_event_ids, control_event_ids,
                           all_events_seqs_fname,
                           output_dir,
-                          kmer_lens=[4,5,6,7,8,10,12]):
+                          kmer_lens=[6]):
+#                          kmer_lens=[4,5,6,7,8]):
     """
     Compare the motifs in two sets of events.
 
@@ -91,11 +92,13 @@ def output_events_kmer_counts(exp_fasta_fname,
     event_seqs = {"exp": exp_fasta_fname,
                   "control": control_fasta_fname}
     print "Outputting events kmer counts.."
-    motif_set = MotifSet(event_seqs["exp"],
-                         event_seqs["control"],
-                         kmer_lens,
-                         output_dir)
-    motif_set.get_enriched_kmers()
+    # Motifs comparison between experimental and control
+    # sets of sequences
+    motif_comp = motif_set.MotifSet(event_seqs["exp"],
+                                    event_seqs["control"],
+                                    kmer_lens,
+                                    output_dir)
+    motif_comp.get_enriched_kmers()
 
 
 if __name__ == "__main__":
