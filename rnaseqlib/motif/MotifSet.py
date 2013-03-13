@@ -42,10 +42,24 @@ class MotifSet:
         """
         all_kmers = kmer_utils.enumerate_kmers(kmer_len)
         # Make kmers into dataframe
-        exp_df = kmer_utils.counts_to_df(exp_counts)
-        control_df = kmer_utils.counts_to_df(control_exps)
-        print exp_df
-        print control_df
+        exp_df = kmer_utils.counts_to_df(exp_counts, label="exp")
+        control_df = kmer_utils.counts_to_df(control_counts, label="control")
+        all_df = exp_df.join(control_df, how="outer")
+        print "---*"*5
+        print "--EXP",all_df["counts_exp"]
+        print "--CTRL",all_df["counts_control"]
+        all_df["exp_over_control"] = \
+            all_df["counts_exp"] / all_df["counts_control"]
+        # Sort by fold enrichment
+        all_df.sort(columns="exp_over_control",
+                    inplace=True,
+                    ascending=False)
+        all_df.to_csv(os.path.join(self.output_dir, "enrichment.txt"),
+                      sep="\t",
+                      float_format="%.3f")
+        print all_df["exp_over_control"]
+        print all_df[0:100]
+        
 
 
     def output_enriched_kmers(self):

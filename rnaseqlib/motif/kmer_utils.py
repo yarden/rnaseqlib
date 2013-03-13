@@ -233,16 +233,19 @@ def counts_to_df(counts, label=None):
     """
     Convert a dictionary of counts to a pandas DataFrame.
     If label is given, make the 'counts' field into 'label_counts'.
+
+    Index DataFrame by the kmer name.
     """
     entries = []
     for kmer in counts:
         entry = {"kmer": kmer}
         if label is not None:
-            entry["counts"] = counts[kmer]
-        else:
             entry["counts_%s" %(label)] = counts[kmer]
+        else:
+            entry["counts"] = counts[kmer]
         entries.append(entry)
-    df = pandas.DataFrame(df)
+    df = pandas.DataFrame(entries)
+    df = df.set_index("kmer")
     return df
         
 

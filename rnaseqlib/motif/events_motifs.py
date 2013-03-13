@@ -29,7 +29,7 @@ import rnaseqlib.gff.gffutils_helpers as gff_helpers
 def compare_events_motifs(exp_event_ids, control_event_ids,
                           all_events_seqs_fname,
                           output_dir,
-                          kmer_lens=[6]):
+                          kmer_lens=[5]):
 #                          kmer_lens=[4,5,6,7,8]):
     """
     Compare the motifs in two sets of events.
@@ -98,7 +98,7 @@ def output_events_kmer_counts(exp_fasta_fname,
                                     event_seqs["control"],
                                     kmer_lens,
                                     output_dir)
-    motif_comp.get_enriched_kmers()
+    motif_comp.output_enriched_kmers()
 
 
 if __name__ == "__main__":
