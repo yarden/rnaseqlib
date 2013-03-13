@@ -324,15 +324,15 @@ def error_check_intronic_coords(a, b, c, d,
     # length
     up_diff = abs(abs(a) - up_intron_len) 
     if (abs(a) > up_intron_len):
-        print "\'a\' coordinate must be less than %d (upstream intron length.)" \
+#        print "\'a\' coordinate must be less than %d (upstream intron length.)" \
               %(up_intron_len)
 #        print "Trimming by %d nt" %(trim_len)
         # Make 'a' shorter by adding to it
         a -= (up_diff + trim_len)
     dn_diff = abs(d - dn_intron_len)
     if (d > dn_intron_len):
-        print "\'d\' coordinate must be less than %d (downstream intron length." \
-              %(dn_intron_len)
+#        print "\'d\' coordinate must be less than %d (downstream intron length.)" \
+#              %(dn_intron_len)
 #        print "Trimming by %d nt" %(trim_len)
         # Make 'd' shorter by subtracting from it
         d += (dn_diff - trim_len)
