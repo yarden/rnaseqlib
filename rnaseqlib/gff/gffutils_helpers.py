@@ -20,7 +20,8 @@ import misopy.gff_utils as miso_gff_utils
 import misopy.Gene as gene_utils
 
 
-def output_gff_event_seqs(event_ids, input_fasta_fname, output_fasta_fname):
+def output_gff_event_seqs(event_ids, input_fasta_fname, output_fasta_fname,
+                          entry_types=None):
     """
     Given a set of event ids, pull out their sequences from an
     input fasta filename and output these to a separate FASTA file.
@@ -40,7 +41,15 @@ def output_gff_event_seqs(event_ids, input_fasta_fname, output_fasta_fname):
     with open(output_fasta_fname, "w") as fasta_out:
         for entry in fastx_utils.get_fastx_entries(input_fasta_fname):
             fasta_name, fasta_seq = entry
+            entry_type = fasta_name.split(";")[2]
             if is_event_fasta(fasta_name[1:]):
+                # If given entry types, check that this sequence
+                # is of one of the right entry types; otherwise
+                # skip it
+                if (entry_types is not None) and \
+                   (entry_type not in entry_types):
+                    # Not of correct entry type
+                    continue
                 fasta_out.write("%s\n" %(fasta_name))
                 fasta_out.write("%s\n" %(fasta_seq))
     

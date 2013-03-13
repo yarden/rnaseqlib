@@ -88,21 +88,22 @@ def compare_events_motifs(exp_event_ids, control_event_ids,
     
         
 
-def output_event_enriched_kmers(exp_fasta_fname,
-                                control_fasta_fname,
+def output_event_enriched_kmers(exp_fastas
+                                control_fastas,
                                 kmer_lens,
                                 output_dir):
     """
-    Output kmers enriched in events.
+    Output kmers enriched in events. Compare experimental and control
+    sets separately for exonic and intronic sequences.
     """
     event_seqs = {"exp": exp_fasta_fname,
                   "control": control_fasta_fname}
-    print "Outputting events kmer counts.."
+    print "Outputting events kmer counts..."
     # Motifs comparison between experimental and control
     # sets of sequences
-    motif_comp = motif_set.MotifSet(event_seqs["exp"],
-                                    event_seqs["control"],
-                                    kmer_lens,
+    exonic_motif_comp = motif_set.MotifSet(event_seqs["exp"],
+                                           event_seqs["control"],
+                                           kmer_lens,
                                     output_dir)
     motif_comp.output_enriched_kmers()
 

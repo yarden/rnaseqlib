@@ -93,11 +93,22 @@ class MotifSet:
             control_dinuc_results = \
                 control_kmers.output_enriched_kmers(control_dinuc_kmers,
                                                     control_dinuc_enriched_fname)
+            # Remove extraneous columns
+            cols = [c for c in exp_dinuc_results.columns \
+                    if not c.startswith("shuffled_counts")]
+            exp_dinuc_results = exp_dinuc_results[cols]
+            control_dinuc_results = control_dinuc_results[cols]
             # Determine enriched kmers now by comparing the ranks
+            top_n = 20
             print "Enriched exp: "
-            print exp_dinuc_results[0:20]
-
+            print "top:"
+            print exp_dinuc_results.head(n=top_n)
+            print "bottom:"
+            print exp_dinuc_results.tail(n=top_n)
             print "Enriched CONTROL: "
-            print control_dinuc_results[0:20]
+            print "top:"
+            print control_dinuc_results.head(n=top_n)
+            print "bottom:"
+            print control_dinuc_results.tail(n=top_n)
         
 

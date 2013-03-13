@@ -289,7 +289,10 @@ def output_fasta_seqs_from_gff(gff_fname,
                                      str(gff_rec.start),
                                      str(gff_rec.stop),
                                      gff_rec.strand)
-        gff_rec[2] = "%s;%s" %(gff_rec.attrs["ID"], rec_coords)
+        gff_type = gff_rec[1]
+        gff_rec[2] = "%s;%s;%s" %(gff_rec.attrs["ID"],
+                                  rec_coords,
+                                  gff_type)
         return gff_rec
     gff_tool = pybedtools.BedTool(gff_fname)
     if use_gff_id:
@@ -323,14 +326,14 @@ def error_check_intronic_coords(a, b, c, d,
     if (abs(a) > up_intron_len):
         print "\'a\' coordinate must be less than %d (upstream intron length.)" \
               %(up_intron_len)
-        print "Trimming by %d nt" %(trim_len)
+#        print "Trimming by %d nt" %(trim_len)
         # Make 'a' shorter by adding to it
         a -= (up_diff + trim_len)
     dn_diff = abs(d - dn_intron_len)
     if (d > dn_intron_len):
         print "\'d\' coordinate must be less than %d (downstream intron length." \
               %(dn_intron_len)
-        print "Trimming by %d nt" %(trim_len)
+#        print "Trimming by %d nt" %(trim_len)
         # Make 'd' shorter by subtracting from it
         d += (dn_diff - trim_len)
     return a, b, c, d
