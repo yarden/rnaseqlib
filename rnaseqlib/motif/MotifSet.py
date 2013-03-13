@@ -45,11 +45,8 @@ class MotifSet:
         exp_df = kmer_utils.counts_to_df(exp_counts, label="exp")
         control_df = kmer_utils.counts_to_df(control_counts, label="control")
         all_df = exp_df.join(control_df, how="outer")
-        print "---*"*5
-        print "--EXP",all_df["counts_exp"]
-        print "--CTRL",all_df["counts_control"]
         all_df["exp_over_control"] = \
-            all_df["counts_exp"] / all_df["counts_control"]
+            all_df["counts_exp"] / all_df["counts_control"].apply(float)
         # Sort by fold enrichment
         all_df.sort(columns="exp_over_control",
                     inplace=True,
@@ -61,35 +58,46 @@ class MotifSet:
         print all_df[0:100]
         
 
+    def output_enriched_kmers(self, num_shuffles=50):
+        """
+        Output kmers enriched in experimental set versus control.
 
-    def output_enriched_kmers(self):
+        Find motifs representative of each set by finding
+        motifs enriched in it compared to dinucleotide shuffles.
+        """
         for kmer_len in self.kmer_lens:
             print "Counting kmers of length %d" %(kmer_len)
+            exp_dinuc_enriched_fname = \
+                os.path.join(self.output_dir,
+                             "exp_dinuc_enriched.%d_kmer.txt" %(kmer_len))
             exp_kmers = \
                 kmer_utils.Kmers(kmer_len,
                                  fasta_fname=self.exp_seqs_fname)
+            # Count Kmers and output the ones that are enriched
+            exp_dinuc_kmers = \
+                exp_kmers.get_enriched_kmers(self.output_dir,
+                                             num_shuffles=num_shuffles)
+            exp_dinuc_results = \
+                exp_kmers.output_enriched_kmers(exp_dinuc_kmers,
+                                                exp_dinuc_enriched_fname)
+            # Do same for control sequences
+            control_dinuc_enriched_fname = \
+                os.path.join(self.output_dir,
+                             "control_dinuc_enriched.%d_kmer.txt" %(kmer_len))
             control_kmers = \
                 kmer_utils.Kmers(kmer_len,
                                  fasta_fname=self.control_seqs_fname)
-            # Count kmers in exp and control sequences
-            exp_counts = \
-                exp_kmers.count_kmers(self.exp_seqs_fname,
-                                      self.output_dir)
-            control_counts = \
-                control_kmers.count_kmers(self.control_seqs_fname,
-                                          self.output_dir)
-            # Sort the kmers by counts
-            self.get_enriched_kmers(kmer_len, exp_counts, control_counts)
-            # exp_hits = sorted(exp_counts.iteritems(),
-            #                   key=operator.itemgetter(1),
-            #                   reverse=True)
-            # control_hits = sorted(control_counts.iteritems(),
-            #                       key=operator.itemgetter(1),
-            #                       reverse=True)
-            # print "EXP HITS TOP 10"
-            # print exp_hits[0:10]
-            # print "CONTROL HITS TOP 10"
-            # print control_hits[0:10]
-            
+            control_dinuc_kmers = \
+                control_kmers.get_enriched_kmers(self.output_dir,
+                                                 num_shuffles=num_shuffles)
+            control_dinuc_results = \
+                control_kmers.output_enriched_kmers(control_dinuc_kmers,
+                                                    control_dinuc_enriched_fname)
+            # Determine enriched kmers now by comparing the ranks
+            print "Enriched exp: "
+            print exp_dinuc_results[0:20]
+
+            print "Enriched CONTROL: "
+            print control_dinuc_results[0:20]
         
 

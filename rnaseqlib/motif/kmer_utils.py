@@ -74,6 +74,10 @@ class Kmers:
 
 
     def output_enriched_kmers(self, result_counts, output_fname):
+        """
+        Output Kmers that are enriched relative to dinucleotide shuffles
+        of the sequences.
+        """
         kmer_entries = []
         shuffled_counts = result_counts["shuffled_counts"]
         for kmer in self.kmers:
@@ -111,6 +115,7 @@ class Kmers:
                        sep="\t",
                        index=False,
                        cols=column_order)
+        return kmer_df
             
 
     def get_enriched_kmers(self, output_dir, num_shuffles=1):

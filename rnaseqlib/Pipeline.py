@@ -1327,14 +1327,18 @@ class Pipeline:
             homer_utils.run_homer(self.logger,
                                   sample.filtered_clusters_fnames[bam_label],
                                   self.rna_base.genome,
-                                  os.path.join(sample.motifs_outdir, "no_rna"),
+                                  os.path.join(sample.motifs_outdir,
+                                               bam_label,
+                                               "no_rna"),
                                   homer_params)
             homer_params["-rna"] = ""
             self.logger.info("with -rna: ")
             homer_utils.run_homer(self.logger,
                                   sample.filtered_clusters_fnames[bam_label],
                                   self.rna_base.genome,
-                                  os.path.join(sample.motifs_outdir, "rna"),
+                                  os.path.join(sample.motifs_outdir,
+                                               bam_label,
+                                               "rna"),
                                   homer_params)
 
 

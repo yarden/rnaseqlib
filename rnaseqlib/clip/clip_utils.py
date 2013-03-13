@@ -97,8 +97,8 @@ def check_clip_utils(logger,
 
 
 def filter_clusters(logger, clusters_bed_fname, output_dir,
-                    num_reads=8,
-                    depth=0,
+                    num_reads=25,
+                    depth=float(25),
                     min_size=20,
                     max_size=500):
     """

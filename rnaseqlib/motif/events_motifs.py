@@ -33,6 +33,9 @@ def compare_events_motifs(exp_event_ids, control_event_ids,
 #                          kmer_lens=[4,5,6,7,8]):
     """
     Compare the motifs in two sets of events.
+    For both the experimental set and the control set, determine the motifs
+    that are dinucleotide shuffled enriched.  Then compare the enriched motifs
+    in either sample.
 
       - exp_event_ids: set of experimental event IDs
       - control_event_ids: set of control event IDs
@@ -57,15 +60,18 @@ def compare_events_motifs(exp_event_ids, control_event_ids,
                                       all_events_seqs_fname,
                                       exp_seqs_fname)
     control_seqs_fname = os.path.join(seqs_dir, "control_events.fa")
+    ###
+    ### TODO: MODIFY THIS TO OUTPUT SEPARATE SEQS FOR EXONS/INTRONS
+    ###
     gff_helpers.output_gff_event_seqs(control_event_ids,
                                       all_events_seqs_fname,
                                       control_seqs_fname)
     # Output kmer counts for each event
     counts_dir = os.path.join(output_dir, "event_counts")
-    output_events_kmer_counts(exp_seqs_fname,
-                              control_seqs_fname,
-                              kmer_lens,
-                              output_dir)
+    output_event_enriched_kmers(exp_seqs_fname,
+                                control_seqs_fname,
+                                kmer_lens,
+                                output_dir)
     # Compile counts together... make a two columns
     # format
     #
@@ -82,12 +88,12 @@ def compare_events_motifs(exp_event_ids, control_event_ids,
     
         
 
-def output_events_kmer_counts(exp_fasta_fname,
-                              control_fasta_fname,
-                              kmer_lens,
-                              output_dir):
+def output_event_enriched_kmers(exp_fasta_fname,
+                                control_fasta_fname,
+                                kmer_lens,
+                                output_dir):
     """
-    Output sequences for experimental (exp) and control event IDs
+    Output kmers enriched in events.
     """
     event_seqs = {"exp": exp_fasta_fname,
                   "control": control_fasta_fname}
