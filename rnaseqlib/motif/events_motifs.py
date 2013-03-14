@@ -6,6 +6,11 @@ import sys
 import time
 import glob
 
+import scipy
+import scipy.stats
+
+import pandas
+
 import rnaseqlib
 import rnaseqlib.utils as utils
 import rnaseqlib.motif.MotifSet as motif_set
@@ -29,7 +34,7 @@ import rnaseqlib.gff.gffutils_helpers as gff_helpers
 def compare_events_motifs(exp_event_ids, control_event_ids,
                           all_events_seqs_fname,
                           output_dir,
-                          kmer_lens=[5]):
+                          kmer_lens=[6]):
 #                          kmer_lens=[4,5,6,7,8]):
     """
     Compare the motifs in two sets of events.
@@ -54,24 +59,33 @@ def compare_events_motifs(exp_event_ids, control_event_ids,
     # Get the sequences of all the events
     seqs_dir = os.path.join(output_dir, "event_seqs")
     utils.make_dir(seqs_dir)
-    exp_seqs_fname = os.path.join(seqs_dir, "exp_events.fa")
-    print "Outputting exp events seqs to: %s" %(exp_seqs_fname)
-    gff_helpers.output_gff_event_seqs(exp_event_ids,
-                                      all_events_seqs_fname,
-                                      exp_seqs_fname)
-    control_seqs_fname = os.path.join(seqs_dir, "control_events.fa")
-    ###
-    ### TODO: MODIFY THIS TO OUTPUT SEPARATE SEQS FOR EXONS/INTRONS
-    ###
-    gff_helpers.output_gff_event_seqs(control_event_ids,
-                                      all_events_seqs_fname,
-                                      control_seqs_fname)
-    # Output kmer counts for each event
-    counts_dir = os.path.join(output_dir, "event_counts")
-    output_event_enriched_kmers(exp_seqs_fname,
-                                control_seqs_fname,
-                                kmer_lens,
-                                output_dir)
+    entry_types = ["exon", "intron"]
+    print "Outputting event sequences to: %s" %(seqs_dir)
+    for entry_type in entry_types:
+        # Output sequences for exp
+        exp_seqs_fname = os.path.join(seqs_dir, "exp_%s.fa" %(entry_type))
+        gff_helpers.output_gff_event_seqs(exp_event_ids,
+                                          all_events_seqs_fname,
+                                          exp_seqs_fname,
+                                          entry_types=[entry_type])
+        control_seqs_fname = os.path.join(seqs_dir,
+                                          "control_%s.fa" %(entry_type))
+        # Output sequences for control
+        gff_helpers.output_gff_event_seqs(exp_event_ids,
+                                          all_events_seqs_fname,
+                                          control_seqs_fname,
+                                          entry_types=[entry_type])
+        # Output kmer counts for each event
+        counts_dir = os.path.join(output_dir, "event_counts")
+        kmers_outdir = os.path.join(output_dir, entry_type)
+        utils.make_dir(kmers_outdir)
+        enriched_kmers = output_event_enriched_kmers(exp_seqs_fname,
+                                                     control_seqs_fname,
+                                                     kmer_lens,
+                                                     kmers_outdir)
+        # Find differentially enriched kmers
+        print "ENTRY TYPE --> ", entry_type
+        get_differential_kmers(enriched_kmers)
     # Compile counts together... make a two columns
     # format
     #
@@ -85,11 +99,48 @@ def compare_events_motifs(exp_event_ids, control_event_ids,
     # kmer2 |
     # ...
     # kmerN |
-    
-        
 
-def output_event_enriched_kmers(exp_fastas
-                                control_fastas,
+
+def get_differential_kmers(kmers):
+    """
+    Get kmers that are enriched in exp over control.
+    """
+    for kmer_len in kmers:
+        # Rank kmers in exp and control groups, and compare their ranks
+        exp_kmers = kmers[kmer_len]["exp"].set_index("kmer")
+        control_kmers = kmers[kmer_len]["control"].set_index("kmer")
+        print exp_kmers
+        # Join the results
+        print "JOINED"
+        print "merging: "
+        print exp_kmers
+        print control_kmers
+        kmers_df = pandas.merge(exp_kmers, control_kmers,
+                                left_index=True,
+                                right_index=True,
+                                suffixes=["_exp", "_control"],
+                                how="outer")
+        print kmers_df
+        # Index results by kmer
+        exp_ranks = kmers_df["target_to_shuffled_exp"].rank()
+        control_ranks = kmers_df["target_to_shuffled_control"].rank()
+        print exp_ranks, len(exp_ranks)
+        print control_ranks, len(control_ranks)
+        # Correlate the ranks
+        rank_r = scipy.stats.spearmanr(exp_ranks, control_ranks)
+        print "R: ", rank_r
+        # Compare the fold changes
+        kmer_fcs = \
+            kmers_df["target_to_shuffled_exp"] / kmers_df["target_to_shuffled_control"]
+        print kmer_fcs
+        kmer_fcs.sort()
+        print kmer_fcs
+        
+            
+    
+
+def output_event_enriched_kmers(exp_fasta_fname,
+                                control_fasta_fname,
                                 kmer_lens,
                                 output_dir):
     """
@@ -101,11 +152,12 @@ def output_event_enriched_kmers(exp_fastas
     print "Outputting events kmer counts..."
     # Motifs comparison between experimental and control
     # sets of sequences
-    exonic_motif_comp = motif_set.MotifSet(event_seqs["exp"],
-                                           event_seqs["control"],
-                                           kmer_lens,
+    motif_comp = motif_set.MotifSet(event_seqs["exp"],
+                                    event_seqs["control"],
+                                    kmer_lens,
                                     output_dir)
-    motif_comp.output_enriched_kmers()
+    enriched_kmers = motif_comp.output_enriched_kmers()
+    return enriched_kmers
 
 
 if __name__ == "__main__":

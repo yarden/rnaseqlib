@@ -65,6 +65,7 @@ class MotifSet:
         Find motifs representative of each set by finding
         motifs enriched in it compared to dinucleotide shuffles.
         """
+        enriched_kmers = {}
         for kmer_len in self.kmer_lens:
             print "Counting kmers of length %d" %(kmer_len)
             exp_dinuc_enriched_fname = \
@@ -98,17 +99,8 @@ class MotifSet:
                     if not c.startswith("shuffled_counts")]
             exp_dinuc_results = exp_dinuc_results[cols]
             control_dinuc_results = control_dinuc_results[cols]
-            # Determine enriched kmers now by comparing the ranks
-            top_n = 20
-            print "Enriched exp: "
-            print "top:"
-            print exp_dinuc_results.head(n=top_n)
-            print "bottom:"
-            print exp_dinuc_results.tail(n=top_n)
-            print "Enriched CONTROL: "
-            print "top:"
-            print control_dinuc_results.head(n=top_n)
-            print "bottom:"
-            print control_dinuc_results.tail(n=top_n)
+            enriched_kmers[kmer_len] = {"exp": exp_dinuc_results,
+                                        "control": control_dinuc_results}
+        return enriched_kmers
         
 

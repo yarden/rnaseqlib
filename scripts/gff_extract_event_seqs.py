@@ -177,8 +177,7 @@ def fetch_seq_from_gff(gff_fname, fasta_fname, output_dir,
                                    reverse_recs=True)
     file_basename = re.sub("\.gff3?", "",
                            os.path.basename(gff_fname))
-    output_basename = "%s.event_seqs" \
-        %(os.path.join(output_dir, file_basename))
+    output_basename = "%s.event_seqs" %(file_basename)
     if flanking_introns_coords is not None:
         output_basename = "%s.flank_intronic_%s_%s_%s_%s" \
             %(output_basename,
@@ -186,8 +185,10 @@ def fetch_seq_from_gff(gff_fname, fasta_fname, output_dir,
               flanking_introns_coords[1],
               flanking_introns_coords[2],
               flanking_introns_coords[3])
-    gff_output_fname = "%s.gff" %(output_basename)
-    fasta_output_fname = "%s.fa" %(output_basename)
+    gff_outdir = os.path.join(output_dir, "gff_coords")
+    utils.make_dir(gff_outdir)
+    gff_output_fname = os.path.join(gff_outdir, "%s.gff" %(output_basename))
+    fasta_output_fname = os.path.join(output_dir, "%s.fa" %(output_basename))
     print "Outputting GFF coordinates to: %s" %(gff_output_fname)
     if os.path.isfile(gff_output_fname):
         print "  - Overwriting existing file"
@@ -289,7 +290,7 @@ def output_fasta_seqs_from_gff(gff_fname,
                                      str(gff_rec.start),
                                      str(gff_rec.stop),
                                      gff_rec.strand)
-        gff_type = gff_rec[1]
+        gff_type = gff_rec[2]
         gff_rec[2] = "%s;%s;%s" %(gff_rec.attrs["ID"],
                                   rec_coords,
                                   gff_type)
@@ -324,17 +325,9 @@ def error_check_intronic_coords(a, b, c, d,
     # length
     up_diff = abs(abs(a) - up_intron_len) 
     if (abs(a) > up_intron_len):
-#        print "\'a\' coordinate must be less than %d (upstream intron length.)" \
-              %(up_intron_len)
-#        print "Trimming by %d nt" %(trim_len)
-        # Make 'a' shorter by adding to it
         a -= (up_diff + trim_len)
     dn_diff = abs(d - dn_intron_len)
     if (d > dn_intron_len):
-#        print "\'d\' coordinate must be less than %d (downstream intron length.)" \
-#              %(dn_intron_len)
-#        print "Trimming by %d nt" %(trim_len)
-        # Make 'd' shorter by subtracting from it
         d += (dn_diff - trim_len)
     return a, b, c, d
 
