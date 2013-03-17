@@ -22,16 +22,62 @@ from collections import defaultdict
 import khmer
 
 
+class ShuffledFasta:
+    """
+    Representation of a FASTA file and its shuffled versions.
+    """
+    def __init__(self, fasta_fname, output_dir,
+                 num_shuffles=100):
+        self.fasta_fname = fasta_fname
+        self.output_dir = output_dir
+        self.num_shuffles = num_shuffles
+        self.shuffled_fasta_fnames = []
+        # Shuffle the FASTAs
+        self.get_dinuc_shuffled_fasta()
+        
+
+    def get_dinuc_shuffled_fasta(self):
+        """
+        Get dinucleotide shuffled versions of the FASTA file.
+
+        Output FASTA files to output directory.
+        """
+        utils.make_dir(self.output_dir)
+        print "Shuffling FASTA %d times into: %s" %(self.num_shuffles,
+                                                    self.output_dir)
+        t1 = time.time()
+        shuffled_fnames = []
+        for shuffle_num in range(self.num_shuffles):
+            shuffled_basename = os.path.basename(self.fasta_fname)
+            # Remove FASTA extension
+            shuffled_basename = shuffled_basename.rsplit(".", 1)[0]
+            # Record that it's a shuffle in the filename
+            shuffled_basename = "%s.shuffle_%d.fa" %(shuffled_basename,
+                                                     shuffle_num)
+            shuffled_fname = os.path.join(self.output_dir,
+                                          shuffled_basename)
+            if not os.path.isfile(shuffled_fname):
+                output_dinuc_shuffled_fasta(self.fasta_fname,
+                                            shuffled_fname)
+            shuffled_fnames.append(shuffled_fname)
+        t2 = time.time()
+        print "Shuffling took %.2f seconds" %(t2 - t1)
+        self.shuffled_fasta_fnames = shuffled_fnames
+        return self.shuffled_fasta_fnames
+
+
 class Kmers:
     """
     Representation of a set of kmers a FASTA file.
     """
-    def __init__(self, kmer_len, fasta_fname=None):
+    def __init__(self, kmer_len,
+                 fasta_fname=None,
+                 shuffled_fasta=None):
         self.kmer_len = kmer_len
         # FASTA file attached to kmers
         self.fasta_fname = fasta_fname
         # Shuffled FASTA filenames
-        self.shuffled_fasta_fnames = []
+        self.shuffled_fasta = shuffled_fasta
         # Mapping from kmers to their counts
         # in the FASTA file
         self.kmer_counts = defaultdict(int)
@@ -43,34 +89,6 @@ class Kmers:
         # Counts file for jf
         self.jf_counts_fname = None
 
-
-    def get_dinuc_shuffled_fasta(self, output_dir, num_shuffles=100):
-        """
-        Get dinucleotide shuffled versions of the FASTA file.
-
-        Output FASTA files to output directory.
-        """
-        utils.make_dir(output_dir)
-        print "Shuffling FASTA %d times into: %s" %(num_shuffles,
-                                                    output_dir)
-        t1 = time.time()
-        shuffled_fnames = []
-        for shuffle_num in range(num_shuffles):
-            shuffled_basename = os.path.basename(self.fasta_fname)
-            # Remove FASTA extension
-            shuffled_basename = shuffled_basename.rsplit(".", 1)[0]
-            # Record that it's a shuffle in the filename
-            shuffled_basename = "%s.shuffle_%d.fa" %(shuffled_basename,
-                                                     shuffle_num)
-            shuffled_fname = os.path.join(output_dir, shuffled_basename)
-            if not os.path.isfile(shuffled_fname):
-                output_dinuc_shuffled_fasta(self.fasta_fname,
-                                            shuffled_fname)
-            shuffled_fnames.append(shuffled_fname)
-        t2 = time.time()
-        print "Shuffling took %.2f seconds" %(t2 - t1)
-        self.shuffled_fasta_fnames = shuffled_fnames
-        return self.shuffled_fasta_fnames
 
 
     def output_enriched_kmers(self, result_counts, output_fname):
@@ -123,13 +141,8 @@ class Kmers:
         Get kmers that are enriched in FASTA relative to its nucleotide
         shuffled version.
         """
-        # Create directory for shuffled FASTA files
-        shuffled_output_dir = os.path.join(output_dir, "shuffled_fasta")
-        utils.make_dir(shuffled_output_dir)
         # Make the shuffled FASTA files
-        shuffled_fasta_fnames = \
-            self.get_dinuc_shuffled_fasta(shuffled_output_dir,
-                                          num_shuffles=num_shuffles)
+        shuffled_fasta_fnames = self.shuffled_fasta.shuffled_fasta_fnames
         # First count the kmers in the target FASTA file
         kmer_counts = self.count_kmers(self.fasta_fname, output_dir)
         all_shuffled_counts = []
@@ -147,9 +160,10 @@ class Kmers:
         Count Kmers in dinucleotide shuffled FASTA files.
         """
         self.shuffled_kmer_counts = []
-        if len(self.shuffled_fasta_fnames):
+        shuffled_fasta_fnames = self.shuffled_fasta.shuffled_fasta_fnames
+        if len(shuffled_fasta_fnames):
             raise Exception, "No shuffled FASTA files to count kmers in."
-        for shuffled_fname in self.shuffled_fasta_fnames:
+        for shuffled_fname in shuffled_fasta_fnames:
             # Count kmers in each dinucleotide shuffled
             # FASTA file and keep these as a list
             # of Kmer counts
@@ -329,8 +343,14 @@ def output_dinuc_enriched_kmers(logger,
     logger.info("  - Input FASTA: %s" %(fasta_fname))
     logger.info("  - Output dir: %s" %(output_dir))
     utils.make_dir(output_dir)
+    # Shuffle the FASTA
+    shuffled_dir = os.path.join(output_dir, "shuffled_fasta")
+    utils.make_dir(shuffled_dir)
+    shuffled_fasta = ShuffledFasta(fasta_fname, shuffled_dir)
     for kmer_len in kmer_lens:
-        kmers = Kmers(kmer_len, fasta_fname=fasta_fname)
+        kmers = Kmers(kmer_len,
+                      fasta_fname=fasta_fname,
+                      shuffled_fasta=shuffled_fasta)
         # Get the enriched kmers
         results = kmers.get_enriched_kmers(output_dir,
                                            num_shuffles=num_shuffles)

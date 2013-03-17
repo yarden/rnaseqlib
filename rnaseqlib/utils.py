@@ -287,7 +287,7 @@ def parse_coords(coords):
     """
     Parse coordinates of form:
 
-      chrom:start-end:strand
+      chrom:start:end:strand
 
     Ensure that start < end.
 

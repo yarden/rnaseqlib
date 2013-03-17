@@ -6,6 +6,7 @@ import os
 import sys
 import time
 import glob
+import string
 
 import tempfile
 #import gffutils
@@ -21,10 +22,24 @@ import misopy.Gene as gene_utils
 
 
 def output_gff_event_seqs(event_ids, input_fasta_fname, output_fasta_fname,
-                          entry_types=None):
+                          entry_types=None,
+                          suffixes=None,
+                          remove_repeats=False):
     """
     Given a set of event ids, pull out their sequences from an
     input fasta filename and output these to a separate FASTA file.
+
+    Return the entries that were outputted.
+
+      - entry_types: optional list of entry types that should be outputted, 
+        e.g. 'exon', 'intron'. Skip all entry types not within list.
+      - suffixes: optional list of suffixes that the first field of the
+        FASTA name should end in. For example, if the FASTA field is:
+
+          >event_id;part_id;entry_type
+
+        Then event_id must end in one of the suffixes for it to be
+        included.
     """
     num_events = len(event_ids)
     print "Retrieving sequences for %d events" %(num_events)
@@ -38,10 +53,13 @@ def output_gff_event_seqs(event_ids, input_fasta_fname, output_fasta_fname,
         return len(filter(lambda e: \
                           fasta_name.startswith(e),
                           event_ids)) > 0
+    kept_fasta_entries = []
+    print "Fetching: ", entry_types, suffixes
     with open(output_fasta_fname, "w") as fasta_out:
         for entry in fastx_utils.get_fastx_entries(input_fasta_fname):
             fasta_name, fasta_seq = entry
-            entry_type = fasta_name.split(";")[2]
+            fasta_name_fields = fasta_name.split(";")
+            entry_type = fasta_name_fields[2]
             if is_event_fasta(fasta_name[1:]):
                 # If given entry types, check that this sequence
                 # is of one of the right entry types; otherwise
@@ -50,8 +68,27 @@ def output_gff_event_seqs(event_ids, input_fasta_fname, output_fasta_fname,
                    (entry_type not in entry_types):
                     # Not of correct entry type
                     continue
+                # If given suffixes, check that the first field
+                # of the FASTA name ends in one of the suffixes
+                if suffixes is not None:
+                    if not any([fasta_name_fields[0].endswith(s) \
+                                for s in suffixes]):
+                        # The first FASTA name field does not end
+                        # in any of the suffixes, so skip it.
+                        continue
+                # If asked, remove repeats from sequence
+                if remove_repeats:
+                    repeatless_seq = \
+                        fasta_seq.translate(None, string.ascii_lowercase)
+                    if len(repeatless_seq) == 0:
+                        print "%s is all repeat! Not removing" %(fasta_name)
+                        continue
+                    fasta_seq = repeatless_seq
                 fasta_out.write("%s\n" %(fasta_name))
                 fasta_out.write("%s\n" %(fasta_seq))
+                kept_fasta_entries.append(fasta_name)
+    print "Outputted %d entries." %(len(kept_fasta_entries))
+    return kept_fasta_entries
     
 
 def get_default_db_fname(gff_fname, db_dirname="gff_db"):

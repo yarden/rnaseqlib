@@ -1305,7 +1305,6 @@ class Pipeline:
                                                    output_dir,
                                                    kmer_lens,
                                                    num_shuffles=100)
-        # Record sample's motifs output directory
 
 
     def output_homer_motifs(self, sample,
