@@ -1377,6 +1377,11 @@ class Pipeline:
         # Compute RPKMs
         self.output_rpkms(sample)
         ##
+        ## Ribo-Seq specific analysis steps
+        ##
+        if sample.sample_type == "riboseq":
+            self.output_bigWigs(sample)
+        ##
         ## CLIP-Seq specific analysis steps
         ##
         if sample.sample_type == "clipseq":
@@ -1393,7 +1398,6 @@ class Pipeline:
             # Output motifs for sample
             self.output_motifs(sample)
         return sample
-
 
 
     # def output_meme_motifs(self, sample):

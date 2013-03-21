@@ -59,6 +59,18 @@ def get_ribo_rpkm_table(rpkm_filename,
     # Add fold changes
     expr_table.add_fold_changes(ribo_sample_pairs)
     return expr_table
+
+
+def compute_loess_pairs(rpkm_table, sample_pairs, prefix="norm"):
+    """
+    Compute loess pairwise comparisons for the given RPKM table
+    across the pairs in 'sample_pairs'. Use 'prefix' as the
+    name of the new column in the DataFrame.
+    """
+    for sample1, sample2 in sample_pairs:
+        # Do loess
+    
+    
     
 
 class RiboExpressionTable:

@@ -8,6 +8,7 @@ from scipy import *
 
 from scipy.stats.stats import pearsonr, spearmanr
 
+
 def spearman_dist(u, v, na_vals=["NA"]):
     """
     Compuute Spearman distance for vectors u, v.
