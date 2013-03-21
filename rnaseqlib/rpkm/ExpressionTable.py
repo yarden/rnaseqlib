@@ -67,9 +67,20 @@ def compute_loess_pairs(rpkm_table, sample_pairs, prefix="norm"):
     across the pairs in 'sample_pairs'. Use 'prefix' as the
     name of the new column in the DataFrame.
     """
+    if not utils.is_rpy2_available():
+        # If rpy2 isn't available, quit
+        return None
     for sample1, sample2 in sample_pairs:
-        # Do loess
-    
+        # Do loess-normalization between the samples
+        # Compute the normalized values for this sample comparison
+        # as well as the fold change
+        # Normalized value for sample1
+        sample1_col = "norm_%s_%s_vs_%s" %(sample1, sample1, sample2)
+        # Normalized value for sample2
+        sample2_col = "norm_%s_%s_vs_%s" %(sample2, sample1, sample2)
+        # Normalized fold change
+        fc_col = "norm_fc_%s_vs_%s" %(sample1, sample2)
+        stats_utils.
     
     
 

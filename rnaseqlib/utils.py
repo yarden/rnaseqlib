@@ -319,9 +319,17 @@ def get_gff_filenames_in_dir(dirname):
         [f for f in filenames \
          if f.lower().endswith((".gff", ".gff3"))]
     return matching_fnames
-    
-    
-    
+
+
+def is_rpy2_available():
+    """
+    Return True if rpy2 is available, False otherwise.
+    """
+    try:
+        import rpy2
+        return True
+    except:
+        return False
 
 
 
