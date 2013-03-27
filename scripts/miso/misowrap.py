@@ -62,7 +62,8 @@ def summarize_miso_samples(settings_filename,
             print "Executing: %s" %(summary_cmd)
             if misowrap_obj.use_cluster:
                 misowrap_obj.my_cluster.launch_job(summary_cmd,
-                                                   job_name)
+                                                   job_name,
+                                                   ppn=1)
             else:
                 os.system(summary_cmd)
             
@@ -132,7 +133,10 @@ def compare_miso_samples(settings_filename,
 
 def run_miso_on_samples(settings_filename, output_dir,
                         use_cluster=True,
-                        delay=120):
+                        base_delay=10,
+                        # Batch delay (40 mins by default)
+                        batch_delay=60*40,
+                        delay_every_n_jobs=30):
     """
     Run MISO on a set of samples.
     """
@@ -156,6 +160,7 @@ def run_miso_on_samples(settings_filename, output_dir,
     event_types_dirs = \
         miso_utils.get_event_types_dirs(misowrap_obj.settings_info)
     miso_settings_filename = misowrap_obj.miso_settings_filename
+    n = 0
     for bam_input in bam_files:
         bam_filename, sample_label = bam_input
         bam_filename = utils.pathify(bam_filename)
@@ -203,10 +208,18 @@ def run_miso_on_samples(settings_filename, output_dir,
             job_name = "%s_%s" %(sample_label, event_type)
             if use_cluster:
                 misowrap_obj.my_cluster.launch_job(miso_cmd,
-                                                   job_name)
-                time.sleep(delay)
+                                                   job_name,
+                                                   ppn=1)
+                if n == delay_every_n_jobs:
+                    # Larger delay everytime we've submitted n jobs
+                    misowrap_obj.logger.info("Submitted %d jobs, now waiting %.2f mins." \
+                                             %(n, batch_delay / 60.))
+                    time.sleep(batch_delay)
+                    n = 0
+                time.sleep(base_delay)
             else:
                 os.system(miso_cmd)
+            n += 1
 
 
 def filter_events(settings_filename,
@@ -324,6 +337,7 @@ def combine_comparisons(settings_filename,
         misowrap_obj.logger.info("Outputting %s results to: %s" \
                                  %(event_type, output_filename))
         combined_df.to_csv(output_filename,
+                           float_format="%.4f",
                            sep="\t",
                            na_rep=NA_VAL,
                            index=True)

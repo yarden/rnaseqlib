@@ -381,6 +381,7 @@ class PsiTable:
                 # Add genes information to df
                 curr_df.to_csv(output_filename,
                                sep=self.delimiter,
+                               float_format="%.4f",
                                cols=columns_to_write)
             
     

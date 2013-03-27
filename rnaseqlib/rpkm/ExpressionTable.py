@@ -61,28 +61,6 @@ def get_ribo_rpkm_table(rpkm_filename,
     return expr_table
 
 
-def compute_loess_pairs(rpkm_table, sample_pairs, prefix="norm"):
-    """
-    Compute loess pairwise comparisons for the given RPKM table
-    across the pairs in 'sample_pairs'. Use 'prefix' as the
-    name of the new column in the DataFrame.
-    """
-    if not utils.is_rpy2_available():
-        # If rpy2 isn't available, quit
-        return None
-    for sample1, sample2 in sample_pairs:
-        # Do loess-normalization between the samples
-        # Compute the normalized values for this sample comparison
-        # as well as the fold change
-        # Normalized value for sample1
-        sample1_col = "norm_%s_%s_vs_%s" %(sample1, sample1, sample2)
-        # Normalized value for sample2
-        sample2_col = "norm_%s_%s_vs_%s" %(sample2, sample1, sample2)
-        # Normalized fold change
-        fc_col = "norm_fc_%s_vs_%s" %(sample1, sample2)
-        stats_utils.
-    
-    
 
 class RiboExpressionTable:
     """
@@ -285,6 +263,21 @@ class RiboExpressionTable:
             self.table[label] = fc_column
         return self.table
 
+
+    # def loess_normalize(self, sample_pairs):
+    #     """
+    #     Apply loess normalization to filtered table.
+    #     """
+    #     ##
+    #     ## Add fold changes with loess normalization
+    #     ##
+    #     print "Loess normalizing..."
+    #     normalized_table = loess_normalize_table(self.filtered_table, sample_pairs)
+    #     if normalized_table is not None:
+    #         # Normalization was successful
+    #         self.filtered_table = normalized_table
+    #     return normalized_table
+
         
     def __repr__(self):
         return "RiboExpressionTable(from_file=%s)" %(self.from_file)
@@ -396,6 +389,21 @@ class ExpressionTable:
                     %(counts_filter["mode"])
             filtered_data = filtered_data.reindex(counts_met.index).dropna()
         return filtered_data
+
+        
+    # def loess_normalize(self, sample_pairs):
+    #     """
+    #     Apply loess normalization to filtered table.
+    #     """
+    #     ##
+    #     ## Add fold changes with loess normalization
+    #     ##
+    #     print "Loess normalizing..."
+    #     normalized_table = loess_normalize_table(self.filtered_data, sample_pairs)
+    #     if normalized_table is not None:
+    #         # Normalization was successful
+    #         self.filtered_data = normalized_table
+    #     return normalized_table
         
 
     def load_rpkm_table(self, rpkm_filename, delimiter=None):

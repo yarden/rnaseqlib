@@ -147,8 +147,6 @@ class MISOWrap:
         self.logs_outdir = os.path.join(self.output_dir,
                                         "misowrap_logs")
         # Create necessary directories
-        utils.make_dir(self.miso_outdir)
-        utils.make_dir(self.comparisons_dir)
         utils.make_dir(self.logs_outdir)
         if "cluster_type" in self.settings_info["settings"]:
             self.use_cluster = True

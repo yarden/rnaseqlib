@@ -80,7 +80,6 @@ def output_rpkm(sample,
         rpkm_tables[table_name] = rpkm_output_filename
         if os.path.isfile(rpkm_output_filename):
             logger.info("  - Skipping RPKM output, found %s" %(rpkm_output_filename))
-            print "  - Skipping RPKM output, %s exists" %(rpkm_output_filename)
             continue
         # Directory where BAM containing mapping to constitutive
         # exons be stored
@@ -97,10 +96,8 @@ def output_rpkm(sample,
         if num_mapped == 0:
             logger.critical("Cannot compute RPKMs since sample %s has 0 " \
                             "mapped reads." %(sample.label))
-            print "Error: Cannot compute RPKMs since sample %s " \
-                  "has 0 mapped reads." %(sample.label)
             sys.exit(1)
-        print "Sample %s has %s mapped reads" %(sample.label, num_mapped)
+        logger.info("Sample %s has %s mapped reads" %(sample.label, num_mapped))
         read_len = settings_info["readlen"]
         logger.info("Outputting RPKM from GFF aligned BAM (table %s)" \
                     %(table_name))
@@ -222,4 +219,40 @@ def compute_rpkm(region_count,
 
     rpkm = (rpkm_num / num_reads_per_million)
     return rpkm
-            
+
+
+def loess_normalize_table(rpkm_table, sample_pairs, prefix="norm"):
+    """
+    Compute loess pairwise comparisons for the given RPKM table
+    across the pairs in 'sample_pairs'. Use 'prefix' as the
+    name of the new column in the DataFrame.
+    """
+    if not utils.is_rpy2_available():
+        # If rpy2 isn't available, quit
+        return None
+    # Use Rpy2 to do the normalization
+    import rnaseqlib.stats.rpy2_utils as rpy2_utils
+    
+    for sample1, sample2 in sample_pairs:
+        # Do loess-normalization between the samples
+        # Compute the normalized values for this sample comparison
+        # as well as the fold change
+        # Normalized value for sample1
+        sample1_col = "norm_%s.%s_1" %(sample1, sample2)
+        # Normalized value for sample2
+        sample2_col = "norm_%s.%s_2" %(sample1, sample2)
+        # Normalized fold change
+        fc_col = "norm_fc_%s.%s" %(sample1, sample2)
+        sample1_vals = rpkm_table[sample1]
+        sample2_vals = rpkm_table[sample2]
+        # Get MA-normalized values 
+        sample1_normed, sample2_normed = \
+            rpy2_utils.run_ma_loess(sample1_vals.values,
+                                    sample2_vals.values)
+        rpkm_table[sample1_col] = sample1_normed
+        rpkm_table[sample2_col] = sample2_normed
+        # Compute fold change with normalized values
+        rpkm_table[fc_col] = sample1_normed / sample2_normed
+    return rpkm_table
+    
+

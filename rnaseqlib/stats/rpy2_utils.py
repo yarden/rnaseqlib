@@ -5,6 +5,9 @@ import os
 import sys
 import time
 
+import pandas
+import numpy as np
+
 import rnaseqlib
 import rnaseqlib.utils as utils
 
@@ -29,32 +32,37 @@ def run_ma_loess(x, y):
       M = log(X/Y)
       A = 0.5 * log(X*Y)
 
-    Fits loess curve to M ~ A and corrects X and Y accordingly.
+    Fits loess regression M ~ A and corrects X and Y accordingly.
 
     Assumes input X and Y values are non-logged.
     """
     M = np.log2(x) - np.log2(y)
     # A = average intensity 1/2(XY)
-    A = 0.5 * (np.log2(x * y))
-    # Fit loess to M ~ A
-    corrected_m, corrected_a = \
-        run_loess(A, M)
-    # Fit M ~ A 
+    A = 0.5 * (np.log2(x) + np.log2(y))
+    # Fit M ~ A
     corrected_m, correction_factor = run_loess(A, M)
     corrected_x = 2**((2*A + corrected_m)/2.)
     corrected_y = 2**((2*A - corrected_m)/2.)
     return corrected_x, corrected_y
 
+def where_na_like(l):
+    """
+    Return indices where array is NA-like
+    """
+    bool_index = np.array(map(lambda x: np.isinf(x) or pandas.isnull(x), l))
+    return np.where(bool_index)[0]
+
 
 def run_loess(x, y, span=0.8):
     """
-    Predict y as function of X
+    Predict y as function of x. Takes two numpy vectors.
     """
-    x = robj.FloatVector(x)
-    y = robj.FloatVector(y)
-    robj.globalenv["x"] = x
-    robj.globalenv["y"] = y
-    loess_fit = r.loess("y ~ x")
+    # Ensure that Inf/-Inf values are substituted
+    print where_na_like(x)
+    x[where_na_like(x)] = robj.NA_Real
+    y[where_na_like(x)] = robj.NA_Real
+    data = robj.DataFrame({"x": x, "y": y})
+    loess_fit = r.loess("y ~ x", data=data)
     correction_factor = np.array(list(r.predict(loess_fit, x)))
     corrected_y = \
         np.array(list(y)) - correction_factor
