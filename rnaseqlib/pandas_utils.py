@@ -6,11 +6,69 @@ import sys
 import time
 
 from numpy import *
+import numpy as np
 
 import pandas
 
 import rnaseqlib
 import rnaseqlib.utils as utils
+
+
+def common_cols(df1, df2, except_cols=[]):
+    """
+    Get common cols between df1/df2 except
+    the ones given in except cols.
+    """
+    common = set(df1.columns).intersection(set(df2.columns))
+    common = common - set(except_cols)
+    return list(common)
+
+
+# def shuffle_df(df, n, axis=0):
+#     """
+#     Shuffle dataframe. If axis is 0, shuffle by rows (each column
+#     shuffled independently), if 1 shuffle by columns.
+
+#     n is number of shuffles.
+#     """
+#     shuffled_df = df.copy()
+#     for k in range(n):
+#         if axis == 0:
+#             for c in shuffled_df.columns:
+#                 # Shuffle the current column
+#                 curr_col = shuffled_df[c]
+#                 new_index = np.arange(len(curr_col))
+#                 print "index before: ", new_index
+#                 np.random.shuffle(new_index)
+#                 print "index after: ", new_index
+#                 # Assign this shuffled column as new column
+#                 shuffled_df[c] = curr_col[new_index]
+#         else:
+#             raise Exception, "Not implemented."
+#     if axis == 0:
+#         shuffled_df.columns = df.columns
+#     return shuffled_df
+
+def shuffle_df(df, n, axis=0):
+    """
+    Shuffle dataframe rows (independently) if axis == 0.
+    If axis == 1, shuffle columns independently.
+    """
+    shuffled_df = df.copy()
+    for k in range(n):
+        shuffled_df.apply(np.random.shuffle, axis=axis)
+    return shuffled_df
+
+# def shuffle_df(df, n, axis=0):
+#     shuffled_df = df.copy()
+#     for k in range(n):
+#         if axis == 0:
+#             np.random.shuffle(shuffled_df.values)
+#         elif axis == 1:
+#             np.random.shuffle(shuffled_df.T.values)
+#         else:
+#             raise Exception, "Not implemented."
+#     return shuffled_df
 
 
 def combine_dfs(dfs_list, **kwargs):

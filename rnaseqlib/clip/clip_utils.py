@@ -97,14 +97,14 @@ def check_clip_utils(logger,
 
 
 def filter_clusters(logger, clusters_bed_fname, output_dir,
-                    num_reads=10,
-                    depth=1,
+                    num_reads=5,
+                    depth=5,
                     min_size=20,
                     max_size=500):
     """
     Filter clusters by number of reads in them and/or depth.
 
-    Depth calculated as reads per 100 bp.
+    Depth calculated as reads per 50 bp.
     """
     if not clusters_bed_fname.endswith(".bed"):
         logger.critical("Error: clusters filename %s must end in .bed" \
@@ -134,7 +134,7 @@ def filter_clusters(logger, clusters_bed_fname, output_dir,
                 # Check that it meets the depth filter, when
                 # normalizing cluster length to 100
                 cluster_depth = \
-                    cluster_reads / (float(cluster_len)/100.)
+                    cluster_reads / (float(cluster_len)/50.)
                 if cluster_depth < depth:
                     continue
                 # Check that it meets the cluster size filter

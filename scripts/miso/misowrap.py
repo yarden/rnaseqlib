@@ -194,6 +194,7 @@ def run_miso_on_samples(settings_filename, output_dir,
             # Overhang length
             miso_cmd += " --overhang-len %d" %(overhang_len)
             # Prefilter?
+            print "PREFILTER --> ", type(misowrap_obj.prefilter_miso)
             if misowrap_obj.prefilter_miso:
                 miso_cmd += " --prefilter"
             # Output directory

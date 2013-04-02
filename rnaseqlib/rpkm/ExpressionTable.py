@@ -45,6 +45,25 @@ def compute_fold_changes_table(table,
     return fold_changes
 
 
+def add_normalized_te(self, normed_prefix="norm"):
+    """
+    z-score normalize the TE values.
+
+    Creates new columns corresponding to normed TEs,
+    beginning with 'normed_prefix'.
+
+    Normed TEs are first logged (base 2) and then z-score
+    normalized.
+    """
+    print "Normalizing TE..."
+    te_cols = [c for c in self.table.columns \
+               if c.startswith("TE_")]
+    for col in te_cols:
+        normed_col = "%s_%s" %(normed_prefix, col)
+        self.table[normed_col] = zscore(self.table[col].apply(log2).dropna())
+
+
+
 def get_ribo_rpkm_table(rpkm_filename,
                         ribo_sample_pairs,
                         rna_expr_table=None,
@@ -152,7 +171,6 @@ class RiboExpressionTable:
 
         - rna_to_ribo_samples: mapping from RNA sample names
           to ribo sample names
-        Move me later to RiboExpressionTable class.
         """
         for rna_sample, ribo_sample in rna_to_ribo_samples.iteritems():
             te_label = "TE_%s_%s" %(ribo_sample, rna_sample)
@@ -165,24 +183,6 @@ class RiboExpressionTable:
         return self.table
 
             
-    def add_normalized_te(self, normed_prefix="norm"):
-        """
-        z-score normalize the TE values.
-
-        Creates new columns corresponding to normed TEs,
-        beginning with 'normed_prefix'.
-
-        Normed TEs are first logged (base 2) and then z-score
-        normalized.
-        """
-        print "Normalizing TE..."
-        te_cols = [c for c in self.table.columns \
-                   if c.startswith("TE_")]
-        for col in te_cols:
-            normed_col = "%s_%s" %(normed_prefix, col)
-            self.table[normed_col] = zscore(self.table[col].apply(log2).dropna())
-            
-
     def filter_table(self, table,
                      thresholds={'rpkm': {'mode': 'any',
                                           'cutoff': 0},
@@ -203,7 +203,7 @@ class RiboExpressionTable:
         # Apply RPKM cutoff: slice only relevant rows
         # out of the RPKM index
         rpkm_cutoff = thresholds["rpkm"]["cutoff"]
-        filtered_rpkm_index = self.table.ix[:, rpkm_cols].values > rpkm_cutoff
+        filtered_rpkm_index = self.table.ix[:, rpkm_cols].values >= rpkm_cutoff
         filtered_rpkm = None
         if thresholds["rpkm"]["mode"] == "any":
             filtered_rpkm = self.table[filtered_rpkm_index.any(1)]
@@ -212,13 +212,12 @@ class RiboExpressionTable:
         # Apply counts cutoff
         # Get dataframe containing only counts column for each sample
         counts_cutoff = thresholds["counts"]["cutoff"]
-        filtered_counts_index = filtered_rpkm.ix[:, counts_cols].values > counts_cutoff
+        filtered_counts_index = filtered_rpkm.ix[:, counts_cols].values >= counts_cutoff
         if thresholds["counts"]["mode"] == "any":
             filtered_data = filtered_rpkm[filtered_counts_index.any(1)]
         elif thresholds["counts"]["mode"] == "all":
             filtered_data = filtered_rpkm[filtered_counts_index.all(1)]
         return filtered_data
-        
 
 
     def get_rpkm_sample_names(self, header, prefix="rpkm_"):

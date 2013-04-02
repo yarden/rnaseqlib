@@ -58,7 +58,6 @@ def run_loess(x, y, span=0.8):
     Predict y as function of x. Takes two numpy vectors.
     """
     # Ensure that Inf/-Inf values are substituted
-    print where_na_like(x)
     x[where_na_like(x)] = robj.NA_Real
     y[where_na_like(x)] = robj.NA_Real
     data = robj.DataFrame({"x": x, "y": y})

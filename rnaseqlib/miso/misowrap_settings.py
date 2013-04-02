@@ -5,6 +5,7 @@ import time
 import ConfigParser
 from collections import defaultdict
 import json
+import ast
 
 
 def set_default_misowrap_settings(settings_info,
@@ -75,7 +76,8 @@ def load_misowrap_settings(config_filename,
                                        "atleast_exc",
                                        "atleast_sum",
                                        "atleast_const"],
-                           BOOL_PARAMS = [],
+                           BOOL_PARAMS = ["prefilter_miso",
+                                          "paired"],
                            # Parameters to be interpreted as Python lists or
                            # data structures,
                            STR_PARAMS=["cluster_type",
@@ -85,7 +87,8 @@ def load_misowrap_settings(config_filename,
                                        "miso_settings_filename",
                                        "miso_output_dir",
                                        "events_to_genes_dir",
-                                       "insert_lens_dir"],
+                                       "insert_lens_dir",
+                                       "pipeline_dir"],
                            DATA_PARAMS=["bam_files",
                                         "sample_labels",
                                         "comparison_groups"]):
@@ -105,10 +108,11 @@ def load_misowrap_settings(config_filename,
             elif option in STR_PARAMS:
                 settings_info[section][option] = str(config.get(section, option))
             elif option in DATA_PARAMS:
-                print "Loading %s" %(option)
-                settings_info[section][option] = json.loads(config.get(section, option))
+                settings_info[section][option] = \
+                    json.loads(config.get(section, option))
             else:
-                settings_info[section][option] = config.get(section, option)
+                settings_info[section][option] = \
+                    ast.literal_eval(config.get(section, option))
     # Error-check the existing settings
     check_misowrap_settings(settings_info)
     # Set default values for settings 
