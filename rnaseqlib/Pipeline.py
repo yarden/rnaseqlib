@@ -38,7 +38,7 @@ class Sample:
     def __init__(self, label, rawdata):
         self.label = label  
         # QC information for this sample
-        self.qc = None 
+        self.qc = None
         # For paired-end samples, samples_info is a list
         # of samples. 
         # For single-end samples, it is just one object.
@@ -217,7 +217,6 @@ class Pipeline:
         self.genome_seq_fname = \
             os.path.join(self.genome_dir,
                          "%s.fa" %(self.rna_base.genome))
-        # Use Ensembl genes to annotate the clusters
         self.genes_gff_fname = \
             os.path.join(self.rna_base.ucsc_tables_dir,
                          "ensGene.gff3")
@@ -1308,7 +1307,7 @@ class Pipeline:
 
 
     def output_homer_motifs(self, sample,
-                            motif_lens=[5,6,8]):
+                            motif_lens=[3,4,5,6,7,8,9,10]):
         """
         Run Homer on sample to get motifs.
         """

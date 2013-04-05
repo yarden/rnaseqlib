@@ -429,7 +429,39 @@ def output_clip_clusters(logger,
     # Remove temporary files
     os.remove(orig_merged_fname)
     os.remove(genes_merged_fname)
+    # Add regional information to clusters file
+    add_region_to_clusters_file(output_filename,
+                                genes_gff_fname)
     return output_filename
+
+
+def add_region_to_clusters_file(clusters_fname,
+                                gff_fname,
+                                region_col_num=9):
+    """
+    Add region information (exon, CDS, 3'UTR, etc.) to cluster.
+    """
+    # Resolution of region rules:
+    # if it maps to CDS, consider it CDS
+    # if it maps to 3' UTR, consider it 3' UTR
+    # if it maps to any other exonic region, consider it exon
+    # if it maps to intron, make it intron
+    clusters_bed = pybedtools.BedTool(clusters_fname)
+    clusters_intersected = \
+        clusters_bed.intersect(loj=True,
+                               b=gff_fname)
+    # Group by region
+    clusters_with_regions = \
+        clusters_intersected.groupby(g=[1, 2, 3, 4, 5, 6, 7],
+                                     c=[10],
+                                     ops=["distinct"])
+    # Save to temporary file
+    tmp_fname = "%s.tmp" %(clusters_fname)
+    clusters_with_regions.saveas(tmp_fname)
+    # Replace the old clusters file with the one
+    # containing region information
+    os.rename(tmp_fname, clusters_fname)
+    return clusters_fname
 
 
 def output_clip_clusters_with_genes(input_fname,

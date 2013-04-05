@@ -351,16 +351,19 @@ def output_dinuc_enriched_kmers(logger,
         kmers = Kmers(kmer_len,
                       fasta_fname=fasta_fname,
                       shuffled_fasta=shuffled_fasta)
-        # Get the enriched kmers
-        results = kmers.get_enriched_kmers(output_dir,
-                                           num_shuffles=num_shuffles)
         output_basename = \
             "%s.%d_kmers.counts" %(os.path.basename(fasta_fname),
                                    kmer_len)
         enrichment_fname = os.path.join(output_dir, output_basename)
-        # Output enrichment result
         logger.info("Outputting enriched Kmers to: %s" %(enrichment_fname))
-        kmers.output_enriched_kmers(results, enrichment_fname)
+        if not os.path.isfile(enrichment_fname):
+            # Get the enriched kmers
+            results = kmers.get_enriched_kmers(output_dir,
+                                               num_shuffles=num_shuffles)
+            # Output enrichment result
+            kmers.output_enriched_kmers(results, enrichment_fname)
+        else:
+            logger.info("Found %s, skipping.. " %(enrichment_fname))
 
 
 if __name__ == "__main__":

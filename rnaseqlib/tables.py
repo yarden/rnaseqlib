@@ -19,6 +19,7 @@ import rnaseqlib
 import rnaseqlib.utils as utils
 import rnaseqlib.init as init
 import rnaseqlib.genes.exons as exons
+import rnaseqlib.gff.gffutils_helpers as gffutils_helpers
 import rnaseqlib.genes.GeneModel as GeneModel
 
 from rnaseqlib.paths import *
@@ -32,6 +33,7 @@ import misopy.gff_utils as gff_utils
 from collections import defaultdict
 
 import numpy
+import numpy as np
 from numpy import *
 
 
@@ -293,8 +295,8 @@ class GeneTable:
                                   how="left")
 #                                  how="outer")
         # Output combined table
-        self.output_ensGene_combined(self.table,
-                                     "ensGene.combined")
+        combined_fname = self.output_ensGene_combined(self.table,
+                                                      "ensGene.combined")
         ## Note: it is critical to remove NA values from kgXref
         ## to avoid excess memory consumption during merge (thanks to y-p)
         self.kgXref_table = self.kgXref_table.dropna(subset=["kgID"])
@@ -340,7 +342,64 @@ class GeneTable:
         # Parse table into actual gene objects if asked
         if not tables_only:
             self.genes = self.get_genes()
+        # Output lengths tables
+        self.output_lens_table("ensGene")
 
+
+    def output_lens_table(self, table_basename):
+        """
+        Output the lengths table.
+        """
+        output_fname = os.path.join(self.table_dir,
+                                    "%s.lens.txt" %(table_basename))
+        print "Outputting lengths table..."
+        print "  - Output file: %s" %(output_fname)
+        if os.path.isfile(output_fname):
+            print "Found %s. Skipping..." %(output_fname)
+            return output_fname
+        lens_entries = []
+        for gene in self.table_by_gene:
+            gene_info = self.table_by_gene[gene]
+            # Get the length of each transcript
+            # which is the sum of the lengths of
+            # its exons
+            exon_lens = []
+            num_exons = []
+            trans_ids = []
+            trans_lens = []
+            for trans_entry in gene_info:
+                # Transcript ID 
+                trans_id = trans_entry["name"]
+                trans_ids.append(trans_id)
+                exon_starts = \
+                    [int(start) + 1 \
+                     for start in trans_entry["exonStarts"].rstrip(",").split(",")]
+                exon_ends = \
+                    [int(end) \
+                     for end in trans_entry["exonEnds"].rstrip(",").split(",")]
+                exon_coords = zip(exon_starts, exon_ends)
+                exon_lens = map(lambda coords: coords[1] - coords[0] + 1,
+                                exon_coords)
+                trans_len = sum(exon_lens)
+                # mRNA lengths
+                trans_lens.append(trans_len)
+                # Number of exons
+                trans_num_exons = len(exon_starts)
+                num_exons.append(trans_num_exons)
+            gene_entry = {"gene_id": gene,
+                          "transcripts": ",".join(trans_ids),
+                          "transcript_lens": ",".join(map(str, trans_lens)),
+                          "num_exons": ",".join(map(str, num_exons)),
+                          "mean_transcript_len": "%.2f" %(np.mean(trans_lens))}
+            lens_entries.append(gene_entry)
+        lens_df = pandas.DataFrame(lens_entries)
+        cols = ["gene_id", "transcripts", "transcript_lens",
+                "mean_transcript_len", "num_exons"]
+        lens_df.to_csv(output_fname,
+                       sep="\t",
+                       cols=cols)
+        return output_fname
+                
         
     def output_ensGene_combined(self, table, basename):
         """
@@ -357,6 +416,7 @@ class GeneTable:
                      sep="\t",
                      na_rep=self.na_val,
                      index=False)
+        return combined_filename
             
 
     def load_introns(self):
@@ -368,16 +428,7 @@ class GeneTable:
         else:
             print "WARNING: Loading of introns not implemented yet " \
                   "for %s" %(self.source)
-
-
-    def load_ensGene_introns(self):
-        """
-        Load ensGene introns.
-
-        For each transcript, compute the coordinates of introns between the exons.
-        """
-        pass
-        
+            
 
     def get_genes(self):
         """
@@ -926,7 +977,18 @@ def download_ucsc_tables(genome,
             continue
         # Uncompress table
         utils.gunzip_file(table_filename, tables_outdir)
-        
+
+
+def add_introns_to_gff_files(gff_fnames, output_dir):
+    """
+    Add introns to a list of GFF filenames.
+    """
+    print "Adding introns to GFF files..."
+    for f in gff_fnames:
+        print "  - %s" %(f)
+    for gff_fname in gff_fnames:
+        gffutils_helpers.add_introns_to_gff(gff_fname, output_dir)
+
 
 def process_ucsc_tables(genome, output_dir,
                         init_params={}):
@@ -937,7 +999,7 @@ def process_ucsc_tables(genome, output_dir,
     # Convert the UCSC knownGene format to GTF
     convert_knowngene_to_gtf(tables_outdir)
     # Convert the various Ensembl tables to GFF3 format
-    convert_tables_to_gff(tables_outdir)
+    gff_fnames = convert_tables_to_gff(tables_outdir)
     ##
     ## Process misc. tables
     ##
@@ -1057,12 +1119,14 @@ def convert_tables_to_gff(tables_outdir):
                          "ensGene.txt",
                          "refGene.txt"]
     t1 = time.time()
+    gff_fnames = []
     for table in tables_to_convert:
         print "  - Converting %s to GFF" %(table)
         table_filename = os.path.join(tables_outdir,
                                       table)
         output_filename = os.path.join(tables_outdir,
                                        "%s.gff3" %(table.replace(".txt", "")))
+        gff_fnames.append(output_filename)
         if os.path.isfile(output_filename):
             print "  - Found %s. Skipping conversion..." \
                 %(output_filename)
@@ -1073,6 +1137,7 @@ def convert_tables_to_gff(tables_outdir):
         os.system(table_to_gff_cmd)
     t2 = time.time()
     print "Conversion took %.2f minutes." %((t2 - t1)/60.)
+    return gff_fnames
     
     
 def convert_knowngene_to_gtf(tables_outdir):

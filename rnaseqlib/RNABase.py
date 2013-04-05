@@ -156,7 +156,6 @@ class RNABase:
         ## Check if the Bowtie index is already present, if so skip
         ##
         # Check for Bowtie 1 indices
-        print self.indices_dir
         indices = glob.glob(os.path.join(self.indices_dir,
                                          "%s*.ebwt" %(self.genome)))
         # Check for Bowtie 2 indices
@@ -209,5 +208,3 @@ class RNABase:
         self.download_seqs()
         self.download_tables()
         self.build_indices()
-        
-        
