@@ -398,6 +398,7 @@ class GeneTable:
                 "mean_transcript_len", "num_exons"]
         lens_df.to_csv(output_fname,
                        sep="\t",
+                       index=False,
                        cols=cols)
         return output_fname
                 
