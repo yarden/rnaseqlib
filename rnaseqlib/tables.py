@@ -19,6 +19,7 @@ import rnaseqlib
 import rnaseqlib.utils as utils
 import rnaseqlib.init as init
 import rnaseqlib.genes.exons as exons
+import rnaseqlib.gff
 import rnaseqlib.gff.gffutils_helpers as gffutils_helpers
 import rnaseqlib.genes.GeneModel as GeneModel
 
