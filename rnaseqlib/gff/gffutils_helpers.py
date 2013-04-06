@@ -14,7 +14,6 @@ import tempfile
 import rnaseqlib
 import rnaseqlib.utils as utils
 import rnaseqlib.fastx_utils as fastx_utils
-import rnaseqlib.gff.GFFDB as gffdb
 
 import misopy
 import misopy.gff_utils as miso_gff_utils
