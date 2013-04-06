@@ -19,7 +19,10 @@ import rnaseqlib.motif.jellyfish_utils as jf_utils
 
 from collections import defaultdict
 
-import khmer
+try:
+    import khmer
+except:
+    print "WARNING: khmer not found!"
 
 
 class ShuffledFasta:
