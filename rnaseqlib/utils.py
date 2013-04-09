@@ -321,6 +321,14 @@ def get_gff_filenames_in_dir(dirname):
     return matching_fnames
 
 
+def in_any(s, l):
+    """
+    Return True if the string 's' is
+    in any element of 'l'.
+    """
+    return any([s in elt for elt in l])
+
+
 def is_rpy2_available():
     """
     Return True if rpy2 is available, False otherwise.
