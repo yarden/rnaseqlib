@@ -4,6 +4,7 @@
 import os
 import sys
 import time
+from time import gmtime, strftime
 import glob
 import re
 
@@ -339,6 +340,9 @@ def is_rpy2_available():
     except:
         return False
 
+
+def get_strtime():
+    return strftime("%Y-%m-%d %H:%M:%S", gmtime())
 
 
 
