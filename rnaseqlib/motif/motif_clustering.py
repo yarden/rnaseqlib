@@ -40,8 +40,10 @@ class MotifCluster:
     def cluster_by_sw(self):
         """
         Cluster sequences pairwise by Smith-Waterman alignment.
+
+        Returns distance matrix.
         """
-        # Make matrix with ij entry corresponding
+        # Make pdist matrix with ij entry corresponding
         # to alignment between sequence i and sequence j
         score_matrix = []
         for kmer_i in self.kmers:
@@ -59,8 +61,17 @@ class MotifCluster:
 def main():
     kmers = ["TGTAT", "CGTAT", "TTAGT", "TCTAT", "TCTAC"]
     motif_clust = MotifCluster(kmers)
-    result = motif_clust.cluster_by_seq()
-    print "Result: ", result
+    #result = motif_clust.cluster_by_seq()
+    #print "Result: ", result
+    data = np.transpose(np.array(kmers))
+    print "DATA: "
+    print data
+    dist_func = lambda x, y: sw_align(x, y, return_score=True)
+    linkage_method = "average"
+    hclust = clustering.hierarchical_clut(np.array(kmers),
+                                          dist_func,
+                                          linkage_method)
+    print "hclust:", hclust
 
 
 if __name__ == "__main__":

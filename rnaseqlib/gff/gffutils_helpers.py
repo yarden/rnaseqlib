@@ -13,6 +13,8 @@ import tempfile
 import string
 from string import maketrans
 
+import pybedtools
+
 import rnaseqlib
 import rnaseqlib.utils as utils
 import rnaseqlib.fastx_utils as fastx_utils
@@ -378,6 +380,8 @@ def output_gff_event_seqs(event_ids, input_fasta_fname, output_fasta_fname,
     """
     num_events = len(event_ids)
     print "Retrieving sequences for %d events" %(num_events)
+    print "  - Input FASTA: %s" %(input_fasta_fname)
+    print "  - Output FASTA: %s" %(output_fasta_fname)
     def is_event_fasta(fasta_name):
         """
         Return true if the event is a FASTA one.
@@ -389,7 +393,6 @@ def output_gff_event_seqs(event_ids, input_fasta_fname, output_fasta_fname,
                           fasta_name.startswith(e),
                           event_ids)) > 0
     kept_fasta_entries = []
-    print "Fetching: ", entry_types, suffixes
     with open(output_fasta_fname, "w") as fasta_out:
         for entry in fastx_utils.get_fastx_entries(input_fasta_fname):
             fasta_name, fasta_seq = entry

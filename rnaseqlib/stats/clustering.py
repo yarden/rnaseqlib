@@ -11,7 +11,6 @@ from numpy import *
 import rnaseqlib
 import rnaseqlib.stats.stats_utils as stats_utils
 
-
 def hierarchical_clust(data_matrix,
                        dist_func,
                        linkage_method,

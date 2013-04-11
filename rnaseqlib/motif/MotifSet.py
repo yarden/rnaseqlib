@@ -68,14 +68,15 @@ class MotifSet:
         print all_df[0:100]
 
 
-    def find_motifs_homer(self, output_dir):
+    def find_motifs_homer(self, output_dir,
+                          homer_kmer_lens=[4,5,6,7,8]):
         """
         Find motifs with Homer.
         """
         output_dir = os.path.join(output_dir, "homer_output")
         utils.make_dir(output_dir)
         params = {"-rna": "",
-                  "-len": ",".join(map(str, self.kmer_lens))}
+                  "-len": ",".join(homer_kmer_lens)}
         # Run on exp
         homer_utils.run_homer(self.logger,
                               self.exp_coords_fname,
