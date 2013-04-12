@@ -13,6 +13,8 @@ import cogent
 from cogent.align.algorithm import sw_align
 
 import rnaseqlib
+import rnaseqlib.stats.stats_utils as stats_utils
+import rnaseqlib.stats.clustering as clustering
 import rnaseqlib.utils as utils
 
 
@@ -24,6 +26,11 @@ class MotifCluster:
         self.kmers = kmers
         # Compute kmer len
         self.kmer_len = None
+        # Levenshtein distance function
+        self.edit_dist_func = \
+            lambda x, y: stats_utils.leven_dist(x[0], y[0])
+        #self.edit_dist_func = \
+        #    lambda x, y: stats_utils.leven_dist(x, y)
 
 
     def cluster_by_seq(self, method="sw"):
@@ -57,6 +64,25 @@ class MotifCluster:
         score_matrix = np.array(score_matrix)
         return score_matrix
 
+
+    def cluster_by_edit(self, kmers, linkage_method):
+        """
+        Cluster sequences by edit distances.
+
+        Parameters:
+        - kmers: flat list of kmers
+        - linkage_method determines linkage function for hierarchical
+          clustering ('average', 'single', ...).
+
+        """
+        # Nest kmers to create matrix for clustering purposes.
+        kmers = [kmers]
+        data = np.array(kmers)
+        hclust = clustering.hierarchical_clust(data,
+                                               self.edit_dist_func,
+                                               linkage_method)
+        return hclust
+    
 
 def main():
     kmers = ["TGTAT", "CGTAT", "TTAGT", "TCTAT", "TCTAC"]
