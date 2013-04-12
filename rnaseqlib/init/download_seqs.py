@@ -150,11 +150,11 @@ def download_misc_seqs(genome, output_dir):
         print "Downloading: %s (NCBI: %s)" %(seq_label,
                                              access_id)
         url_filename = download_ncbi_fasta(access_id, ncbi_outdir)
-        fasta_in = fasta_utils.fasta_read(url_filename)
+        fasta_in = fasta_utils.read_fasta(url_filename)
         fasta_out = open(output_filename, "w")
         print "  - Writing to: %s" %(output_filename)
         # Fetch first FASTA record
-        rec = fasta_in[0]
+        rec = fasta_in.next()
         curr_label, fasta_seq = rec.header, rec.seq
         # Output it with the required label
         new_rec = (">%s" %(seq_label), fasta_seq)
