@@ -191,7 +191,7 @@ class RNABase:
             sys.exit(1)
         # Get the genome sequence FASTA filenames
         genome_fasta_files = map(lambda f: os.path.join(genome_dir, f),
-                                 glob.glob(os.path.join(genome_dir, "*.fa")))
+                                 glob.glob(os.path.join(genome_dir, "chr*.fa")))
         # Get the misc. sequence FASTA filenames
         misc_fasta_files = map(lambda f: os.path.join(misc_dir, f),
                                glob.glob(os.path.join(misc_dir, "*.fa")))
