@@ -369,6 +369,20 @@ def output_dinuc_enriched_kmers(logger,
             logger.info("Found %s, skipping.. " %(enrichment_fname))
 
 
+def save_kmers_as_fasta(kmers, fasta_fname):
+    """
+    Dump kmers as FASTA files.
+    """
+    with open(fasta_fname, "w") as fasta_out:
+        for n in range(len(kmers)):
+            seq = kmers[n]
+            header = ">%s" %(seq)
+            fasta_out.write("%s\n" %(header))
+            fasta_out.write("%s\n" %(seq))
+    return fasta_fname
+
+
+
 if __name__ == "__main__":
     pass
     #kmers = Kmers(8, fasta_fname=f)

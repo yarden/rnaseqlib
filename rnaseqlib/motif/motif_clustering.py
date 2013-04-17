@@ -70,9 +70,10 @@ class MotifCluster:
         Cluster sequences by edit distances.
 
         Parameters:
-        - kmers: flat list of kmers
-        - linkage_method determines linkage function for hierarchical
-          clustering ('average', 'single', ...).
+        -----------
+        kmers : flat list of kmers
+        linkage_method : determines linkage function for hierarchical
+        clustering ('average', 'single', ...).
 
         """
         # Nest kmers to create matrix for clustering purposes.
@@ -82,6 +83,35 @@ class MotifCluster:
                                                self.edit_dist_func,
                                                linkage_method)
         return hclust
+
+
+def output_global_alignment(kmers_fname, output_dir):
+    """
+    Output a global alignment (*.aln) for a set of kmers.
+
+    Using clustawl for now.
+
+    Parameters:
+    -----------
+    kmers_fname : filename of FASTA file containing kmers
+    output_dir : output directory
+    """
+    utils.make_dir(output_dir)
+    output_fname = \
+        os.path.join(output_dir,
+                     "%s.aln" %(os.path.basename(kmers_fname)))
+    if os.path.isfile(output_fname):
+        print "Alignment filename %s exists. Skipping..." \
+              %(output_fname)
+    clustalw_cmd = \
+        "clustalw -INFILE=%s -OUTFILE=%s" %(kmers_fname,
+                                            output_fname)
+    print "Executing: %s" %(clustalw_cmd)
+    t1 = time.time()
+    os.system(clustalw_cmd)
+    t2 = time.time()
+    print "Global alignment took %.2f minutes." %((t2 - t1)/60.)
+    
     
 
 def main():

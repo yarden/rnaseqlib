@@ -133,6 +133,9 @@ class BindnSeq:
         ranked_or_df.sort(columns=[rank_col],
                           inplace=True,
                           ascending=False)
+        # Ordinal ranking
+        ranked_or_df["ordinal_rank"] = \
+            ranked_or_df["rank"].rank(ascending=False)
         return ranked_or_df
 
 
