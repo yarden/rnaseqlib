@@ -76,7 +76,7 @@ class MotifSet:
         output_dir = os.path.join(output_dir, "homer_output")
         utils.make_dir(output_dir)
         params = {"-rna": "",
-                  "-len": ",".join(homer_kmer_lens)}
+                  "-len": ",".join(map(str, homer_kmer_lens))}
         # Run on exp
         homer_utils.run_homer(self.logger,
                               self.exp_coords_fname,

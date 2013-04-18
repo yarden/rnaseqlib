@@ -231,7 +231,7 @@ def compare_events_motifs(exp_event_ids, control_event_ids,
             # Find differentially enriched kmers
             output_differential_kmers(enriched_kmers, curr_output_dir)
             # Run Homer
-            #motif_comp.find_motifs_homer(curr_output_dir)
+            motif_comp.find_motifs_homer(curr_output_dir)
             # Run MEME
             # ...
             

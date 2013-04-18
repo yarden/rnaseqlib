@@ -112,7 +112,6 @@ def output_global_alignment(kmers_fname, output_dir):
     t2 = time.time()
     print "Global alignment took %.2f minutes." %((t2 - t1)/60.)
     
-    
 
 def main():
     kmers = ["TGTAT", "CGTAT", "TTAGT", "TCTAT", "TCTAC"]

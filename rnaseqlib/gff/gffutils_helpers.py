@@ -140,6 +140,7 @@ def get_event_recs_from_gene(gene_obj, gene_tree):
 def fetch_seq_from_gff(gff_fname, fasta_fname, output_dir,
                        with_flanking_introns=False,
                        flanking_introns_coords=None,
+                       overwrite=True,
                        entries_to_include=["gene",
                                            "mRNA",
                                            "exon"]):
@@ -192,6 +193,10 @@ def fetch_seq_from_gff(gff_fname, fasta_fname, output_dir,
     utils.make_dir(gff_outdir)
     gff_output_fname = os.path.join(gff_outdir, "%s.gff" %(output_basename))
     fasta_output_fname = os.path.join(output_dir, "%s.fa" %(output_basename))
+    if not overwrite:
+        if os.path.isfile(fasta_output_fname):
+            print "Output file %s exists. Skipping..." %(fasta_output_fname)
+            return fasta_output_fname
     print "Outputting GFF coordinates to: %s" %(gff_output_fname)
     if os.path.isfile(gff_output_fname):
         print "  - Overwriting existing file"
