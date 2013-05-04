@@ -104,13 +104,14 @@ def output_global_alignment(kmers_fname, output_dir):
         print "Alignment filename %s exists. Skipping..." \
               %(output_fname)
     clustalw_cmd = \
-        "clustalw -INFILE=%s -OUTFILE=%s" %(kmers_fname,
-                                            output_fname)
+        "clustalw -INFILE=%s -OUTFILE=%s -PIM" %(kmers_fname,
+                                                 output_fname)
     print "Executing: %s" %(clustalw_cmd)
     t1 = time.time()
     os.system(clustalw_cmd)
     t2 = time.time()
     print "Global alignment took %.2f minutes." %((t2 - t1)/60.)
+    return output_fname
     
 
 def main():
@@ -126,7 +127,6 @@ def main():
     hclust = clustering.hierarchical_clut(np.array(kmers),
                                           dist_func,
                                           linkage_method)
-    print "hclust:", hclust
 
 
 if __name__ == "__main__":

@@ -76,6 +76,7 @@ def combine_dfs(dfs_list, **kwargs):
     Combine dataframes into one. 
     """
     if len(dfs_list) == 1:
+        combined_df = dfs_list[0]
         return combined_df
     combined_df = reduce(lambda x, y: x.combine_first(y), dfs_list)
 #    combined_df = dfs_list[0]
@@ -105,6 +106,20 @@ def combine_dfs(dfs_list, **kwargs):
     #                                   **kwargs),
     #                      dfs_list)
     return combined_df
+
+
+def merge_dfs(dfs_list, how="outer"):
+    if len(dfs_list) == 1:
+        return dfs_list[0]
+    merged_df = dfs_list[0]
+    for other_df in dfs_list[1:]:
+        common_cols = \
+            set(list(merged_df.columns)).intersection(set(list(other_df.columns)))
+        common_cols = list(common_cols)
+        merged_df = merged_df.merge(other_df,
+                                    on=common_cols,
+                                    how=how)
+    return merged_df
               
 
 def select_df_rows(df, cond,

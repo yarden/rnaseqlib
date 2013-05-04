@@ -103,11 +103,24 @@ def merge_events(genome,
     utils.make_dir(output_dir)
     output_gff_fname = \
         os.path.join(output_dir, "%s.%s.gff3" %(event_type, genome))
+    coords_diff_cutoff = 10
     print "Merging %s.." %(event_type)
+    print "  - Coords difference cutoff: %d" %(coords_diff_cutoff)
     if event_type.startswith("SE"):
         merge_se(sg_gff_fname,
                  new_gff_fname,
-                 output_gff_fname)
+                 output_gff_fname,
+                 coords_diff_cutoff=coords_diff_cutoff)
+
+
+def output_gff_events(sg_trios, sg_gff_fname,
+                      new_trios, new_gff_fname,
+                      sg_label="sg2008",
+                      new_label="sg2013"):
+    """
+    Output trios.
+    """
+    pass    
                  
 
 def main():
