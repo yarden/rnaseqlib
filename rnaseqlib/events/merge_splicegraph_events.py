@@ -5,6 +5,10 @@ import os
 import sys
 import time
 
+import gffutils
+import gffutils.helpers as helpers
+import gffutils.gffwriter as gffwriter
+
 import rnaseqlib
 import rnaseqlib.utils as utils
 
@@ -17,17 +21,12 @@ import pybedtools
 
 from collections import defaultdict
 
-def merge_se(splicegraph_gff_fname, gff_fname, output_fname,
+def merge_se(splicegraph_gff_fname, gff_fname, output_gff_fname,
              coords_diff_cutoff=10):
     """
     Merge skipped exons. Takes as splicegraph GFF filename
     and a new GFF filename.
     """
-#    splicegraph_db = gene_utils.load_genes_from_gff(splicegraph_gff_fname)
-#    gff_db = load_genes_from_gff()
-#    gff_out = open(output_fname, "w")
-#    merged_gff_db = gff_utils.Writer(gff_out)
-
     # Load SpliceGraph skipped exons
     splicegraph_in = pybedtools.BedTool(splicegraph_gff_fname)
     splicegraph_exons = \
@@ -39,7 +38,6 @@ def merge_se(splicegraph_gff_fname, gff_fname, output_fname,
     intersected_gff = splicegraph_exons.intersect(new_exons,
                                                   wao=True,
                                                   s=True)
-    print intersected_gff.head()
     # Compile the overlaps for each exon
     exons_to_overlaps = defaultdict(list)
     for exon in intersected_gff:
@@ -50,14 +48,16 @@ def merge_se(splicegraph_gff_fname, gff_fname, output_fname,
     # then keep the SpliceGraph exon in the annotation
     # Name of SpliceGraph event trios to include in merged annotation
     splicegraph_trios_to_add = []
-    print "MERGING %s and %s" %(splicegraph_gff_fname, gff_fname)
     for exon_id in exons_to_overlaps:
         if max(exons_to_overlaps[exon_id]) < coords_diff_cutoff:
-            trio_id = exon_id.rsplit(".", 1)[0]
+            trio_id = exon_id.rsplit(".", 2)[0]
             splicegraph_trios_to_add.append(trio_id)
     num_sg_trios = len(splicegraph_trios_to_add)
     print "Added %d trios from SpliceGraph" %(num_sg_trios)
-    #gff_out.close()
+    output_combined_gff_events(splicegraph_gff_fname,
+                               splicegraph_trios_to_add,
+                               gff_fname,
+                               output_gff_fname)
     
 
 def merge_mxe():
@@ -113,15 +113,73 @@ def merge_events(genome,
                  coords_diff_cutoff=coords_diff_cutoff)
 
 
-def output_gff_events(sg_trios, sg_gff_fname,
-                      new_trios, new_gff_fname,
-                      sg_label="sg2008",
-                      new_label="sg2013"):
+# def gff_recs_from_tree(gene_tree):
+#     """
+#     Return all GFF records from a gene tree (generated
+#     by load_genes_from_gff)
+#     """
+#     recs = []
+#     gene_id = gene_tree.keys()[0]
+#     tree = gene_tree[gene_id]
+#     # Add gene record
+#     gene_rec = tree["gene"]
+#     recs.append(gene_rec)
+#     # Add mRNA record
+#     raise Exception
+#     print "GENE TREE: ", gene_tree
+#     return None
+
+def get_event_gff_recs(event_id, gff_db):
     """
-    Output trios.
+    Get event's GFF records from a gff database.
     """
-    pass    
-                 
+    event_rec = gff_db[event_id]
+    event_child_recs = list(gff_db.children(event_id))
+    all_recs = [event_rec] + event_child_recs
+    return all_recs
+
+
+def output_combined_gff_events(sg_gff_fname, sg_events,
+                               new_gff_fname,
+                               output_gff_fname,
+                               sg_label="sg2008",
+                               source_attr="source"):
+    """
+    Output the given events from sg_gff_fname and all of
+    the entries from new_gff_fname into a single file.
+
+    Mark SG events with sg_label.
+    """
+    gff_out_file = open(output_gff_fname, "w")
+    gff_out = gffwriter.GFFWriter(gff_out_file)
+    # SG records to output
+    sg_records = []
+    # New records to output
+    new_records = []
+    # Load up gffutils databases for SG and new events
+    #sg_db = \
+    #    gffutils.FeatureDB(helpers.get_db_fname(sg_gff_fname))
+    new_db = \
+        gffutils.FeatureDB(helpers.get_db_fname(new_gff_fname))
+    #sg_gff_genes = sg_db.features_of_type("gene")
+    new_gff_genes = new_db.features_of_type("gene")
+    # Output new events first
+    for gene_rec in new_gff_genes:
+        gene_id = gene_rec.id
+        gff_out.write_gene_recs(new_db, gene_id)
+        raise Exception, "Outputted gene"
+        #gene_recs = get_event_gff_recs(gene_id, new_db)
+        #gff_out.write_recs(gene_recs)
+    # Output SG events
+    for sg_gene_id in sg_events:
+        # Get all SG event records
+        sg_recs = get_event_gff_recs(sg_gene_id, sg_db)
+        # Add source attribute to each record
+        for rec in sg_recs:
+            rec.attributes[source_attr] = sg_label
+            gff_out.write_rec(rec)
+    gff_out.close()
+    
 
 def main():
     splicegraph_events_dir = os.path.expanduser("~/jaen/gff-events")

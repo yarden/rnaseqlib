@@ -2,5 +2,5 @@
 ## Sanitize GFF events file.
 ##
 ##  - Checks that start < end
-##  - Adds gene annotation (Ensembl)
-##  - Adds gid to make events grep-able
+##  - Add gene annotation (Ensembl) (gid)
+##  - Add eid (event ID) to make events grep-able
