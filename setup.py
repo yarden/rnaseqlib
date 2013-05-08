@@ -49,6 +49,7 @@ setup(name = 'rnaseqlib',
                  'scripts/miso/intersect_events.py',
                  'scripts/miso/misowrap.py',
                  # GFF related scripts
+                 'scripts/gff_make_annotation.py',
                  'scripts/gff_sanitize.py',
                  'scripts/gff_create_db.py',
                  'scripts/gff_extract_lens.py',
@@ -73,7 +74,6 @@ setup(name = 'rnaseqlib',
       classifiers = [
         'Development Status :: 4 - Beta',
         'Intended Audience :: Science/Research',
-        'Programming Language :: C',
         'Programming Language :: Python',
         'Topic :: Scientific/Engineering :: Bio-Informatics'
         ]
