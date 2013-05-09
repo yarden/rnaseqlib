@@ -53,6 +53,56 @@ UCSC_TABLE_LABELS = ["knownGene.txt.gz",
                      # tRNA tables
                      "tRNAs.txt.gz"]
 
+##
+## Headers for UCSC tables (based on SQL schema)
+##
+UCSC_ENSGENE_HEADER = ["bin",
+                       "name",
+                       "chrom",
+                       "strand",
+                       "txStart",
+                       "txEnd",
+                       "cdsStart",
+                       "cdsEnd",
+                       "exonCount",
+                       "exonStarts",
+                       "exonEnds",
+                       "score",
+                       "name2",
+                       "cdsStartStat",
+                       "cdsEndStat",
+                       "exonFrames"]
+
+UCSC_REFGENE_HEADER = ["bin",
+                       "name",
+                       "chrom",
+                       "strand",
+                       "txStart",
+                       "txEnd",
+                       "cdsStart",
+                       "cdsEnd",
+                       "exonCount",
+                       "exonStarts",
+                       "exonEnds",
+                       "score",
+                       "name2",
+                       "cdsStartStat",
+                       "cdsEndStat",
+                       "exonFrames"]
+
+UCSC_KNOWNGENE_HEADER = ["name",
+                         "chrom",
+                         "strand",
+                         "txStart",
+                         "txEnd",
+                         "cdsStart",
+                         "cdsEnd",
+                         "exonCount",
+                         "exonStarts",
+                         "exonEnds",
+                         "proteinID",
+                         "alignID"]
+
 class GeneTable:
     """
     Parse gene table.
@@ -227,22 +277,7 @@ class GeneTable:
         if tables_only is True, do not parse table into
         genes but only load tables.
         """
-        self.ensGene_header = ["bin",
-                               "name",
-                               "chrom",
-                               "strand",
-                               "txStart",
-                               "txEnd",
-                               "cdsStart",
-                               "cdsEnd",
-                               "exonCount",
-                               "exonStarts",
-                               "exonEnds",
-                               "score",
-                               "name2",
-                               "cdsStartStat",
-                               "cdsEndStat",
-                               "exonFrames"]
+        self.ensGene_header = UCSC_ENSGENE_HEADER
         self.knownToEnsembl_header = ["knownGene_name",
                                       "name"]
         ensGene_filename = os.path.join(self.table_dir,

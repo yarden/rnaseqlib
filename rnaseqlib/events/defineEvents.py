@@ -828,23 +828,36 @@ def RI(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f, multi_iso=False):
 # A wrapper to define all splicing events: SE, RI, MXE, A3SS, A5SS
 # RI does not use the "flanking criteria".
 #
-def defineAllSplicing(tabledir, gff3dir, flanking='commonshortest', multi_iso=False):
+def defineAllSplicing(tabledir, gff3dir,
+                      flanking='commonshortest',
+                      multi_iso=False,
+                      genome_label=None):
     if isinstance(multi_iso, str):
         multi_iso = eval(multi_iso)
 
     tablefiles = [os.path.join(tabledir, f) for f in os.listdir(tabledir)]
     DtoA_F, AtoD_F, DtoA_R, AtoD_R = prepareSplicegraph(*tablefiles)
 
-    SE(DtoA_F, AtoD_F, DtoA_R, AtoD_R, os.path.join(gff3dir, 'SE.gff3'),
+    if genome_label is not None:
+        genome_label = "%s." %(genome_label)
+    else:
+        genome_label = ""
+
+    SE(DtoA_F, AtoD_F, DtoA_R, AtoD_R, os.path.join(gff3dir,
+                                                    'SE.%sgff3' %(genome_label)),
        flanking=flanking) 
-    RI(DtoA_F, AtoD_F, DtoA_R, AtoD_R, os.path.join(gff3dir, 'RI.gff3'),
+    RI(DtoA_F, AtoD_F, DtoA_R, AtoD_R, os.path.join(gff3dir,
+                                                    'RI.%sgff3' %(genome_label)),
        multi_iso=multi_iso)
-    MXE(DtoA_F, AtoD_F, DtoA_R, AtoD_R, os.path.join(gff3dir, 'MXE.gff3'),
+    MXE(DtoA_F, AtoD_F, DtoA_R, AtoD_R, os.path.join(gff3dir,
+                                                     'MXE.%sgff3' %(genome_label)),
         flanking=flanking) 
-    A3SS(DtoA_F, AtoD_F, DtoA_R, AtoD_R, os.path.join(gff3dir, 'A3SS.gff3'),
+    A3SS(DtoA_F, AtoD_F, DtoA_R, AtoD_R, os.path.join(gff3dir,
+                                                      'A3SS.%sgff3' %(genome_label)),
          flanking=flanking,
          multi_iso=multi_iso) 
-    A5SS(DtoA_F, AtoD_F, DtoA_R, AtoD_R, os.path.join(gff3dir, 'A5SS.gff3'),
+    A5SS(DtoA_F, AtoD_F, DtoA_R, AtoD_R, os.path.join(gff3dir,
+                                                      'A5SS.%sgff3' %(genome_label)),
          flanking=flanking,
          multi_iso=multi_iso)
 

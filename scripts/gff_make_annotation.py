@@ -37,7 +37,8 @@ def make_annotation(args):
     print "Loaded %d UCSC tables." %(len(table_fnames))
     def_events.defineAllSplicing(tables_dir, output_dir,
                                  flanking=args.flanking_rule,
-                                 multi_iso=args.multi_iso)
+                                 multi_iso=args.multi_iso,
+                                 genome_label=args.genome_label)
     t2 = time.time()
     print "Took %.2f minutes to make the annotation." \
           %((t2 - t1)/60.)
@@ -58,6 +59,8 @@ if __name__ == "__main__":
     parser.add_argument("--multi-iso", action="store_true",
                         default=False, help="If passed, generates "
                         "multi-isoform annotations. Off by default.")
+    parser.add_argument("--genome-label", help="If given, used as label for "
+                        "genome in output files.")
     args = parser.parse_args()
     make_annotation(args)
 

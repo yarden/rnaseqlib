@@ -1,23 +1,60 @@
 import os, sys, operator, string
 import collections
 
+import rnaseqlib
+import rnaseqlib.tables as tables
+
+def table_fname_to_header(table_fname):
+    """
+    Returns the header for the table.
+    """
+    name = os.path.basename(table_fname)
+    header = None
+    if name.startswith("ensGene"):
+        header = tables.UCSC_ENSGENE_HEADER
+    elif name.startswith("refGene"):
+        header = tables.UCSC_REFGENE_HEADER
+    elif name.startswith("knownGene"):
+        header = tables.UCSC_KNOWNGENE_HEADER
+    # Designate one of the columns as a 'gene' column. Used to
+    # annotate which event a gene falls in.
+    if "name2" in header:
+        # If name2 exists (like it does in refGene and ensGene
+        # tables), use it as the gene column
+        header[header.index("name2")] = "gene"
+    else:
+        # If name2 isn't present (e.g. in knownGene), then
+        # use the transcript ID field 'name'
+        header[header.index("name")] = "gene"
+    return header
+    
+
 # Generic function to read in a file.
 def readTable(table_f):
     data = [] 
     colToIdx = {}
+
+    table_in = open(table_f)
+    header = table_fname_to_header(table_f)
+    if header is None:
+        raise Exception, "Unrecognized table file %s" %(table_f)
+
     for line in open(table_f):
         if line.startswith("#"):
-            header = line[1:].strip().split("\t")
-            for i in range(len(header)):
-                colToIdx[header[i]] = i
-            chrom = colToIdx['chrom']
-            exonStarts = colToIdx['exonStarts']
-            exonEnds = colToIdx['exonEnds']
-            strand = colToIdx['strand']
-            gene = colToIdx['name2']
+            # Skip header
+            continue
         else:
             vals = line.strip().split("\t")
-            item = [vals[chrom], vals[exonStarts], vals[exonEnds], vals[strand], vals[gene]]
+            # Mapping from column names in UCSC table to values
+            # when no header is given
+            col_values = \
+                dict([(header[col_num], vals[col_num]) \
+                      for col_num in range(len(header))])
+            item = [col_values["chrom"],
+                    col_values["exonStarts"],
+                    col_values["exonEnds"],
+                    col_values["strand"],
+                    col_values["gene"]]
             data.append(item)
     return data
 
