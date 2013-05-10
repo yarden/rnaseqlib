@@ -61,6 +61,9 @@ if __name__ == "__main__":
                         "multi-isoform annotations. Off by default.")
     parser.add_argument("--genome-label", help="If given, used as label for "
                         "genome in output files.")
+    parser.add_argument("--sanitize", default=False, action="store_true",
+                        help="If passed, sanitize the annotation. "
+                        "Off by default.")
     args = parser.parse_args()
     make_annotation(args)
 
