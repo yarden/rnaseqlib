@@ -18,8 +18,6 @@ def prepareSplicegraph(*args):
     Reads in all tables given in *args and populates some dictionaries
     of splice sites.
     Returns the splice site dictionaries.
-
-    @yarden: Assumes tables are in UCSC table pred format?
     """
     DtoA_F = {}
     AtoD_F = {}

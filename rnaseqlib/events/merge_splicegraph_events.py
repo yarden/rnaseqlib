@@ -21,6 +21,7 @@ import pybedtools
 
 from collections import defaultdict
 
+
 def merge_se(splicegraph_gff_fname, gff_fname, output_gff_fname,
              coords_diff_cutoff=10):
     """
@@ -93,10 +94,14 @@ def merge_events(genome,
                                 "%s.%s.gff3" %(event_type, genome))
     if not os.path.isfile(sg_gff_fname):
         raise Exception, "Cannot find %s" %(sg_gff_fname)
+    if "_" in event_type:
+        new_event_type = event_type.split("_")[0]
+    else:
+        new_event_type = event_type
     new_gff_fname = os.path.join(new_events_dir,
                                  genome,
                                  "commonshortest",
-                                 "%s.%s.gff3" %(event_type, genome))
+                                 "%s.%s.gff3" %(new_event_type, genome))
     if not os.path.isfile(new_gff_fname):
         raise Exception, "Cannot find %s" %(new_gff_fname)
     output_dir = os.path.join(output_dir, genome)
@@ -159,6 +164,8 @@ def output_combined_gff_events(sg_gff_fname, sg_events,
     # Load up gffutils databases for SG and new events
     new_db = gffutils.create_db(new_gff_fname, ":memory:",
                                 verbose=False)
+    sg_db = gffutils.create_db(sg_gff_fname, ":memory:",
+                               verbose=False)
     #sg_gff_genes = sg_db.features_of_type("gene")
     new_gff_genes = new_db.features_of_type("gene")
     # Output new events first
@@ -181,7 +188,7 @@ def main():
     new_events_dir = os.path.expanduser("~/jaen/new-gff-events/")
     output_dir = os.path.expanduser("~/jaen/new-gff-events/merged-events/")
     # TODO: add AFE/ALE
-    event_types = ["SE"]#, "MXE", "A3SS", "A5SS", "RI"]
+    event_types = ["SE_shortest_noAceView"]#, "MXE", "A3SS", "A5SS", "RI"]
     print "Merging events..."
     print "  - Output dir: %s" %(output_dir)
     for genome in ["mm9"]:#["mm9", "hg18", "hg19"]:
