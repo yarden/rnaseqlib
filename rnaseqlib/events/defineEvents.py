@@ -745,8 +745,8 @@ def RI(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
                             rilist.append([riDonor, riAcceptor])
                 if len(rilist) > 0:
                     ss1 = acceptor.split(":")[1]
-                    donorlist = [x[0].split(":")[1] for x in rilist]
-                    acceptorlist = [x[1].split(":")[1] for x in rilist]
+                    donorlist = list(set([x[0].split(":")[1] for x in rilist]))
+                    acceptorlist = list(set([x[1].split(":")[1] for x in rilist]))
                     ss4 = donor.split(":")[1]
 
                     if multi_iso:
@@ -798,6 +798,7 @@ def RI(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
                                     upexon = ":".join([chrom, ss1, donorlist[iso1], strand])
                                     dnexon = ":".join([chrom, acceptorlist[iso2], ss4, strand])
                                     name = "@".join([upexon, dnexon])
+
                                     out.write("\t".join([chrom, 'RI', 'gene', ss1, ss4,\
                                         '.', strand, '.', "ID=" + name + ";Name=" + name]) + "\n")
                                     out.write("\t".join([chrom, 'RI', 'mRNA', ss1, ss4,\
@@ -812,10 +813,10 @@ def RI(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
                                         '.', strand, '.', "ID=" + name + ".dn;Parent=" + name + ".B"]) + "\n")
 
                                 else:
-
                                     upexon = ":".join([chrom, ss1, donorlist[iso1], strand])
                                     dnexon = ":".join([chrom, acceptorlist[iso2], ss4, strand])
                                     name = "@".join([upexon, dnexon])
+                                    
                                     out.write("\t".join([chrom, 'RI', 'gene', ss4, ss1,\
                                         '.', strand, '.', "ID=" + name + ";Name=" + name]) + "\n")
                                     out.write("\t".join([chrom, 'RI', 'mRNA', ss4, ss1,\
@@ -828,6 +829,8 @@ def RI(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
                                         '.', strand, '.', "ID=" + name + ".up;Parent=" + name + ".B"]) + "\n")
                                     out.write("\t".join([chrom, 'RI', 'exon', ss4, acceptorlist[iso2],\
                                         '.', strand, '.', "ID=" + name + ".dn;Parent=" + name + ".B"]) + "\n")
+                                # Record seen RI
+                                #seen_RIs[name] = True
     out.close()
 
 

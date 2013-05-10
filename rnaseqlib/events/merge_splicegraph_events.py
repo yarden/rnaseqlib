@@ -96,7 +96,7 @@ def merge_events(genome,
     new_gff_fname = os.path.join(new_events_dir,
                                  genome,
                                  "commonshortest",
-                                 "%s.gff3" %(event_type))
+                                 "%s.%s.gff3" %(event_type, genome))
     if not os.path.isfile(new_gff_fname):
         raise Exception, "Cannot find %s" %(new_gff_fname)
     output_dir = os.path.join(output_dir, genome)
@@ -157,19 +157,14 @@ def output_combined_gff_events(sg_gff_fname, sg_events,
     # New records to output
     new_records = []
     # Load up gffutils databases for SG and new events
-    #sg_db = \
-    #    gffutils.FeatureDB(helpers.get_db_fname(sg_gff_fname))
-    new_db = \
-        gffutils.FeatureDB(helpers.get_db_fname(new_gff_fname))
+    new_db = gffutils.create_db(new_gff_fname, ":memory:",
+                                verbose=False)
     #sg_gff_genes = sg_db.features_of_type("gene")
     new_gff_genes = new_db.features_of_type("gene")
     # Output new events first
     for gene_rec in new_gff_genes:
         gene_id = gene_rec.id
         gff_out.write_gene_recs(new_db, gene_id)
-        raise Exception, "Outputted gene"
-        #gene_recs = get_event_gff_recs(gene_id, new_db)
-        #gff_out.write_recs(gene_recs)
     # Output SG events
     for sg_gene_id in sg_events:
         # Get all SG event records
@@ -188,6 +183,7 @@ def main():
     # TODO: add AFE/ALE
     event_types = ["SE"]#, "MXE", "A3SS", "A5SS", "RI"]
     print "Merging events..."
+    print "  - Output dir: %s" %(output_dir)
     for genome in ["mm9"]:#["mm9", "hg18", "hg19"]:
         print "Genome: %s" %(genome)
         for event_type in event_types:
