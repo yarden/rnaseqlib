@@ -7,6 +7,9 @@ import parseTables
 import rnaseqlib
 import rnaseqlib.utils as utils
 
+import gffutils
+import gffutils.helpers as helpers
+
 LETTERS = string.uppercase
 
 def prepareSplicegraph(*args):
@@ -854,7 +857,7 @@ def defineAllSplicing(tabledir, gff3dir,
     annotation_fnames = []
 
     SE_fname = os.path.join(gff3dir, 'SE.%sgff3' %(genome_label))
-    SE(DtoA_F, AtoD_F, DtoA_R, AtoD_R, SE_f,
+    SE(DtoA_F, AtoD_F, DtoA_R, AtoD_R, SE_fname,
        flanking=flanking)
     annotation_fnames.append(SE_fname)
     
@@ -869,7 +872,7 @@ def defineAllSplicing(tabledir, gff3dir,
     annotation_fnames.append(MXE_fname)
 
     A3SS_fname = os.path.join(gff3dir, 'A3SS.%sgff3' %(genome_label))
-    A3SS(DtoA_F, AtoD_F, DtoA_R, AtoD_R,
+    A3SS(DtoA_F, AtoD_F, DtoA_R, AtoD_R, A3SS_fname,
          flanking=flanking,
          multi_iso=multi_iso)
     annotation_fnames.append(A3SS_fname)
@@ -881,7 +884,10 @@ def defineAllSplicing(tabledir, gff3dir,
     annotation_fnames.append(A5SS_fname)
 
     # If asked, sanitize the annotation in place
-    helpers.sanitize(inplace=True)
+    for annotation_fname in annotation_fnames:
+        print "Sanitizing %s" %(annotation_fname)
+        helpers.sanitize_gff_file(annotation_fname,
+                                  in_place=True)
 
 
 
