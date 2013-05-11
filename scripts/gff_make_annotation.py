@@ -11,6 +11,7 @@ import rnaseqlib
 import rnaseqlib.utils as utils
 import rnaseqlib.events.defineEvents as def_events
 
+
 def load_ucsc_tables(tables_dir):
     """
     Load UCSC tables from a directory.
@@ -34,11 +35,15 @@ def make_annotation(args):
     print "  - Output dir: %s" %(output_dir)
     t1 = time.time()
     table_fnames = load_ucsc_tables(tables_dir)
-    print "Loaded %d UCSC tables." %(len(table_fnames))
+    num_tables = len(table_fnames)
+    if num_tables == 0:
+        raise Exception, "No UCSC tables found in %s." %(tables_dir)
+    print "Loaded %d UCSC tables." %(num_tables)
     def_events.defineAllSplicing(tables_dir, output_dir,
                                  flanking=args.flanking_rule,
                                  multi_iso=args.multi_iso,
-                                 genome_label=args.genome_label)
+                                 genome_label=args.genome_label,
+                                 sanitize=args.sanitize)
     t2 = time.time()
     print "Took %.2f minutes to make the annotation." \
           %((t2 - t1)/60.)
