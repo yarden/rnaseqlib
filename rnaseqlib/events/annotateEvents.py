@@ -12,6 +12,7 @@ def getLookup(gff3_f, table_f, xref_f, db_f, out_f):
     for line in open(gff3_f):
         vals = line.strip().split("\t")
         if vals[2] == 'gene':
+            # Get coordinates from gene record
             eventtype = vals[1]
             event = vals[8].split(";")[0].split("ID=")[1]
             sslist = eval(eventtype + '("' + event + '")')
@@ -33,8 +34,6 @@ def getLookup(gff3_f, table_f, xref_f, db_f, out_f):
     out.close()
     print len(eventToInfo), 'events matched to genes'
     eventToInfo.close()
-
-
 
 
 def SE(event):

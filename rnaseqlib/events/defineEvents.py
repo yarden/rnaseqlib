@@ -552,18 +552,20 @@ def SE(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
 
 
 
-# Define mutually exclusive exons.
-#
-# Arguments are:
-# splice site dictionaries, followed by output file and a keyword to denote method of
-# selecting flanking exon coordinates:
-# shortest
-# longest
-# commonshortest
-# commonlongest 
-#
 def MXE(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
         flanking='commonshortest'):
+    """
+    Define mutually exclusive exons.
+
+    Arguments are:
+    splice site dictionaries, followed by output file and a keyword to denote method of
+    selecting flanking exon coordinates:
+    
+      - shortest
+      - longest
+      - commonshortest
+      - commonlongest
+    """
     print "Generating mutually exclusive exons (MXE)"
     out = open(gff3_f, 'w')
 
@@ -710,18 +712,21 @@ def MXE(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
 
 
 
-# Define retained introns.
-#
-# Arguments are:
-# splice site dictionaries, followed by output file and a keyword to denote method of
-# selecting flanking exon coordinates:
-# shortest
-# longest
-# commonshortest
-# commonlongest 
-#
 def RI(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
        multi_iso=False):
+    """
+    Define retained introns.
+
+    Arguments are:
+    splice site dictionaries, followed by output file and a
+    keyword to denote method of selecting flanking exon
+    coordinates:
+    
+      - shortest
+      - longest
+      - commonshortest
+      - commonlongest 
+    """
     print "Generating retained introns (RI)"
     out = open(gff3_f, 'w')
 
@@ -832,18 +837,38 @@ def RI(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
     out.close()
 
 
-# A wrapper to define all splicing events: SE, RI, MXE, A3SS, A5SS
-# RI does not use the "flanking criteria".
-#
+
+
+def load_ucsc_tables(tables_dir,
+                     table_names=["ensGene.txt",
+                                  "knownGene.txt",
+                                  "refGene.txt"]):
+    """
+    Load UCSC tables from a directory.
+    """
+    fnames = []
+    for f in os.listdir(tables_dir):
+        if f in table_names:
+            # Only use recognized table filenames
+            fnames.append(os.path.join(tables_dir, f))
+    table_fnames = [fname for fname in fnames \
+                    if os.path.isfile(fname)]
+    return table_fnames
+
+
 def defineAllSplicing(tabledir, gff3dir,
                       flanking='commonshortest',
                       multi_iso=False,
                       genome_label=None,
                       sanitize=False):
+    """
+    A wrapper to define all splicing events: SE, RI, MXE, A3SS, A5SS
+    RI does not use the "flanking criteria".
+    """
     if isinstance(multi_iso, str):
         multi_iso = eval(multi_iso)
 
-    tablefiles = [os.path.join(tabledir, f) for f in os.listdir(tabledir)]
+    tablefiles = load_ucsc_tables(tabledir)
     DtoA_F, AtoD_F, DtoA_R, AtoD_R = prepareSplicegraph(*tablefiles)
 
     # Encode the flanking exons rule in output directory

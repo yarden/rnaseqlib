@@ -16,6 +16,8 @@ def table_fname_to_header(table_fname):
         header = tables.UCSC_REFGENE_HEADER
     elif name.startswith("knownGene"):
         header = tables.UCSC_KNOWNGENE_HEADER
+    else:
+        return None
     # Designate one of the columns as a 'gene' column. Used to
     # annotate which event a gene falls in.
     if "name2" in header:
@@ -72,6 +74,7 @@ def populateSplicegraph(table_f, ss5_ss3_F, ss3_ss5_F, ss5_ss3_R, ss3_ss5_R):
     for item in data: 
         chromval, startvals, endvals, strandval, gene = item
         startvals = map(int, startvals.split(",")[:-1])
+        # Adds +1 since downloaded UCSC tables are 0-based start!
         startvals = map(str, [x + 1 for x in startvals])
         endvals = endvals.split(",")[:-1]
         if strandval == '+':

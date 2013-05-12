@@ -12,17 +12,6 @@ import rnaseqlib.utils as utils
 import rnaseqlib.events.defineEvents as def_events
 
 
-def load_ucsc_tables(tables_dir):
-    """
-    Load UCSC tables from a directory.
-    """
-    fnames = [os.path.join(tables_dir, f) \
-              for f in os.listdir(tables_dir)]
-    table_fnames = [fname for fname in fnames \
-                    if os.path.isfile(fname)]
-    return table_fnames
-    
-
 def make_annotation(args):
     """
     Make GFF annotation. Takes GFF tables directory
@@ -34,7 +23,7 @@ def make_annotation(args):
     print "  - UCSC tables read from: %s" %(tables_dir)
     print "  - Output dir: %s" %(output_dir)
     t1 = time.time()
-    table_fnames = load_ucsc_tables(tables_dir)
+    table_fnames = def_events.load_ucsc_tables(tables_dir)
     num_tables = len(table_fnames)
     if num_tables == 0:
         raise Exception, "No UCSC tables found in %s." %(tables_dir)
