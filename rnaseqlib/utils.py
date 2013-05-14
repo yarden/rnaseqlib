@@ -23,6 +23,8 @@ def parse_attributes(attributes_str):
     (e.g. from GFF attributes fields).
     Returns a dictionary.
     """
+    if attributes_str.endswith(";"):
+        attributes_str = attributes_str[0:-1]
     attribute_fields = attributes_str.split(";")
     attributes = dict(map(lambda a: a.split("="), attribute_fields))
     return attributes

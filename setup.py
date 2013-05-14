@@ -50,6 +50,7 @@ setup(name = 'rnaseqlib',
                  'scripts/miso/misowrap.py',
                  # GFF related scripts
                  'scripts/gff_make_annotation.py',
+                 'scripts/gff_annotate_events.py',
                  'scripts/gff_sanitize.py',
                  'scripts/gff_create_db.py',
                  'scripts/gff_extract_lens.py',

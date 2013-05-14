@@ -37,7 +37,6 @@ import numpy
 import numpy as np
 from numpy import *
 
-
 # Labels of UCSC tables to download
 UCSC_TABLE_LABELS = ["knownGene.txt.gz",
                      "kgXref.txt.gz",
@@ -102,6 +101,49 @@ UCSC_KNOWNGENE_HEADER = ["name",
                          "exonEnds",
                          "proteinID",
                          "alignID"]
+
+
+##
+## Helper functions for loading tables (used outside of
+## GeneTable)
+##
+def load_ucsc_table_as_df(table_fname):
+    """
+    Load UCSC table as DataFrame.
+    """
+    if not os.path.isfile(table_fname):
+        raise Exception, "UCSC table %s does not exist." \
+                         %(table_fname)
+    table_basename = os.path.basename(table_fname)
+    df = None
+    if table_basename == "ensGene.txt":
+        df = load_ensGene_table(table_fname)
+    elif table_basename == "knownGene.txt":
+        df = load_knownGene_table(table_fname)
+    elif table_basename == "refGene.txt":
+        df = load_refGene_table(table_fname)
+    return df
+
+    
+def load_ensGene_table_as_df(table_fname, sep="\t"):
+    table = pandas.read_table(table_fname,
+                              sep=sep,
+                              header=UCSC_ENSGENE_HEADER)
+    return table
+
+
+def load_knownGene_table_as_df(table_fname, sep="\t"):
+    table = pandas.read_table(table_fname,
+                              sep=sep,
+                              header=UCSC_KNOWNGENE_HEADER)
+
+
+def load_refGene_table_as_df(table_fname, sep="\t"):
+    table = pandas.read_table(table_fname,
+                              sep=sep,
+                              header=UCSC_REFGENE_HEADER)
+    return table
+
 
 class GeneTable:
     """

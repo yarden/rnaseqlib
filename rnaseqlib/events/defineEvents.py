@@ -551,7 +551,6 @@ def SE(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
     out.close()
 
 
-
 def MXE(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
         flanking='commonshortest'):
     """
@@ -910,10 +909,11 @@ def defineAllSplicing(tabledir, gff3dir,
     annotation_fnames.append(A5SS_fname)
 
     # If asked, sanitize the annotation in place
-    for annotation_fname in annotation_fnames:
-        print "Sanitizing %s" %(annotation_fname)
-        helpers.sanitize_gff_file(annotation_fname,
-                                  in_place=True)
+    if sanitize:
+        for annotation_fname in annotation_fnames:
+            print "Sanitizing %s" %(annotation_fname)
+            helpers.sanitize_gff_file(annotation_fname,
+                                      in_place=True)
 
 
 
