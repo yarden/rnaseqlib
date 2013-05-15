@@ -12,6 +12,7 @@ import gffutils.helpers as helpers
 
 LETTERS = string.uppercase
 
+
 def prepareSplicegraph(*args):
     """
     Prepare splicegraph for use in defining events.
@@ -44,6 +45,9 @@ def A3SS(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
          flanking='commonshortest',
          multi_iso=False):
     print "Generating alternative 3\' splice sites (A3SS)"
+    if os.path.isfile(gff3_f):
+        print "  - Found file, skipping..."
+        return
     out = open(gff3_f, 'w')
  
     for donor in DtoA_F:
@@ -243,6 +247,9 @@ def A5SS(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
          flanking='commonshortest',
          multi_iso=False):
     print "Generating alternative 5\' splice sites (A5SS)"
+    if os.path.isfile(gff3_f):
+        print "  - Found file, skipping..."
+        return
     out = open(gff3_f, 'w')
  
     for acceptor in AtoD_R:
@@ -449,6 +456,9 @@ def A5SS(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
 def SE(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
        flanking='commonshortest'):
     print "Generating skipped exons (SE)"
+    if os.path.isfile(gff3_f):
+        "  - Found file, skipping..."
+        return
     out = open(gff3_f, 'w')
  
     for acceptor in AtoD_R:                             # this acceptor is the SE acceptor
@@ -566,6 +576,9 @@ def MXE(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
       - commonlongest
     """
     print "Generating mutually exclusive exons (MXE)"
+    if os.path.isfile(gff3_f):
+        "  - Found file, skipping..."
+        return
     out = open(gff3_f, 'w')
 
     visited = {} 
@@ -727,6 +740,9 @@ def RI(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
       - commonlongest 
     """
     print "Generating retained introns (RI)"
+    if os.path.isfile(gff3_f):
+        print "  - Found file, skipping..."
+        return
     out = open(gff3_f, 'w')
 
     for acceptor in AtoD_F:                                 # iterate through acceptors

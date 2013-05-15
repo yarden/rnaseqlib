@@ -51,12 +51,16 @@ def get_table_as_bedtool(table_fname):
             strand = gene_entry["strand"]
             # Annotation fields
             name2 = gene_entry["name2"]
+            if pandas.isnull(name2):
+                name2 = "NA"
             refseq_id = gene_entry["refseq"]
-            gene_symbol = gene_entry["value"]
+            if pandas.isnull(refseq_id):
+                refseq_id = "NA"
+            gene_symbol = gene_entry["geneSymbol"]
             if pandas.isnull(gene_symbol):
-                raise Exception, "Null gene symbol for %s" %(str(gene_entry))
+                gene_symbol = "NA"
             attributes = \
-                "ID=%s;ensgene_id=%s;refseq_id=%s;gsymbol=%s;" \
+                "ID=%s;ensg_id=%s;refseq_id=%s;gsymbol=%s;" \
                 %(name2,
                   name2,
                   refseq_id,
@@ -93,6 +97,7 @@ def annotate_gff_with_genes(args):
     all_events_bed = pybedtools.BedTool(gff_fname)
     event_genes = \
         all_events_bed.filter(lambda entry: entry.fields[2] == "gene")
+    print "Determining overlap between events and genes..."
     # Intersect event genes with gene txStart/txEnd
     intersected_bed = \
         event_genes.intersect(table_bed, wb=True, s=True, f=1)
@@ -113,7 +118,7 @@ def annotate_gff_with_genes(args):
             gene_info_field = gene_info_field[0:-1]
         # Convert attributes into dictionary
         gene_info = utils.parse_attributes(gene_info_field)
-        ensgene_id = gene_info["ensgene_id"]
+        ensgene_id = gene_info["ensg_id"]
         refseq_id = gene_info["refseq_id"]
         gene_symbol = gene_info["gsymbol"]
         # Skip null entries
@@ -125,6 +130,7 @@ def annotate_gff_with_genes(args):
             event_genes_to_info[event_gene_str]["gsymbol"].append(gene_symbol)
     # Incorporate the gene information into the GFF and output it
     # it using gffutils
+    print "Loading events into GFF database..."
     events_db = gffutils.create_db(gff_fname, ":memory:",
                                    verbose=False)
     output_fname = gff_fname 
@@ -135,36 +141,47 @@ def annotate_gff_with_genes(args):
         for gene_recs in list(events_db.iter_by_parent_childs()):
             gene_rec = gene_recs[0]
             event_id = gene_rec.id
-            ensgene_id = "NA"
-            refseq_id = "NA"
-            gene_symbol = "NA"
+            # Use existing IDs if present
+            if "ensgene_id" in gene_rec.attributes:
+                ensgene_id = gene_rec.attributes["ensg_id"][0]
+            else:
+                ensgene_id = "NA"
+            if "refseq_id" in gene_rec.attributes:
+                refseq_id = gene_rec.attributes["refseq_id"][0]
+            else:
+                refseq_id = "NA"
+            if "gene_symbol" in gene_rec.attributes:
+                gene_symbol = gene_rec.attributes["gsymbol"][0]
+            else:
+                gene_symbol = "NA"
             if event_id in event_genes_to_info:
                 event_info = event_genes_to_info[event_id]
                 ensgene_ids = \
-                    utils.unique_list(event_info["ensgene_id"])
-                if len(ensgene_ids) > 0:
+                    utils.unique_list(event_info["ensg_id"])
+                if len(ensgene_ids) > 0 and ensgene_ids[0] != "NA":
                     ensgene_id = ensgene_ids[0]
                 refseq_ids = \
                     utils.unique_list(event_info["refseq_id"])
-                if len(refseq_ids) > 0:
+                if len(refseq_ids) > 0 and refseq_ids[0] != "NA":
                     refseq_id = refseq_ids[0]
                 gene_symbols = \
-                    utils.unique_list(event_info["gene_symbol"])
-                if len(gene_symbols) > 0:
+                    utils.unique_list(event_info["gsymbol"])
+                if len(gene_symbols) > 0 and gene_symbols[0] != "NA":
                     gene_symbol = gene_symbols[0]
-            gene_rec.attributes["ensgene_id"] = [ensgene_id]
+            gene_rec.attributes["ensg_id"] = [ensgene_id]
             gene_rec.attributes["refseq_id"] = [refseq_id]
-            gene_rec.attributes["gene_symbol"] = [gene_symbol]
+            gene_rec.attributes["gsymbol"] = [gene_symbol]
             yield gene_rec
-    print "Updating database..."
     t1 = time.time()
-    events_db.update(new_recs(), merge_strategy="merge")
+    print "Creating annotated GFF database..."
+    annotated_db = gffutils.create_db(new_recs(), ":memory:",
+                                      verbose=False)
     t2 = time.time()
-    print "Update took %.2f secs" %(t2 - t1)
+    print "Creation took %.2f secs" %(t2 - t1)
     # Write to file
     print "Writing annotated GFF to file..."
-    for gene_rec in events_db.all_features(featuretype="gene"):
-        events_out.write_gene_recs(events_db, gene_rec.id)
+    for gene_rec in annotated_db.all_features(featuretype="gene"):
+        events_out.write_gene_recs(annotated_db, gene_rec.id)
     events_out.close()
 
 
