@@ -43,6 +43,11 @@ def get_table_as_bedtool(table_fname):
         print "WARNING: Are you sure %s is a combined ensGene table?" \
               %(table_fname)
     table = pandas.read_table(table_fname, sep="\t")
+    # For gene symbol: Use "value" if available, otherwise use geneSymbol
+    if "value" in table.columns:
+        gene_symbol_col = "value"
+    else:
+        gene_symbol_col = "geneSymbol"
     def get_bedtool_iter():
         for gene_num, gene_entry in table.iterrows():
             chrom = gene_entry["chrom"]
@@ -56,7 +61,7 @@ def get_table_as_bedtool(table_fname):
             refseq_id = gene_entry["refseq"]
             if pandas.isnull(refseq_id):
                 refseq_id = "NA"
-            gene_symbol = gene_entry["geneSymbol"]
+            gene_symbol = gene_entry[gene_symbol_col]
             if pandas.isnull(gene_symbol):
                 gene_symbol = "NA"
             attributes = \
@@ -159,19 +164,21 @@ def annotate_gff_with_genes(args):
                 ensgene_ids = \
                     utils.unique_list(event_info["ensg_id"])
                 if len(ensgene_ids) > 0 and ensgene_ids[0] != "NA":
-                    ensgene_id = ensgene_ids[0]
+                    ensgene_id = ",".join(ensgene_ids)
                 refseq_ids = \
                     utils.unique_list(event_info["refseq_id"])
                 if len(refseq_ids) > 0 and refseq_ids[0] != "NA":
-                    refseq_id = refseq_ids[0]
+                    refseq_id = ",".join(refseq_ids)
                 gene_symbols = \
                     utils.unique_list(event_info["gsymbol"])
                 if len(gene_symbols) > 0 and gene_symbols[0] != "NA":
-                    gene_symbol = gene_symbols[0]
+                    gene_symbol = ",".join(gene_symbols)
             gene_rec.attributes["ensg_id"] = [ensgene_id]
             gene_rec.attributes["refseq_id"] = [refseq_id]
             gene_rec.attributes["gsymbol"] = [gene_symbol]
-            yield gene_rec
+            # Yield all the gene's records
+            for g in gene_recs:
+                yield g
     t1 = time.time()
     print "Creating annotated GFF database..."
     annotated_db = gffutils.create_db(new_recs(), ":memory:",
