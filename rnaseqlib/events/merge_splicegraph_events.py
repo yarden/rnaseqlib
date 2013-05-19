@@ -23,6 +23,7 @@ from collections import defaultdict
 
 
 def merge_se(splicegraph_gff_fname, gff_fname, output_gff_fname,
+             genome,
              coords_diff_cutoff=10):
     """
     Merge skipped exons. Takes as splicegraph GFF filename
@@ -58,7 +59,8 @@ def merge_se(splicegraph_gff_fname, gff_fname, output_gff_fname,
     output_combined_gff_events(splicegraph_gff_fname,
                                splicegraph_trios_to_add,
                                gff_fname,
-                               output_gff_fname)
+                               output_gff_fname,
+                               genome)
     
 
 def merge_mxe():
@@ -112,10 +114,51 @@ def merge_events(genome,
     print "Merging %s.." %(event_type)
     print "  - Coords difference cutoff: %d" %(coords_diff_cutoff)
     if event_type.startswith("SE"):
+        overlap_se(sg_gff_fname,
+                   new_gff_fname)
         merge_se(sg_gff_fname,
                  new_gff_fname,
                  output_gff_fname,
+                 genome,
                  coords_diff_cutoff=coords_diff_cutoff)
+
+
+def get_se_from_gene_recs(gene_recs):
+    for rec in gene_recs:
+        if rec.id.endswith(".se"):
+            return rec
+    return None
+
+
+def overlap_se(sg_gff_fname, new_gff_fname):
+    """
+    Compute overlap between old and new GFFs for SE events.
+    """
+    print "Overlapping old and new SE..."
+    sg_db = gffutils.create_db(sg_gff_fname, ":memory:")
+    new_db = gffutils.create_db(new_gff_fname, ":memory:")
+    # Coordinates of new SEs
+    new_se_coords = {}
+    # Record all the new alternative exons
+    for new_recs in new_db.iter_by_parent_childs():
+        new_se_rec = get_se_from_gene_recs(new_recs)
+        new_se_entry = \
+            (new_se_rec.chrom, new_se_rec.start,
+             new_se_rec.stop, new_se_rec.strand)
+        new_se_coords[new_se_entry] = True
+    # Check how many of the old ones are in the new
+    in_both = 0
+    for old_recs in sg_db.iter_by_parent_childs():
+        old_se_rec = get_se_from_gene_recs(old_recs)
+        old_se_entry = \
+            (old_se_rec.chrom, old_se_rec.start,
+             old_se_rec.stop, old_se_rec.strand)
+        if old_se_entry in new_se_coords:
+            print "%s" %(str(old_se_entry)), " is in new!"
+            in_both += 1
+    print "Total of %d SE exons in both." %(in_both)
+
+    
 
 
 # def gff_recs_from_tree(gene_tree):
@@ -147,6 +190,7 @@ def get_event_gff_recs(event_id, gff_db):
 def output_combined_gff_events(sg_gff_fname, sg_events,
                                new_gff_fname,
                                output_gff_fname,
+                               genome,
                                sg_label="sg2008",
                                source_attr="source"):
     """
@@ -178,15 +222,27 @@ def output_combined_gff_events(sg_gff_fname, sg_events,
         sg_recs = get_event_gff_recs(sg_gene_id, sg_db)
         # Add source attribute to each record
         for rec in sg_recs:
-            rec.attributes[source_attr] = sg_label
+            rec.attributes[source_attr] = [sg_label]
             gff_out.write_rec(rec)
     gff_out.close()
+    print "QUITTING: "
+    return
+    # Sanitize the file
+    sanitize_cmd = \
+        "gffutils-cli sanitize %s --in-memory --in-place" %(output_gff_fname)
+    print "Sanitizing merged GFF..."
+    ret_val = os.system(sanitize_cmd)
+    if ret_val != 0:
+        raise Exception, "Sanitization failed on %s" %(output_gff_fname)
+    # Annotate the file
+    print "Annotating merged GFF..."
+    gffutils_helpers.annotate_gff(output_gff_fname, genome)
     
 
 def main():
     splicegraph_events_dir = os.path.expanduser("~/jaen/gff-events")
-    new_events_dir = os.path.expanduser("~/jaen/new-gff-events/")
-    output_dir = os.path.expanduser("~/jaen/new-gff-events/merged-events/")
+    new_events_dir = os.path.expanduser("~/jaen/gff-events/ver2/")
+    output_dir = os.path.expanduser("~/jaen/gff-events/merged-events/")
     # TODO: add AFE/ALE
     event_types = ["SE_shortest_noAceView"]#, "MXE", "A3SS", "A5SS", "RI"]
     print "Merging events..."

@@ -24,6 +24,23 @@ import misopy.gff_utils as miso_gff_utils
 import misopy.Gene as gene_utils
 
 
+GENOME_TABLES = \
+    {"mm9": genome_to_ucsc_table("mm9"),
+     "mm10": genome_to_ucsc_table("mm10"),
+     "hg18": genome_to_ucsc_table("hg18"),
+     "hg19": genome_to_ucsc_table("hg19")}
+
+
+def annotate_gff(gff_fname, genome):
+    print "Annotating GFF %s (%s)" %(gff_fname, genome)
+    table_fname = GENOME_TABLES[genome]
+    print "  UCSC table: %s" %(table_fname)
+    cmd = "gff_annotate_events.py %s %s" %(gff_fname, table_fname)
+    ret_val = os.system(cmd)
+    if ret_val != 0:
+        raise Exception, "GFF annotation failed for %s" %(gff_fname)
+            
+
 def coords_from_relative_regions(skipped_exon,
                                  adjacent_exon,
                                  coords):
