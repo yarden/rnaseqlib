@@ -289,46 +289,17 @@ def RI(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
     out.close()
 
 
-# Exon like unit
-#Unit = namedtuple("Unit", "start end")
-
 class Unit(namedtuple("Unit", ["start", "end"])):
-        __slots__ = ()
-        def __str__(self):
-            return "Unit(%s:%s-%s:%s)" %(self.start[0],
-                                         self.start[1],
-                                         self.end[1],
-                                         self.start[2])
-
-# class Unit:
-#     """
-#     An exon-like unit. Start and end.
-#     """
-#     def __init__(self, start, end):
-#         self.start = start
-#         self.end = end
-#         # Get chrom/strand from start (should be identical
-#         # to end!)
-#         self.chrom = start[0]
-#         self.strand = start[-1]
-#         if self.chrom != end[0]:
-#             raise Exception, "Unit has mismatching chromosomes for start/end."
-
-#     def __eq__(self, other):
-#         if (self.start == other.start) and (self.end == other.end) \
-#            and (self.chrom == other.chrom) and (self.strand == other.strand):
-#             return True
-#         return False
-        
-
-#     def __repr__(self):
-#         return self.__str__()
+    """
+    Unit is an exon like part of a transcript.
+    """
+    __slots__ = ()
+    def __str__(self):
+        return "Unit(%s:%s-%s:%s)" %(self.start[0],
+                                     self.start[1],
+                                     self.end[1],
+                                     self.start[2])
     
-
-#     def __str__(self):
-#         return "Unit(Start=%s, End=%s)" %(self.start, self.end)
-    
-
 class SpliceGraph:
     """
     Represent the possible splicing graph transitions.
@@ -391,63 +362,37 @@ class SpliceGraph:
         on distinct strands.
         """
         print "Populating graph..."
-        first_table_name = self.tables.keys()[0]
-        for item in self.tables[first_table_name]: 
-            chromval, startvals, endvals, strandval, gene = item
-            startvals = map(int, startvals.split(",")[:-1])
-            # Adds +1 since downloaded UCSC tables are 0-based start!
-            startvals = map(str, [x + 1 for x in startvals])
-            endvals = endvals.split(",")[:-1]
-            if strandval == '+':
-                ##
-                ## + strand
-                ##
-                pass
-            else:
-                ##
-                ## - strand
-                ##
-                # Walk the start and end coordinates with end first
-                startvals = startvals[::-1]
-                endvals = endvals[::-1]
-            indices = range(len(startvals))
-            for curr_i, next_i in utils.iter_by_pair(indices, step=1):
-                # Splice from end of current exon to start of next exonp
-                donor_unit = Unit((chromval, startvals[curr_i], strandval),
-                                  (chromval, endvals[curr_i], strandval))
-                acceptor_unit = Unit((chromval, startvals[next_i], strandval),
-                                     (chromval, endvals[next_i], strandval))
-                if strandval == "-":
-                    # Reverse donor, acceptor if on minus strand
-                    donor_unit, acceptor_unit = acceptor_unit, donor_unit
-                # Record splice site as edge
-                self.add_edge(donor_unit, acceptor_unit,
-                              strand=strandval)
-                    
-                    #### OLD CODE
-                    # prevacceptor = ":".join([chromval, endvals[i], strandval])
-                    # donor = ":".join([chromval, startvals[i], strandval])
-                    # acceptor = ":".join([chromval, endvals[i + 1], strandval])
-                    # nextdonor = ":".join([chromval, startvals[i + 1], strandval])
-
-#                    if donor not in ss5_ss3_F:
-#                        ss5_ss3_F[donor] = [] 
-#                    ss5_ss3_F[donor].append(acceptor)
-#                    if acceptor not in ss3_ss5_F:
-#                        ss3_ss5_F[acceptor] = []
-#                    ss3_ss5_F[acceptor].append(nextdonor)
-
-                    
-#                    if donor not in ss5_ss3_R:
-#                        ss5_ss3_R[donor] = []
-#                    ss5_ss3_R[donor].append(prevacceptor)
-#                    if acceptor not in ss3_ss5_R:
-#                        ss3_ss5_R[acceptor] = []
-#                    ss3_ss5_R[acceptor].append(donor)
+        for table_name in self.tables:
+            print "Adding splice edges from table %s" %(table_name)
+            for item in self.tables[table_name]:
+                chromval, startvals, endvals, strandval, gene = item
+                startvals = map(int, startvals.split(",")[:-1])
+                # Adds +1 since downloaded UCSC tables are 0-based start!
+                startvals = map(str, [x + 1 for x in startvals])
+                endvals = endvals.split(",")[:-1]
+                if strandval == '-':
+                    ##
+                    ## - strand
+                    ##
+                    # Walk the start and end coordinates with end first
+                    startvals = startvals[::-1]
+                    endvals = endvals[::-1]
+                indices = range(len(startvals))
+                for curr_i, next_i in utils.iter_by_pair(indices, step=1):
+                    # Splice from end of current exon to start of next exonp
+                    donor_unit = Unit((chromval, startvals[curr_i], strandval),
+                                      (chromval, endvals[curr_i], strandval))
+                    acceptor_unit = Unit((chromval, startvals[next_i], strandval),
+                                         (chromval, endvals[next_i], strandval))
+                    if strandval == "-":
+                        # Reverse donor, acceptor if on minus strand
+                        donor_unit, acceptor_unit = acceptor_unit, donor_unit
+                    # Record splice site as edge
+                    self.add_edge(donor_unit, acceptor_unit,
+                                  strand=strandval)
 
 
     def __str__(self):
-        print "SELF.DONORS: ", self.donors["+"]
         F = "\n".join(["%s->%s" %(donor, self.donors["+"].edges[donor]) \
                       for donor in self.donors["+"].edges])
         R = "\n".join(["%s->%s" %(donor, self.donors["-"].edges[donor]) \
