@@ -11,6 +11,7 @@ import gffutils.gffwriter as gffwriter
 
 import rnaseqlib
 import rnaseqlib.utils as utils
+import rnaseqlib.gff.gffutils_helpers as gffutils_helpers
 
 import misopy
 import misopy.gff_utils as gff_utils

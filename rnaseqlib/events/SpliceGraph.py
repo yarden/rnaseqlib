@@ -86,13 +86,6 @@ class Acceptors(SpliceEdges):
         SpliceEdges.__init__(self, strand)
 
 
-    def get_donors(self, acceptor):
-        """
-        Return donors that link up to a particular acceptor.
-        """
-        pass
-
-
     def __str__(self):
         return "Acceptors(%s)" %(self.edges)
 
@@ -111,13 +104,6 @@ class Donors(SpliceEdges):
         self.strand = None
 
 
-    def get_acceptors(self, donor):
-        """
-        Return acceptors that link up to a particular donor.
-        """
-        pass
-
-
     def __str__(self):
         return "Donors(%s)" %(self.edges)
 
@@ -128,7 +114,9 @@ class Donors(SpliceEdges):
     
 
 
-def define_RI(sg, multi_iso=False):
+def define_RI(sg,
+              min_intron_len=10,
+              multi_iso=False):
     """
     Define retained introns.
 
@@ -137,6 +125,12 @@ def define_RI(sg, multi_iso=False):
 
     Look at B's donors (in this case A) and see if
     they have a start coordinate.
+
+    Parameters:
+    -----------
+
+    sg : SpliceGraph
+    min_intron_len : minimum intron length
     """
     if multi_iso:
         raise Exception, "Multiple isoforms not supported."
@@ -150,28 +144,20 @@ def define_RI(sg, multi_iso=False):
                 # If there's a node that has this acceptor end as its end coordinate
                 # and the donor's start as the start coordinate, then it's a
                 # retained intron
-                # CORRECT FOR +
                 intron_as_exon = Unit(donor.start, acceptor.end)
                 if sg.has_node(intron_as_exon):
                     print "It's a retained intron between %s and %s" \
                           %(donor, acceptor)
-
+                    # Get length of intron
+                    intron_len = (acceptor.start_coord - 1) - \
+                                 (donor.end_coord + 1) + 1
+                    print "LENGTH is %d" %(intron_len)
             
 
 def RI(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
        multi_iso=False):
     """
     Define retained introns.
-
-    Arguments are:
-    splice site dictionaries, followed by output file and a
-    keyword to denote method of selecting flanking exon
-    coordinates:
-    
-      - shortest
-      - longest
-      - commonshortest
-      - commonlongest 
     """
     print "Generating retained introns (RI)"
 #    if os.path.isfile(gff3_f):
@@ -299,6 +285,23 @@ class Unit(namedtuple("Unit", ["start", "end"])):
                                      self.start[1],
                                      self.end[1],
                                      self.start[2])
+
+    @property
+    def start_coord(self):
+        return int(self.start[1])
+
+    @property
+    def end_coord(self):
+        return int(self.end[1])
+
+    @property
+    def chrom(self):
+        return self.start[0]
+
+    @property
+    def strand(self):
+        return self.start[-1]
+        
     
 class SpliceGraph:
     """
@@ -335,6 +338,10 @@ class SpliceGraph:
 
 
     def has_node(self, node):
+        """
+        Return True if the node (i.e. exon) exists in the splice graph,
+        meaning it occurs in some transcript.
+        """
         return (node in self.all_nodes)
 
 
@@ -365,31 +372,27 @@ class SpliceGraph:
         for table_name in self.tables:
             print "Adding splice edges from table %s" %(table_name)
             for item in self.tables[table_name]:
-                chromval, startvals, endvals, strandval, gene = item
+                chrom, startvals, endvals, strand, gene = item
                 startvals = map(int, startvals.split(",")[:-1])
                 # Adds +1 since downloaded UCSC tables are 0-based start!
                 startvals = map(str, [x + 1 for x in startvals])
                 endvals = endvals.split(",")[:-1]
-                if strandval == '-':
-                    ##
-                    ## - strand
-                    ##
-                    # Walk the start and end coordinates with end first
+                indices = range(len(startvals))
+                if strand == "-":
                     startvals = startvals[::-1]
                     endvals = endvals[::-1]
-                indices = range(len(startvals))
                 for curr_i, next_i in utils.iter_by_pair(indices, step=1):
                     # Splice from end of current exon to start of next exonp
-                    donor_unit = Unit((chromval, startvals[curr_i], strandval),
-                                      (chromval, endvals[curr_i], strandval))
-                    acceptor_unit = Unit((chromval, startvals[next_i], strandval),
-                                         (chromval, endvals[next_i], strandval))
-                    if strandval == "-":
+                    donor_unit = Unit((chrom, startvals[curr_i], strand),
+                                      (chrom, endvals[curr_i], strand))
+                    acceptor_unit = Unit((chrom, startvals[next_i], strand),
+                                         (chrom, endvals[next_i], strand))
+                    if strand == "-":
                         # Reverse donor, acceptor if on minus strand
                         donor_unit, acceptor_unit = acceptor_unit, donor_unit
                     # Record splice site as edge
                     self.add_edge(donor_unit, acceptor_unit,
-                                  strand=strandval)
+                                  strand=strand)
 
 
     def __str__(self):
