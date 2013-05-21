@@ -150,9 +150,11 @@ def define_RI(sg, multi_iso=False):
                 # If there's a node that has this acceptor end as its end coordinate
                 # and the donor's start as the start coordinate, then it's a
                 # retained intron
+                # CORRECT FOR +
                 intron_as_exon = Unit(donor.start, acceptor.end)
                 if sg.has_node(intron_as_exon):
-                    print "It's a retained intron."
+                    print "It's a retained intron between %s and %s" \
+                          %(donor, acceptor)
 
             
 
@@ -288,7 +290,15 @@ def RI(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
 
 
 # Exon like unit
-Unit = namedtuple("Unit", "start end")
+#Unit = namedtuple("Unit", "start end")
+
+class Unit(namedtuple("Unit", ["start", "end"])):
+        __slots__ = ()
+        def __str__(self):
+            return "Unit(%s:%s-%s:%s)" %(self.start[0],
+                                         self.start[1],
+                                         self.end[1],
+                                         self.start[2])
 
 # class Unit:
 #     """
@@ -402,15 +412,15 @@ class SpliceGraph:
                 endvals = endvals[::-1]
             indices = range(len(startvals))
             for curr_i, next_i in utils.iter_by_pair(indices, step=1):
-                print curr_i, next_i
                 # Splice from end of current exon to start of next exonp
                 donor_unit = Unit((chromval, startvals[curr_i], strandval),
                                   (chromval, endvals[curr_i], strandval))
                 acceptor_unit = Unit((chromval, startvals[next_i], strandval),
                                      (chromval, endvals[next_i], strandval))
+                if strandval == "-":
+                    # Reverse donor, acceptor if on minus strand
+                    donor_unit, acceptor_unit = acceptor_unit, donor_unit
                 # Record splice site as edge
-                print "ADDING EDGE FROM %s to %s" %(donor_unit, acceptor_unit)
-                if startvals[curr_i] == "31485003": print "ADDING IT!"
                 self.add_edge(donor_unit, acceptor_unit,
                               strand=strandval)
                     

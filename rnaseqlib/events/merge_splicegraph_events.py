@@ -22,20 +22,16 @@ import pybedtools
 from collections import defaultdict
 
 
-def merge_se(splicegraph_gff_fname, gff_fname, output_gff_fname,
-             genome,
-             coords_diff_cutoff=10):
-    """
-    Merge skipped exons. Takes as splicegraph GFF filename
-    and a new GFF filename.
-    """
+def generic_merge(splicegraph_gff_fname, gff_fname, output_gff_fname,
+                  genome, exon_id_suffix,
+                  coords_diff_cutoff=10):
     # Load SpliceGraph skipped exons
     splicegraph_in = pybedtools.BedTool(splicegraph_gff_fname)
     splicegraph_exons = \
-        splicegraph_in.filter(lambda x: x.attrs["ID"].endswith(".se"))
+        splicegraph_in.filter(lambda x: x.attrs["ID"].endswith(exon_id_suffix))
     # New annotation's skipped exons
     new_in = pybedtools.BedTool(gff_fname)
-    new_exons = new_in.filter(lambda x: x.attrs["ID"].endswith(".se"))
+    new_exons = new_in.filter(lambda x: x.attrs["ID"].endswith(exon_id_suffix))
     # Intersect splicegraph exons with new exons
     intersected_gff = splicegraph_exons.intersect(new_exons,
                                                   wao=True,
@@ -61,18 +57,49 @@ def merge_se(splicegraph_gff_fname, gff_fname, output_gff_fname,
                                gff_fname,
                                output_gff_fname,
                                genome)
+
+
+def merge_se(splicegraph_gff_fname, gff_fname, output_gff_fname,
+             genome):
+    """
+    Merge skipped exons. 
+    """
+    generic_merge(splicegraph_gff_fname, gff_fname, output_gff_fname,
+                  genome,
+                  ".se",
+                  coords_diff_cutoff=10)
     
 
-def merge_mxe():
-    pass
+def merge_mxe(splicegraph_gff_fname, gff_fname, output_gff_fname,
+              genome):
+    generic_merge(splicegraph_gff_fname, gff_fname, output_gff_fname,
+                  genome,
+                  ".mxe1",
+                  coords_diff_cutoff=10)
 
 
-def merge_a3ss():
-    pass
+def merge_a3ss(splicegraph_gff_fname, gff_fname, output_gff_fname,
+               genome):
+    generic_merge(splicegraph_gff_fname, gff_fname, output_gff_fname,
+                  genome,
+                  ".coreAndExt",
+                  coords_diff_cutoff=10)
 
 
-def merge_a5ss():
-    pass
+def merge_a5ss(splicegraph_gff_fname, gff_fname, output_gff_fname,
+               genome):
+    generic_merge(splicegraph_gff_fname, gff_fname, output_gff_fname,
+                  genome,
+                  ".coreAndExt",
+                  coords_diff_cutoff=10)
+
+
+def merge_ri(splicegraph_gff_fname, gff_fname, output_gff_fname,
+             genome):
+    generic_merge(splicegraph_gff_fname, gff_fname, output_gff_fname,
+                  genome,
+                  ".withRI",
+                  coords_diff_cutoff=10)
 
 
 def merge_afe():
@@ -80,6 +107,13 @@ def merge_afe():
 
 
 def merge_ale():
+    pass
+
+
+def merge_tandemUTR():
+    """
+    Use older SpliceGraph annotation for now.
+    """
     pass
 
 
@@ -110,17 +144,25 @@ def merge_events(genome,
     utils.make_dir(output_dir)
     output_gff_fname = \
         os.path.join(output_dir, "%s.%s.gff3" %(event_type, genome))
-    coords_diff_cutoff = 10
     print "Merging %s.." %(event_type)
-    print "  - Coords difference cutoff: %d" %(coords_diff_cutoff)
+    print "  - Old: %s" %(sg_gff_fname)
+    print "  - New: %s" %(new_gff_fname)
+    merge_func = None
     if event_type.startswith("SE"):
-        overlap_se(sg_gff_fname,
-                   new_gff_fname)
-        merge_se(sg_gff_fname,
-                 new_gff_fname,
-                 output_gff_fname,
-                 genome,
-                 coords_diff_cutoff=coords_diff_cutoff)
+        merge_func = merge_se
+    elif event_type.startswith("MXE"):
+        merge_func = merge_mxe
+    elif event_type.startswith("A5SS"):
+        merge_func = merge_a5ss
+    elif event_type.startswith("A3SS"):
+        merge_func = merge_a3ss
+    elif event_type.startswith("RI"):
+        merge_func = merge_ri
+    if merge_func is None:
+        raise Exception, "Unrecognized event type %s" %(event_type)
+    # Make merge operation
+    merge_func(sg_gff_fname, new_gff_fname, output_gff_fname,
+               genome)
 
 
 def get_se_from_gene_recs(gene_recs):
@@ -157,8 +199,6 @@ def overlap_se(sg_gff_fname, new_gff_fname):
             print "%s" %(str(old_se_entry)), " is in new!"
             in_both += 1
     print "Total of %d SE exons in both." %(in_both)
-
-    
 
 
 # def gff_recs_from_tree(gene_tree):
@@ -225,8 +265,6 @@ def output_combined_gff_events(sg_gff_fname, sg_events,
             rec.attributes[source_attr] = [sg_label]
             gff_out.write_rec(rec)
     gff_out.close()
-    print "QUITTING: "
-    return
     # Sanitize the file
     sanitize_cmd = \
         "gffutils-cli sanitize %s --in-memory --in-place" %(output_gff_fname)
@@ -244,7 +282,7 @@ def main():
     new_events_dir = os.path.expanduser("~/jaen/gff-events/ver2/")
     output_dir = os.path.expanduser("~/jaen/gff-events/merged-events/")
     # TODO: add AFE/ALE
-    event_types = ["SE_shortest_noAceView"]#, "MXE", "A3SS", "A5SS", "RI"]
+    event_types = ["SE_shortest_noAceView", "SE", "MXE", "A3SS", "A5SS", "RI"]
     print "Merging events..."
     print "  - Output dir: %s" %(output_dir)
     for genome in ["mm9"]:#["mm9", "hg18", "hg19"]:
