@@ -146,12 +146,13 @@ def define_RI(sg,
                 # retained intron
                 intron_as_exon = Unit(donor.start, acceptor.end)
                 if sg.has_node(intron_as_exon):
-                    print "It's a retained intron between %s and %s" \
-                          %(donor, acceptor)
                     # Get length of intron
                     intron_len = (acceptor.start_coord - 1) - \
                                  (donor.end_coord + 1) + 1
-                    print "LENGTH is %d" %(intron_len)
+                    if intron_len < min_intron_len:
+                        continue
+                    print "It's a retained intron between %s and %s" \
+                          %(donor, acceptor)
             
 
 def RI(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
