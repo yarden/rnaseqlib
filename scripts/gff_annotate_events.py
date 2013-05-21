@@ -213,11 +213,6 @@ if __name__ == "__main__":
     parser.add_argument("table_filename",
                         help="Table contains txStart/txEnd sites and the "
                         "gene fields.")
-    parser.add_argument("--flanking-rule", default="commonshortest",
-                        help="Rule to use when defining exon trios. "
-                        "E.g. \'commonshortest\' to use the most common "
-                        "and shortest regions are flanking exons to an "
-                        "alternative trio.")
     parser.add_argument("--in-place", default=False, action="store_true",
                         help="If passed, outputs annotation in place (i.e. "
                         "overwriting the passed in file.) Also sanitizes "

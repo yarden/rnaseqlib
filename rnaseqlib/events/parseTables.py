@@ -38,6 +38,7 @@ def readTable(table_f):
 
     table_in = open(table_f)
     header = table_fname_to_header(table_f)
+    print "HEADER: ", header
     if header is None:
         raise Exception, "Unrecognized table file %s" %(table_f)
 
@@ -63,7 +64,6 @@ def readTable(table_f):
 
 # Get splice graph.
 def populateSplicegraph(table_f, ss5_ss3_F, ss3_ss5_F, ss5_ss3_R, ss3_ss5_R):
-    
     data = readTable(table_f)
   
     #ss5_ss3_F = {}    # donor to acceptor (forward)
@@ -85,7 +85,7 @@ def populateSplicegraph(table_f, ss5_ss3_F, ss3_ss5_F, ss5_ss3_R, ss3_ss5_R):
                 nextdonor = ":".join([chromval, endvals[i + 1], strandval])
 
                 if donor not in ss5_ss3_F:
-                    ss5_ss3_F[donor] = [] 
+                    ss5_ss3_F[donor] = []
                 ss5_ss3_F[donor].append(acceptor)
                 if acceptor not in ss3_ss5_F:
                     ss3_ss5_F[acceptor] = []

@@ -724,6 +724,7 @@ def MXE(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
 
 
 
+
 def RI(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
        multi_iso=False):
     """
@@ -740,10 +741,12 @@ def RI(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
       - commonlongest 
     """
     print "Generating retained introns (RI)"
-    if os.path.isfile(gff3_f):
-        print "  - Found file, skipping..."
-        return
+#    if os.path.isfile(gff3_f):
+#        print "  - Found file, skipping..."
+#        return
     out = open(gff3_f, 'w')
+
+    print "ATOD_F: ", AtoD_F
 
     for acceptor in AtoD_F:                                 # iterate through acceptors
         chrom, acceptorcoord, strand = acceptor.split(":")
@@ -753,7 +756,8 @@ def RI(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
         if len(donors) > 1:
             for donor in donors:                           # iterate through these 5'ss
                 rilist = []
-                riAcceptors = [x for x in list(DtoA_R[donor]) if x in AtoD_R]               
+                riAcceptors = [x for x in list(DtoA_R[donor]) if x in AtoD_R]
+                print "riAcceptors: ", riAcceptors
                                                            # get the upstream 3'ss for this 5'ss
                 for riAcceptor in riAcceptors:             # iterate through these 3'ss and get their 5'ss
                     riDonors = [x for x in list(AtoD_R[riAcceptor]) if x in DtoA_R]

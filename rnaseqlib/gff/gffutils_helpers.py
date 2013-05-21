@@ -24,12 +24,21 @@ import misopy.gff_utils as miso_gff_utils
 import misopy.Gene as gene_utils
 
 
+def genome_to_ucsc_table(genome):
+    """
+    Mapping from genome to a UCSC table
+    """
+    table_fname = \
+        os.path.expanduser("~/jaen/pipeline_init/%s/ucsc/ensGene.kgXref.combined.txt" \
+                           %(genome))
+    return table_fname
+
+
 GENOME_TABLES = \
     {"mm9": genome_to_ucsc_table("mm9"),
      "mm10": genome_to_ucsc_table("mm10"),
      "hg18": genome_to_ucsc_table("hg18"),
      "hg19": genome_to_ucsc_table("hg19")}
-
 
 def annotate_gff(gff_fname, genome):
     print "Annotating GFF %s (%s)" %(gff_fname, genome)
