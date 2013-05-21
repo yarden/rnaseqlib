@@ -9,7 +9,7 @@ import rnaseqlib
 import rnaseqlib.utils as utils
 import rnaseqlib.events.parseTables as parseTables
 
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 
 
 import collections
@@ -135,27 +135,24 @@ def define_RI(sg, multi_iso=False):
     [ A ]---[ B ]
     [     C     ]
 
-    [ A ]---[ B ]
-    ----[ C ]----
-
     Look at B's donors (in this case A) and see if
-    they have a start coordinate
+    they have a start coordinate.
     """
     if multi_iso:
         raise Exception, "Multiple isoforms not supported."
-    for strand in sg.acceptors:
-        for acceptor in sg.acceptors[strand].edges:
+    for strand in sg.acceptors_to_donors:
+        for acceptor in sg.acceptors_to_donors[strand].edges:
             # If any of the donor units to this acceptor
             # have the acceptor end as their end coordinate, it's a retained
             # intron event
-            donors_of_acceptor = sg.acceptors[strand].get_edges_from(acceptor)
-            for donor in donors_of_acceptor:
+            donors = sg.acceptors_to_donors[strand].edges[acceptor]
+            for donor in donors:
                 # If there's a node that has this acceptor end as its end coordinate
                 # and the donor's start as the start coordinate, then it's a
                 # retained intron
                 intron_as_exon = Unit(donor.start, acceptor.end)
                 if sg.has_node(intron_as_exon):
-                    print "RETAINED INTRON!"
+                    print "It's a retained intron."
 
             
 
@@ -290,27 +287,36 @@ def RI(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
     out.close()
 
 
-class Unit:
-    """
-    An exon-like unit. Start and end.
-    """
-    def __init__(self, start, end):
-        self.start = start
-        self.end = end
-        # Get chrom/strand from start (should be identical
-        # to end!)
-        self.chrom = start[0]
-        self.strand = start[-1]
-        if self.chrom != end[0]:
-            raise Exception, "Unit has mismatching chromosomes for start/end."
+# Exon like unit
+Unit = namedtuple("Unit", "start end")
+
+# class Unit:
+#     """
+#     An exon-like unit. Start and end.
+#     """
+#     def __init__(self, start, end):
+#         self.start = start
+#         self.end = end
+#         # Get chrom/strand from start (should be identical
+#         # to end!)
+#         self.chrom = start[0]
+#         self.strand = start[-1]
+#         if self.chrom != end[0]:
+#             raise Exception, "Unit has mismatching chromosomes for start/end."
+
+#     def __eq__(self, other):
+#         if (self.start == other.start) and (self.end == other.end) \
+#            and (self.chrom == other.chrom) and (self.strand == other.strand):
+#             return True
+#         return False
         
 
-    def __repr__(self):
-        return self.__str__()
+#     def __repr__(self):
+#         return self.__str__()
     
 
-    def __str__(self):
-        return "Unit(Start=%s, End=%s)" %(self.start, self.end)
+#     def __str__(self):
+#         return "Unit(Start=%s, End=%s)" %(self.start, self.end)
     
 
 class SpliceGraph:
@@ -321,10 +327,10 @@ class SpliceGraph:
         self.table_fnames = table_fnames
         # Mapping from table name to table
         self.tables = {}
-        self.acceptors = {"+": Acceptors(strand="+"),
-                          "-": Acceptors(strand="-")}
-        self.donors = {"+": Donors(strand="+"),
-                       "-": Donors(strand="-")}
+        self.acceptors_to_donors = {"+": Acceptors(strand="+"),
+                                    "-": Acceptors(strand="-")}
+        self.donors_to_acceptors = {"+": Donors(strand="+"),
+                                    "-": Donors(strand="-")}
         self.all_nodes = OrderedDict()
         # Load the UCSC tables
         self.load_tables()
@@ -337,9 +343,9 @@ class SpliceGraph:
         Add edge.
         """
         # Record donor -> acceptor edge
-        self.donors[strand].add_edge(donor_unit, acceptor_unit)
+        self.donors_to_acceptors[strand].add_edge(donor_unit, acceptor_unit)
         # Record acceptor <- donor edge
-        self.acceptors[strand].add_edge(acceptor_unit, donor_unit)
+        self.acceptors_to_donors[strand].add_edge(acceptor_unit, donor_unit)
         # Record nodes non-redundantly
         if donor_unit not in self.all_nodes:
             self.all_nodes[donor_unit] = True
@@ -348,18 +354,8 @@ class SpliceGraph:
 
 
     def has_node(self, node):
-        if node in self.all_nodes:
-            return True
-        else:
-            return False
+        return (node in self.all_nodes)
 
-
-    def get_unit_with_start(start_unit, strand):
-        """
-        Get all units starting with the given start unit
-        on the requested strand.
-        """
-        
 
     def count_donor_to_acceptor(donor, acceptor):
         """
@@ -396,25 +392,7 @@ class SpliceGraph:
                 ##
                 ## + strand
                 ##
-                for i in range(len(startvals) - 1):
-                    prevacceptor = ":".join([chromval, startvals[i], strandval])
-                    donor = ":".join([chromval, endvals[i], strandval])
-                    acceptor = ":".join([chromval, startvals[i + 1], strandval])
-                    nextdonor = ":".join([chromval, endvals[i + 1], strandval])
-
-                    # if donor not in ss5_ss3_F:
-                    #     ss5_ss3_F[donor] = [] 
-                    # ss5_ss3_F[donor].append(acceptor)
-                    # if acceptor not in ss3_ss5_F:
-                    #     ss3_ss5_F[acceptor] = []
-                    # ss3_ss5_F[acceptor].append(nextdonor)
-
-                    # if donor not in ss5_ss3_R:
-                    #     ss5_ss3_R[donor] = []
-                    # ss5_ss3_R[donor].append(prevacceptor)
-                    # if acceptor not in ss3_ss5_R:
-                    #     ss3_ss5_R[acceptor] = []
-                    # ss3_ss5_R[acceptor].append(donor)
+                pass
             else:
                 ##
                 ## - strand
@@ -422,13 +400,17 @@ class SpliceGraph:
                 # Walk the start and end coordinates with end first
                 startvals = startvals[::-1]
                 endvals = endvals[::-1]
-            for i in range(len(startvals) - 1):
-                # Splice from end of current exon to start of next exon
-                donor_unit = Unit((chromval, startvals[i], strandval),
-                                  (chromval, endvals[i], strandval))
-                acceptor_unit = Unit((chromval, startvals[i + 1], strandval),
-                                     (chromval, endvals[i + 1], strandval))
+            indices = range(len(startvals))
+            for curr_i, next_i in utils.iter_by_pair(indices, step=1):
+                print curr_i, next_i
+                # Splice from end of current exon to start of next exonp
+                donor_unit = Unit((chromval, startvals[curr_i], strandval),
+                                  (chromval, endvals[curr_i], strandval))
+                acceptor_unit = Unit((chromval, startvals[next_i], strandval),
+                                     (chromval, endvals[next_i], strandval))
                 # Record splice site as edge
+                print "ADDING EDGE FROM %s to %s" %(donor_unit, acceptor_unit)
+                if startvals[curr_i] == "31485003": print "ADDING IT!"
                 self.add_edge(donor_unit, acceptor_unit,
                               strand=strandval)
                     
@@ -474,10 +456,8 @@ def main():
         os.path.expanduser("/home/yarden/jaen/rnaseqlib/rnaseqlib/test/test-data/ri-test/ensGene.txt")
     tables = [table_fname]
     sg = SpliceGraph(tables)
-    print "SG: "
-    print sg.donors["+"]["a"]
-    print sg
     define_RI(sg)
+
     
         
 
