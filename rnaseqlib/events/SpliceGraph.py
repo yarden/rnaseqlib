@@ -149,10 +149,14 @@ def define_RI(sg,
                     # Get length of intron
                     intron_len = (acceptor.start_coord - 1) - \
                                  (donor.end_coord + 1) + 1
-                    if intron_len < min_intron_len:
-                        continue
+#                    if intron_len < min_intron_len:
+#                        continue
                     print "It's a retained intron between %s and %s" \
                           %(donor, acceptor)
+                    # Output retained intron
+                    print "UP EXON: ", donor.coords_str
+                    print "DN EXON: ", acceptor.coords_str
+
             
 
 def RI(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
@@ -281,11 +285,15 @@ class Unit(namedtuple("Unit", ["start", "end"])):
     Unit is an exon like part of a transcript.
     """
     __slots__ = ()
+    @property 
+    def coords_str(self):
+        return "%s:%s-%s:%s" %(self.start[0],
+                               self.start[1],
+                               self.end[1],
+                               self.start[2])        
+        
     def __str__(self):
-        return "Unit(%s:%s-%s:%s)" %(self.start[0],
-                                     self.start[1],
-                                     self.end[1],
-                                     self.start[2])
+        return "Unit(%s)" %(self.coords_str)
 
     @property
     def start_coord(self):

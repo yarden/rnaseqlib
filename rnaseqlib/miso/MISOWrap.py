@@ -176,10 +176,12 @@ class MISOWrap:
         # Load event types
         self.load_event_types()
         # Set path to MISO scripts
-        self.run_miso_cmd = os.path.join(self.miso_bin_dir,
-                                         "run_miso.py")
+        self.compare_miso_cmd = os.path.join(self.miso_bin_dir,
+                                             "compare-miso")
+        self.summarize_miso_cmd = os.path.join(self.miso_bin_dir,
+                                               "summarize-miso")
         self.run_events_cmd = os.path.join(self.miso_bin_dir,
-                                           "run_events_analysis.py")
+                                           "miso")
         self.pe_utils_cmd = os.path.join(self.miso_bin_dir,
                                          "pe_utils.py")
         # Files related to gene tables

@@ -34,7 +34,6 @@ def summarize_miso_samples(settings_filename,
     sample_labels = misowrap_obj.sample_labels
     print "Summarizing MISO output..."
     print "  - Output dir: %s" %(output_dir)
-    run_miso_cmd = misowrap_obj.run_miso_cmd
     for sample_label in sample_labels:
         sample_basename = sample_label[0]
         sample_dir_path = \
@@ -53,7 +52,7 @@ def summarize_miso_samples(settings_filename,
             print "Processing event type: %s" %(event_dirname)
             summary_cmd = \
                 "%s --summarize-samples %s %s --summary-label %s" \
-                %(run_miso_cmd,
+                %(misowrap_obj.summarize_miso_cmd,
                   event_dir_path,
                   event_dir_path,
                   sample_basename)
@@ -116,7 +115,7 @@ def compare_miso_samples(settings_filename,
                                  event_type)
                 compare_cmd = "%s --compare-samples %s %s %s " \
                     "--comparison-labels %s %s" \
-                    %(misowrap_obj.run_miso_cmd,
+                    %(misowrap_obj.compare_miso_cmd,
                       sample1_event_dir,
                       sample2_event_dir,
                       event_comparisons_dir,
@@ -134,8 +133,8 @@ def compare_miso_samples(settings_filename,
 def run_miso_on_samples(settings_filename, output_dir,
                         use_cluster=True,
                         base_delay=10,
-                        # Batch delay (40 mins by default)
-                        batch_delay=60*40,
+                        # Batch delay (20 mins by default)
+                        batch_delay=60*20,
                         delay_every_n_jobs=30):
     """
     Run MISO on a set of samples.
@@ -175,8 +174,8 @@ def run_miso_on_samples(settings_filename, output_dir,
                                              sample_label,
                                              event_type)
             # Pass sample to MISO along with event
-            miso_cmd += " --compute-genes-psi %s %s" %(event_type_dir,
-                                                       bam_filename)
+            miso_cmd += " --run %s %s" %(event_type_dir,
+                                         bam_filename)
             if not single_end:
                 insert_len_filename = \
                     os.path.join(insert_lens_dir,
@@ -194,7 +193,6 @@ def run_miso_on_samples(settings_filename, output_dir,
             # Overhang length
             miso_cmd += " --overhang-len %d" %(overhang_len)
             # Prefilter?
-            print "PREFILTER --> ", type(misowrap_obj.prefilter_miso)
             if misowrap_obj.prefilter_miso:
                 miso_cmd += " --prefilter"
             # Output directory
