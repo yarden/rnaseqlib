@@ -9,10 +9,10 @@ import rnaseqlib
 import rnaseqlib.utils as utils
 import rnaseqlib.events.parseTables as parseTables
 
-from collections import OrderedDict, namedtuple
-
+import gffutils
 
 import collections
+from collections import OrderedDict, namedtuple
 
 class OrderedDefaultdict(collections.OrderedDict):
     """
@@ -115,6 +115,7 @@ class Donors(SpliceEdges):
 
 
 def define_RI(sg,
+              gff_out,
               min_intron_len=10,
               multi_iso=False):
     """
@@ -123,8 +124,10 @@ def define_RI(sg,
     [ A ]---[ B ]
     [     C     ]
 
-    Look at B's donors (in this case A) and see if
-    they have a start coordinate.
+    Look at B's donors (in this case A) and see if there is
+    a known exonic unit (A's start spliced to B's end) that
+    that matches that, in this case C.
+    
 
     Parameters:
     -----------
@@ -132,8 +135,24 @@ def define_RI(sg,
     sg : SpliceGraph
     min_intron_len : minimum intron length
     """
+    def get_intron_len(donor, acceptor):
+        """
+        Calculate intron length.
+        """
+        if donor.strand == "+":
+            intron_len = (acceptor.start_coord - 1) - \
+                         (donor.end_coord + 1) + 1
+        else:
+            # Minus strand -- reconsider length given that
+            # donor is "first" in transcript space compared to
+            # acceptor, and that start > end
+            intron_len = (donor.end_coord - 1) - \
+                         (acceptor.start_coord + 1) + 1
+        return intron_len
     if multi_iso:
         raise Exception, "Multiple isoforms not supported."
+    # Keep track of observed retained introns
+    retained_introns = {}
     for strand in sg.acceptors_to_donors:
         for acceptor in sg.acceptors_to_donors[strand].edges:
             # If any of the donor units to this acceptor
@@ -147,15 +166,53 @@ def define_RI(sg,
                 intron_as_exon = Unit(donor.start, acceptor.end)
                 if sg.has_node(intron_as_exon):
                     # Get length of intron
-                    intron_len = (acceptor.start_coord - 1) - \
-                                 (donor.end_coord + 1) + 1
+                    intron_len = get_intron_len(donor, acceptor)
 #                    if intron_len < min_intron_len:
 #                        continue
-                    print "It's a retained intron between %s and %s" \
-                          %(donor, acceptor)
+                    ri = (donor.coords_str, acceptor.coords_str)
+                    if ri in retained_introns:
+                        continue
+                    # Output retained intron to gff file
+                    output_RI(gff_out, donor, acceptor, intron_len)
+                    print "It's a retained intron between %s and %s: %d" \
+                          %(donor, acceptor, intron_len)
                     # Output retained intron
-                    print "UP EXON: ", donor.coords_str
-                    print "DN EXON: ", acceptor.coords_str
+                    retained_introns[ri] = True
+
+
+def output_RI(gff_out, donor, acceptor, intron_len,
+              source="RI"):
+    """
+    Output a retained intron event.
+    """
+    chrom = donor.chrom
+    strand = donor.strand
+    if donor.strand == "-":
+        # On minus strand: output coordinates in transcript order,
+        # so unlike GFF ordering, start > end for minus strand.
+        ri_name = "%s@%s" %(donor.minus_coords_str,
+                            acceptor.minus_coords_str)
+    else:
+        # On plus strand
+        ri_name = "%s@%s" %(donor.coords_str,
+                            acceptor.coords_str)
+    gene_rec = gffutils.Feature(seqid=chrom,
+                                source=source,
+                                start=donor.start_coord,
+                                end=acceptor.end_coord,
+                                strand=strand,
+                                attributes={"ID": [ri_name],
+                                            "Name": [ri_name],
+                                            "intron_len": [str(intron_len)]})
+    # Output mRNA containing the retained intron and then output its exons.
+    # First output retained intron with "ri" suffix
+    long_mRNA_name = "%s.ri" %(ri_name)
+    long_mRNA_rec = gffutils.Feature(seqid=chrom,
+                                     source=source,
+                                     start=donor
+    # Output mRNA splicing out the intron and then output its exons
+    short_mRNA_name =
+    
 
             
 
@@ -285,16 +342,6 @@ class Unit(namedtuple("Unit", ["start", "end"])):
     Unit is an exon like part of a transcript.
     """
     __slots__ = ()
-    @property 
-    def coords_str(self):
-        return "%s:%s-%s:%s" %(self.start[0],
-                               self.start[1],
-                               self.end[1],
-                               self.start[2])        
-        
-    def __str__(self):
-        return "Unit(%s)" %(self.coords_str)
-
     @property
     def start_coord(self):
         return int(self.start[1])
@@ -310,6 +357,31 @@ class Unit(namedtuple("Unit", ["start", "end"])):
     @property
     def strand(self):
         return self.start[-1]
+
+    @property 
+    def coords_str(self):
+        return "%s:%s-%s:%s" %(self.chrom,
+                               str(self.start_coord),
+                               str(self.end_coord),
+                               self.strand)
+    @property
+    def minus_coords_str(self):
+        """
+        Version of coords_str() that returns minus strand
+        coordinates convention, where start > end (contrary
+        to GFF) so reflect transcript order.
+        """
+        if self.strand == "+":
+            raise Exception, "Why call minus_coords_str on a plus strand unit?"
+        return "%s:%s-%s:%s" %(self.chrom,
+                               str(self.end_coord),
+                               str(self.start_coord),
+                               self.strand)
+        
+    def __str__(self):
+        return "Unit(%s)" %(self.coords_str)
+
+    
         
     
 class SpliceGraph:
@@ -388,6 +460,8 @@ class SpliceGraph:
                 endvals = endvals.split(",")[:-1]
                 indices = range(len(startvals))
                 if strand == "-":
+                    # If it's a minus strand event, walk the transcript from
+                    # end (in order of transcription)
                     startvals = startvals[::-1]
                     endvals = endvals[::-1]
                 for curr_i, next_i in utils.iter_by_pair(indices, step=1):
@@ -397,8 +471,13 @@ class SpliceGraph:
                     acceptor_unit = Unit((chrom, startvals[next_i], strand),
                                          (chrom, endvals[next_i], strand))
                     if strand == "-":
-                        # Reverse donor, acceptor if on minus strand
-                        donor_unit, acceptor_unit = acceptor_unit, donor_unit
+                        # Reverse start/end of donor and acceptor units
+                        # if it's a minus strand event
+                        donor_unit = Unit((chrom, endvals[curr_i], strand),
+                                          (chrom, startvals[curr_i], strand))
+                        acceptor_unit = Unit((chrom, endvals[next_i], strand),
+                                             (chrom, startvals[next_i], strand))
+#                        donor_unit, acceptor_unit = acceptor_unit, donor_unit
                     # Record splice site as edge
                     self.add_edge(donor_unit, acceptor_unit,
                                   strand=strand)
@@ -423,7 +502,9 @@ def main():
         os.path.expanduser("/home/yarden/jaen/rnaseqlib/rnaseqlib/test/test-data/ri-test/ensGene.txt")
     tables = [table_fname]
     sg = SpliceGraph(tables)
-    define_RI(sg)
+    gff_out = gffutils.gffwriter.GFFWriter("./ri_test.gff3")
+    define_RI(sg, gff_out)
+    gff_out.close()
 
     
         
