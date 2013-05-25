@@ -167,15 +167,15 @@ def define_RI(sg,
                 if sg.has_node(intron_as_exon):
                     # Get length of intron
                     intron_len = get_intron_len(donor, acceptor)
-#                    if intron_len < min_intron_len:
-#                        continue
+                    if intron_len < min_intron_len:
+                        continue
                     ri = (donor.coords_str, acceptor.coords_str)
                     if ri in retained_introns:
                         continue
                     # Output retained intron to gff file
                     output_RI(gff_out, donor, acceptor, intron_len)
-                    print "It's a retained intron between %s and %s: %d" \
-                          %(donor, acceptor, intron_len)
+#                    print "It's a retained intron between %s and %s: %d" \
+#                          %(donor, acceptor, intron_len)
                     # Output retained intron
                     retained_introns[ri] = True
 
@@ -187,154 +187,89 @@ def output_RI(gff_out, donor, acceptor, intron_len,
     """
     chrom = donor.chrom
     strand = donor.strand
-    if donor.strand == "-":
-        # On minus strand: output coordinates in transcript order,
-        # so unlike GFF ordering, start > end for minus strand.
-        ri_name = "%s@%s" %(donor.minus_coords_str,
-                            acceptor.minus_coords_str)
-    else:
-        # On plus strand
-        ri_name = "%s@%s" %(donor.coords_str,
-                            acceptor.coords_str)
+    donor_start = donor.start_coord
+    donor_end = donor.end_coord
+    acceptor_start = acceptor.start_coord
+    acceptor_end = acceptor.end_coord
+    ri_name = "%s@%s" %(donor.coords_str,
+                        acceptor.coords_str)
+    gene_start = donor_start
+    gene_end = acceptor_end
+    # For GFF record purposes, ensure start < end always
+    if gene_start > gene_end:
+        gene_start, gene_end = gene_end, gene_start
     gene_rec = gffutils.Feature(seqid=chrom,
                                 source=source,
-                                start=donor.start_coord,
-                                end=acceptor.end_coord,
+                                featuretype="gene",
+                                start=gene_start,
+                                end=gene_end,
                                 strand=strand,
                                 attributes={"ID": [ri_name],
-                                            "Name": [ri_name],
-                                            "intron_len": [str(intron_len)]})
-    # Output mRNA containing the retained intron and then output its exons.
-    # First output retained intron with "ri" suffix
-    long_mRNA_name = "%s.ri" %(ri_name)
+                                            "Name": [ri_name]})
+    # Output mRNA containing the retained intron and then output its exons
+    # First output retained intron using "withRI" suffix
+    long_mRNA_name = "%s.A" %(ri_name)
+    # Long mRNA record has same start/end as gene record
     long_mRNA_rec = gffutils.Feature(seqid=chrom,
                                      source=source,
-                                     start=donor
+                                     featuretype="mRNA",
+                                     start=gene_start,
+                                     end=gene_end,
+                                     strand=strand,
+                                     attributes={"ID": [long_mRNA_name],
+                                                 "Parent": [ri_name]})
+    # Retained intron belongs to long mRNA
+    ri_exon_name = "%s.withRI" %(long_mRNA_name)
+    # Retained intron record has same start/end as gene record as well
+    ri_exon_rec = gffutils.Feature(seqid=chrom,
+                                   source=source,
+                                   featuretype="exon",
+                                   start=gene_start,
+                                   end=gene_end,
+                                   strand=strand,
+                                   attributes={"ID": [ri_exon_name],
+                                               "Parent": [long_mRNA_name]})
     # Output mRNA splicing out the intron and then output its exons
-    short_mRNA_name =
-    
+    short_mRNA_name = "%s.B" %(ri_name)
+    # Short mRNA has same start/end as gene record
+    short_mRNA_rec = gffutils.Feature(seqid=chrom,
+                                      source=source,
+                                      featuretype="mRNA",
+                                      start=gene_start,
+                                      end=gene_end,
+                                      strand=strand,
+                                      attributes={"ID": [short_mRNA_name],
+                                                  "Parent": [ri_name]})
+    up_exon_name = "%s.up" %(short_mRNA_name)
+    up_exon_rec = gffutils.Feature(seqid=chrom,
+                                   source=source,
+                                   featuretype="exon",
+                                   start=donor.gff_start,
+                                   end=donor.gff_end,
+                                   strand=strand,
+                                   attributes={"ID": [up_exon_name],
+                                               "Parent": [short_mRNA_name]})
+    dn_exon_name = "%s.dn" %(short_mRNA_name)
+    dn_exon_rec = gffutils.Feature(seqid=chrom,
+                                   source=source,
+                                   featuretype="exon",
+                                   start=acceptor.gff_start,
+                                   end=acceptor.gff_end,
+                                   strand=strand,
+                                   attributes={"ID": [dn_exon_name],
+                                               "Parent": [short_mRNA_name]})
+    # Serialize records to GFF
+    # gene
+    gff_out.write_rec(gene_rec)
+    # long mRNA
+    gff_out.write_rec(long_mRNA_rec)
+    # retained intron
+    gff_out.write_rec(ri_exon_rec)
+    # short mRNA
+    gff_out.write_rec(short_mRNA_rec)
+    gff_out.write_rec(up_exon_rec)
+    gff_out.write_rec(dn_exon_rec)
 
-            
-
-def RI(DtoA_F, AtoD_F, DtoA_R, AtoD_R, gff3_f,
-       multi_iso=False):
-    """
-    Define retained introns.
-    """
-    print "Generating retained introns (RI)"
-#    if os.path.isfile(gff3_f):
-#        print "  - Found file, skipping..."
-#        return
-    out = open(gff3_f, 'w')
-
-    print "ATOD_F: ", AtoD_F
-
-    for acceptor in AtoD_F:                                 # iterate through acceptors
-        chrom, acceptorcoord, strand = acceptor.split(":")
-        donors = [x for x in list(AtoD_F[acceptor]) if x in DtoA_R]
-                                                           # get the 5'ss in same exon for these acceptors
-
-        if len(donors) > 1:
-            for donor in donors:                           # iterate through these 5'ss
-                rilist = []
-                riAcceptors = [x for x in list(DtoA_R[donor]) if x in AtoD_R]
-                print "riAcceptors: ", riAcceptors
-                                                           # get the upstream 3'ss for this 5'ss
-                for riAcceptor in riAcceptors:             # iterate through these 3'ss and get their 5'ss
-                    riDonors = [x for x in list(AtoD_R[riAcceptor]) if x in DtoA_R]
-                    for riDonor in riDonors:               # if the 3'ss upstream of these 5'ss is the upstream
-                        upAcceptors = list(DtoA_R[riDonor])# acceptor, this is a retained intron 
-                        if acceptor in upAcceptors:
-                            rilist.append([riDonor, riAcceptor])
-                if len(rilist) > 0:
-                    ss1 = acceptor.split(":")[1]
-                    donorlist = list(set([x[0].split(":")[1] for x in rilist]))
-                    acceptorlist = list(set([x[1].split(":")[1] for x in rilist]))
-                    ss4 = donor.split(":")[1]
-
-                    if multi_iso:
-                        if strand == '+':
-
-                            upexon = ":".join([chrom, ss1, "|".join(donorlist), strand])
-                            dnexon = ":".join([chrom, "|".join(acceptorlist), ss4, strand])
-                            name = "@".join([upexon, dnexon])
-                            out.write("\t".join([chrom, 'RI', 'gene', ss1, ss4,\
-                                '.', strand, '.', "ID=" + name + ";Name=" + name]) + "\n")
-                            out.write("\t".join([chrom, 'RI', 'mRNA', ss1, ss4,\
-                                '.', strand, '.', "ID=" + name + ".A;Parent=" + name]) + "\n")
-                            for i in range(len(rilist)):
-                                out.write("\t".join([chrom, 'RI', 'mRNA', ss1, ss4,\
-                                    '.', strand, '.', "ID=" + name + "." + LETTERS[i + 1] + ";Parent=" + name]) + "\n")
-                            out.write("\t".join([chrom, 'RI', 'exon', ss1, ss4,\
-                                '.', strand, '.', "ID=" + name + ".ri;Parent=" + name + ".A"]) + "\n")
-                            for i in range(len(rilist)):
-                                out.write("\t".join([chrom, 'RI', 'exon', ss1, donorlist[i],\
-                                    '.', strand, '.', "ID=" + name + ".up;Parent=" + name + "." + LETTERS[i + 1]]) + "\n")
-                                out.write("\t".join([chrom, 'RI', 'exon', acceptorlist[i], ss4,\
-                                    '.', strand, '.', "ID=" + name + ".dn;Parent=" + name + "." + LETTERS[i + 1]]) + "\n")
-
-                        else:
-
-                            upexon = ":".join([chrom, ss1, "|".join(donorlist), strand])
-                            dnexon = ":".join([chrom, "|".join(acceptorlist), ss4, strand])
-                            name = "@".join([upexon, dnexon])
-                            out.write("\t".join([chrom, 'RI', 'gene', ss4, ss1,\
-                                '.', strand, '.', "ID=" + name + ";Name=" + name]) + "\n")
-                            out.write("\t".join([chrom, 'RI', 'mRNA', ss4, ss1,\
-                                '.', strand, '.', "ID=" + name + ".A;Parent=" + name]) + "\n")
-                            for i in range(len(rilist)):
-                                out.write("\t".join([chrom, 'RI', 'mRNA', ss4, ss1,\
-                                    '.', strand, '.', "ID=" + name + "." + LETTERS[i + 1] + ";Parent=" + name]) + "\n")
-                            out.write("\t".join([chrom, 'RI', 'exon', ss4, ss1,\
-                                '.', strand, '.', "ID=" + name + ".up;Parent=" + name + ".A"]) + "\n")
-                            for i in range(len(rilist)):
-                                out.write("\t".join([chrom, 'RI', 'exon', donorlist[i], ss1,\
-                                    '.', strand, '.', "ID=" + name + ".up;Parent=" + name + "." + LETTERS[i + 1]]) + "\n")
-                                out.write("\t".join([chrom, 'RI', 'exon', ss4, acceptorlist[i],\
-                                    '.', strand, '.', "ID=" + name + ".dn;Parent=" + name + "." + LETTERS[i + 1]]) + "\n")
-
-                    # 2-isoform case
-                    else:
-                        for iso1 in range(len(donorlist)):
-                            for iso2 in range(len(acceptorlist)):
-                                if strand == '+':
-                                    upexon = ":".join([chrom, ss1, donorlist[iso1], strand])
-                                    dnexon = ":".join([chrom, acceptorlist[iso2], ss4, strand])
-                                    name = "@".join([upexon, dnexon])
-
-                                    out.write("\t".join([chrom, 'RI', 'gene', ss1, ss4,\
-                                        '.', strand, '.', "ID=" + name + ";Name=" + name]) + "\n")
-                                    out.write("\t".join([chrom, 'RI', 'mRNA', ss1, ss4,\
-                                        '.', strand, '.', "ID=" + name + ".A;Parent=" + name]) + "\n")
-                                    out.write("\t".join([chrom, 'RI', 'mRNA', ss1, ss4,\
-                                        '.', strand, '.', "ID=" + name + ".B;Parent=" + name]) + "\n")
-                                    out.write("\t".join([chrom, 'RI', 'exon', ss1, ss4,\
-                                        '.', strand, '.', "ID=" + name + ".ri;Parent=" + name + ".A"]) + "\n")
-                                    out.write("\t".join([chrom, 'RI', 'exon', ss1, donorlist[iso1],\
-                                        '.', strand, '.', "ID=" + name + ".up;Parent=" + name + ".B"]) + "\n")
-                                    out.write("\t".join([chrom, 'RI', 'exon', acceptorlist[iso2], ss4,\
-                                        '.', strand, '.', "ID=" + name + ".dn;Parent=" + name + ".B"]) + "\n")
-
-                                else:
-                                    upexon = ":".join([chrom, ss1, donorlist[iso1], strand])
-                                    dnexon = ":".join([chrom, acceptorlist[iso2], ss4, strand])
-                                    name = "@".join([upexon, dnexon])
-                                    
-                                    out.write("\t".join([chrom, 'RI', 'gene', ss4, ss1,\
-                                        '.', strand, '.', "ID=" + name + ";Name=" + name]) + "\n")
-                                    out.write("\t".join([chrom, 'RI', 'mRNA', ss4, ss1,\
-                                        '.', strand, '.', "ID=" + name + ".A;Parent=" + name]) + "\n")
-                                    out.write("\t".join([chrom, 'RI', 'mRNA', ss4, ss1,\
-                                        '.', strand, '.', "ID=" + name + ".B;Parent=" + name]) + "\n")
-                                    out.write("\t".join([chrom, 'RI', 'exon', ss4, ss1,\
-                                        '.', strand, '.', "ID=" + name + ".ri;Parent=" + name + ".A"]) + "\n")
-                                    out.write("\t".join([chrom, 'RI', 'exon', donorlist[iso1], ss1,\
-                                        '.', strand, '.', "ID=" + name + ".up;Parent=" + name + ".B"]) + "\n")
-                                    out.write("\t".join([chrom, 'RI', 'exon', ss4, acceptorlist[iso2],\
-                                        '.', strand, '.', "ID=" + name + ".dn;Parent=" + name + ".B"]) + "\n")
-                                # Record seen RI
-                                #seen_RIs[name] = True
-    out.close()
 
 
 class Unit(namedtuple("Unit", ["start", "end"])):
@@ -351,6 +286,14 @@ class Unit(namedtuple("Unit", ["start", "end"])):
         return int(self.end[1])
 
     @property
+    def gff_start(self):
+        return min((int(self.start[1]), int(self.end[1])))
+
+    @property
+    def gff_end(self):
+        return max((int(self.start[1]), int(self.end[1])))        
+
+    @property
     def chrom(self):
         return self.start[0]
 
@@ -364,6 +307,22 @@ class Unit(namedtuple("Unit", ["start", "end"])):
                                str(self.start_coord),
                                str(self.end_coord),
                                self.strand)
+
+    @property
+    def gff_coords_str(self):
+        """
+        Return coordinates string in a way that start < end
+        always (for GFF purposes.)
+        """
+        s = self.start_coord
+        e = self.end_coord
+        if s > e:
+            s, e = e, s
+        return "%s:%s-%s:%s" %(self.chrom,
+                               s,
+                               e,
+                               self.strand)
+    
     @property
     def minus_coords_str(self):
         """
@@ -381,8 +340,6 @@ class Unit(namedtuple("Unit", ["start", "end"])):
     def __str__(self):
         return "Unit(%s)" %(self.coords_str)
 
-    
-        
     
 class SpliceGraph:
     """
@@ -450,6 +407,7 @@ class SpliceGraph:
         on distinct strands.
         """
         print "Populating graph..."
+        t1 = time.time()
         for table_name in self.tables:
             print "Adding splice edges from table %s" %(table_name)
             for item in self.tables[table_name]:
@@ -481,6 +439,8 @@ class SpliceGraph:
                     # Record splice site as edge
                     self.add_edge(donor_unit, acceptor_unit,
                                   strand=strand)
+        t2 = time.time()
+        print "Populating graph took %.2f seconds" %(t2 - t1)
 
 
     def __str__(self):
