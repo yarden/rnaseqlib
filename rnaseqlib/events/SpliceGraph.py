@@ -135,6 +135,7 @@ def define_RI(sg,
     sg : SpliceGraph
     min_intron_len : minimum intron length
     """
+    print "Defining retained introns (RI)"
     def get_intron_len(donor, acceptor):
         """
         Calculate intron length.
@@ -171,12 +172,10 @@ def define_RI(sg,
                         continue
                     ri = (donor.coords_str, acceptor.coords_str)
                     if ri in retained_introns:
+                        # Skip introns that we've seen already
                         continue
                     # Output retained intron to gff file
                     output_RI(gff_out, donor, acceptor, intron_len)
-#                    print "It's a retained intron between %s and %s: %d" \
-#                          %(donor, acceptor, intron_len)
-                    # Output retained intron
                     retained_introns[ri] = True
 
 

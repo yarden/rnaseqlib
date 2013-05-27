@@ -6,6 +6,7 @@ import parseTables
 
 import rnaseqlib
 import rnaseqlib.utils as utils
+import rnaseqlib.events.SpliceGraph as splicegraph
 
 import gffutils
 import gffutils.helpers as helpers
@@ -875,58 +876,91 @@ def load_ucsc_tables(tables_dir,
     return table_fnames
 
 
+def output_SE(sg, table_fnames, output_fname, flanking):
+    DtoA_F, AtoD_F, DtoA_R, AtoD_R = sg
+    SE(DtoA_F, AtoD_F, DtoA_R, AtoD_R, output_fname,
+       flanking=flanking)
+
+
+def output_MXE(sg, table_fnames, output_fname, flanking):
+    DtoA_F, AtoD_F, DtoA_R, AtoD_R = sg
+    MXE(DtoA_F, AtoD_F, DtoA_R, AtoD_R, output_fname,
+        flanking=flanking)
+
+
+def output_A3SS(sg, table_fnames, output_fname, flanking,
+                multi_iso=False):
+    DtoA_F, AtoD_F, DtoA_R, AtoD_R = sg    
+    A3SS(DtoA_F, AtoD_F, DtoA_R, AtoD_R, output_fname,
+         flanking=flanking,
+         multi_iso=multi_iso)
+
+
+def output_A5SS(sg, table_fnames, output_fname, flanking,
+                multi_iso=False):
+    DtoA_F, AtoD_F, DtoA_R, AtoD_R = sg    
+    A5SS(DtoA_F, AtoD_F, DtoA_R, AtoD_R, output_fname,
+         flanking=flanking,
+         multi_iso=multi_iso)
+
+
+def output_RI(sg, table_fnames, output_fname,
+              flanking=None):
+    """
+    Output RI annotation.
+    """
+    print "Outputting retained introns..."
+    gff_out = gffutils.gffwriter.GFFWriter(output_fname)
+    # Define RI with the SpliceGraph object
+    splicegraph.define_RI(sg, gff_out)
+    gff_out.close()
+
+
 def defineAllSplicing(tabledir, gff3dir,
                       flanking='commonshortest',
                       multi_iso=False,
                       genome_label=None,
                       sanitize=False):
+#                      event_types=["SE", "RI", "MXE", "A3SS", "A5SS"]):
     """
-    A wrapper to define all splicing events: SE, RI, MXE, A3SS, A5SS
+    A wrapper to define all splicing events: SE, MXE, RI, A3SS, A5SS
     RI does not use the "flanking criteria".
     """
     if isinstance(multi_iso, str):
         multi_iso = eval(multi_iso)
 
-    tablefiles = load_ucsc_tables(tabledir)
-    DtoA_F, AtoD_F, DtoA_R, AtoD_R = prepareSplicegraph(*tablefiles)
+    table_fnames = load_ucsc_tables(tabledir)
+    sg = splicegraph.SpliceGraph(table_fnames)
+    DtoA_F, AtoD_F, DtoA_R, AtoD_R = prepareSplicegraph(*table_fnames)
 
     # Encode the flanking exons rule in output directory
     gff3dir = os.path.join(gff3dir, flanking)
     utils.make_dir(gff3dir)
 
     if genome_label is not None:
-        genome_label = "%s." %(genome_label)
+        genome_label = "%s" %(genome_label)
     else:
         genome_label = ""
 
     annotation_fnames = []
+    # Mapping from event type to the function that creates it
+    event_type_to_func = \
+        [("SE", output_SE),
+         ("MXE", output_MXE),
+         ("A3SS", output_A3SS),
+         ("A5SS", output_A5SS),
+         ("RI", output_RI)]
 
-    SE_fname = os.path.join(gff3dir, 'SE.%sgff3' %(genome_label))
-    SE(DtoA_F, AtoD_F, DtoA_R, AtoD_R, SE_fname,
-       flanking=flanking)
-    annotation_fnames.append(SE_fname)
-    
-    RI_fname = os.path.join(gff3dir, 'RI.%sgff3' %(genome_label))
-    RI(DtoA_F, AtoD_F, DtoA_R, AtoD_R, RI_fname,
-       multi_iso=multi_iso)
-    annotation_fnames.append(RI_fname)
-
-    MXE_fname = os.path.join(gff3dir, 'MXE.%sgff3' %(genome_label))
-    MXE(DtoA_F, AtoD_F, DtoA_R, AtoD_R, MXE_fname,
-        flanking=flanking)
-    annotation_fnames.append(MXE_fname)
-
-    A3SS_fname = os.path.join(gff3dir, 'A3SS.%sgff3' %(genome_label))
-    A3SS(DtoA_F, AtoD_F, DtoA_R, AtoD_R, A3SS_fname,
-         flanking=flanking,
-         multi_iso=multi_iso)
-    annotation_fnames.append(A3SS_fname)
-
-    A5SS_fname = os.path.join(gff3dir, 'A5SS.%sgff3' %(genome_label))
-    A5SS(DtoA_F, AtoD_F, DtoA_R, AtoD_R, A5SS_fname,
-         flanking=flanking,
-         multi_iso=multi_iso)
-    annotation_fnames.append(A5SS_fname)
+    for event_type, event_func in event_type_to_func:
+        output_fname = \
+            os.path.join(gff3dir, "%s.%s.gff3" %(event_type,
+                                                 genome_label))
+        if event_type == "RI":
+            sg_data = sg
+        else:
+            sg_data = DtoA_F, AtoD_F, DtoA_R, AtoD_R
+        event_func(sg_data, table_fnames, output_fname, flanking=flanking)
+        annotation_fnames.append(output_fname)
 
     # If asked, sanitize the annotation in place
     if sanitize:

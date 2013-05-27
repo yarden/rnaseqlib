@@ -24,6 +24,8 @@ def table_fname_to_header(table_fname):
         # If name2 exists (like it does in refGene and ensGene
         # tables), use it as the gene column
         header[header.index("name2")] = "gene"
+    elif "gene" in header:
+        pass
     else:
         # If name2 isn't present (e.g. in knownGene), then
         # use the transcript ID field 'name'
@@ -38,7 +40,6 @@ def readTable(table_f):
 
     table_in = open(table_f)
     header = table_fname_to_header(table_f)
-    print "HEADER: ", header
     if header is None:
         raise Exception, "Unrecognized table file %s" %(table_f)
 

@@ -40,6 +40,7 @@ GENOME_TABLES = \
      "hg18": genome_to_ucsc_table("hg18"),
      "hg19": genome_to_ucsc_table("hg19")}
 
+
 def annotate_gff(gff_fname, genome):
     print "Annotating GFF %s (%s)" %(gff_fname, genome)
     table_fname = GENOME_TABLES[genome]
@@ -48,7 +49,31 @@ def annotate_gff(gff_fname, genome):
     ret_val = os.system(cmd)
     if ret_val != 0:
         raise Exception, "GFF annotation failed for %s" %(gff_fname)
-            
+
+
+def index_gff_dir(gff_dir,
+                   indexed_dirname="pickled",
+                   ext=".gff3",
+                   delim="."):
+    """
+    Index a set of GFF files into a directory.
+    """
+    if not os.path.isdir(gff_dir):
+        raise Exception, "Cannot find directory %s" %(gff_dir)
+    gff_fnames = glob.glob(os.path.join(gff_dir, "*.%s" %(ext)))
+    if len(gff_fnames) == 0:
+        raise Exception, "No *.%s files in %s" %(ext, gff_dir)
+    # Index each file
+    for gff_fname in gff_fnames:
+        gff_basename = os.path.basename(gff_fname)
+        gff_label = gff_basename.split(delim)[0]
+        gff_outdir = os.path.join(gff_dir, indexed_dirname, gff_label)
+        print "Index %s into %s" %(gff_label, gff_outdir)
+        index_cmd = "index_gff --index %s %s" %(gff_fname, gff_outdir)
+        ret_val = os.system(cmd)
+        if ret_val != 0:
+            raise Exception, "Indexing of %s failed." %(gff_fname)
+        
 
 def coords_from_relative_regions(skipped_exon,
                                  adjacent_exon,
