@@ -224,7 +224,7 @@ def run_miso_on_samples(settings_filename, output_dir,
 def filter_events(settings_filename,
                   output_dir):
     """
-    Output a set of filtered MISO events.
+    Output a set of filtered MISO comparisons.
     """
     misowrap_obj = mw.MISOWrap(settings_filename,
                                output_dir,
@@ -363,7 +363,7 @@ def main():
                       "comparisons. Takes a settings filename.")
     parser.add_option("--filter", dest="filter", nargs=1,
                       default=None,
-                      help="Filter a set of MISO events. "
+                      help="Filter a set of MISO comparisons. "
                       "Takes a settings filename.")
     parser.add_option("--compute-insert-lens", dest="compute_insert_lens",
                       nargs=1, default=None,

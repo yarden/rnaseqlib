@@ -7,6 +7,7 @@ import itertools
 from collections import defaultdict
 
 import pandas
+import pybedtools
 
 import rnaseqlib
 import rnaseqlib.utils as utils
@@ -66,52 +67,79 @@ class MISOWrap:
         self.load_events_to_genes()
 
 
-    def load_events_to_genes(self,
-                             source="ensGene",
-                             delimiter="\t"):
+    def load_events_to_genes(self, delimiter="\t"):
         """
-        Load mapping from events to genes.
-
-        Expects a directory with files named
-        according to events, e.g.:
-        
-          SE.mm9.gff3_to_ensGene.txt        
+        Load mapping from events to genes. Use the new GFF files
+        for this.
         """
-        if "events_to_genes_dir" not in self.settings_info["settings"]:
-            return
+        basename_card = "*.gff3"
         events_to_genes_dir = \
-            self.settings_info["settings"]["events_to_genes_dir"]
-        events_to_genes_dir = utils.pathify(events_to_genes_dir)
-        print "Loading events to genes mapping from: %s" \
-            %(events_to_genes_dir)
-        # If we're given mapping from events to genes, load
-        # these and index them by event type.
-        if not os.path.isdir(events_to_genes_dir):
-            print "Error: %s not a directory."
-            sys.exit(1)
-        basename_card = "*_to_%s.txt" %(source)
-        events_to_genes_files = \
-            glob.glob(os.path.join(events_to_genes_dir,
-                                   basename_card))
-        if len(events_to_genes_files) == 0:
-            print "Error: %s directory contains no %s files." \
-                %(events_to_genes_dir,
-                  basename_card)
-            sys.exit(1)
-        self.events_to_genes = defaultdict(lambda: defaultdict(list))
-        for fname in events_to_genes_files:
-            # Extract event type based on filename
+            utils.pathify(self.settings_info["settings"]["events_to_genes_dir"])
+        gff_fnames = \
+            glob.glob(os.path.join(events_to_genes_dir, basename_card))
+        print "Loading events to genes mapping..."
+        print "  - Input directory: %s" %(events_to_genes_dir)
+        print "  - Number of files: %d" %(len(gff_fnames))
+        self.events_to_genes = defaultdict(lambda: defaultdict(str))
+        for fname in gff_fnames:
             event_type = os.path.basename(fname).split(".")[0]
-            with open(fname, "r") as events_file:
-                events_entries = csv.DictReader(events_file,
-                                                delimiter=delimiter)
-                for entry in events_entries:
-                    event_id = entry["event_id"]
-                    # Parse genes into a list
-                    genes = entry["gene_id"].split(",")
-                    # Index events by their type and then by
-                    # their ID
-                    self.events_to_genes[event_type][event_id].extend(genes)
+            gff_entries = pybedtools.BedTool(fname)
+            gene_entries = gff_entries.filter(lambda x: x.fields[2] == "gene")
+            for gene in gene_entries:
+                # Parse Ensembl gene, RefSeq and gene symbols
+                attrs = gene.attrs
+                self.events_to_genes[event_type][attrs["ID"]] = \
+                    {"ensg_id": attrs["ensg_id"],
+                     "refseq_id": attrs["refseq_id"],
+                     "gsymbol": attrs["gsymbol"]}
+            
+
+    # def load_events_to_genes(self,
+    #                          source="ensGene",
+    #                          delimiter="\t"):
+    #     """
+    #     Load mapping from events to genes.
+
+    #     Expects a directory with files named
+    #     according to events, e.g.:
+        
+    #       SE.mm9.gff3_to_ensGene.txt        
+    #     """
+    #     if "events_to_genes_dir" not in self.settings_info["settings"]:
+    #         return
+    #     events_to_genes_dir = \
+    #         self.settings_info["settings"]["events_to_genes_dir"]
+    #     events_to_genes_dir = utils.pathify(events_to_genes_dir)
+    #     print "Loading events to genes mapping from: %s" \
+    #         %(events_to_genes_dir)
+    #     # If we're given mapping from events to genes, load
+    #     # these and index them by event type.
+    #     if not os.path.isdir(events_to_genes_dir):
+    #         print "Error: %s not a directory."
+    #         sys.exit(1)
+    #     basename_card = "*_to_%s.txt" %(source)
+    #     events_to_genes_files = \
+    #         glob.glob(os.path.join(events_to_genes_dir,
+    #                                basename_card))
+    #     if len(events_to_genes_files) == 0:
+    #         print "Error: %s directory contains no %s files." \
+    #             %(events_to_genes_dir,
+    #               basename_card)
+    #         sys.exit(1)
+    #     self.events_to_genes = defaultdict(lambda: defaultdict(list))
+    #     for fname in events_to_genes_files:
+    #         # Extract event type based on filename
+    #         event_type = os.path.basename(fname).split(".")[0]
+    #         with open(fname, "r") as events_file:
+    #             events_entries = csv.DictReader(events_file,
+    #                                             delimiter=delimiter)
+    #             for entry in events_entries:
+    #                 event_id = entry["event_id"]
+    #                 # Parse genes into a list
+    #                 genes = entry["gene_id"].split(",")
+    #                 # Index events by their type and then by
+    #                 # their ID
+    #                 self.events_to_genes[event_type][event_id].extend(genes)
 
                 
     def load_settings(self):
@@ -177,13 +205,13 @@ class MISOWrap:
         self.load_event_types()
         # Set path to MISO scripts
         self.compare_miso_cmd = os.path.join(self.miso_bin_dir,
-                                             "compare-miso")
+                                             "compare_miso")
         self.summarize_miso_cmd = os.path.join(self.miso_bin_dir,
-                                               "summarize-miso")
+                                               "summarize_miso")
         self.run_events_cmd = os.path.join(self.miso_bin_dir,
                                            "miso")
         self.pe_utils_cmd = os.path.join(self.miso_bin_dir,
-                                         "pe_utils.py")
+                                         "pe_utils")
         # Files related to gene tables
         self.tables_dir = \
             os.path.join(self.settings_info["pipeline-files"]["init_dir"],

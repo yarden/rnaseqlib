@@ -845,9 +845,15 @@ class Pipeline:
         if not os.path.isfile(ribosub_bam_filename):
             # Get the ribosomal rRNA mapping reads
             ribo_read_ids = {}
-            ribo_reads = mapped_reads.fetch(reference=chr_ribo,
-                                            start=None,
-                                            end=None)
+            ribo_reads = []
+            try:
+                ribo_reads = mapped_reads.fetch(reference=chr_ribo,
+                                                start=None,
+                                                end=None)
+            except:
+                self.logger.warning("Could not fetch %s from %s" \
+                                    %(chr_ribo,
+                                      sample.bam_filename))
             for ribo_read in ribo_reads:
                 ribo_read_ids[ribo_read.qname] = True
             num_ribo_reads = len(ribo_read_ids)

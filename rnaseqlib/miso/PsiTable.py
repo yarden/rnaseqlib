@@ -96,7 +96,6 @@ class PsiTable:
                                            "ensGene",
                                            tables_only=True)
             
-
         
     def add_genes_to_events(self, df, event_type):
         """
@@ -113,11 +112,9 @@ class PsiTable:
             genes_str = self.na_val
             genes_symbols_str = self.na_val
             if event_id in events_to_genes:
-                genes = events_to_genes[event_id]
-                genes_symbols = [self.gene_table.genes_to_names[g] \
-                                 for g in genes]
-                genes_str = ",".join(genes)
-                genes_symbols_str = ",".join(genes_symbols)
+                # Retrieve gene ids
+                genes_str = events_to_genes[event_id]["ensg_id"]
+                genes_symbols_str = events_to_genes[event_id]["gsymbol"]
             all_genes_values.append(genes_str)
             all_genes_symbols.append(genes_symbols_str)
         df["gene_id"] = all_genes_values
@@ -350,7 +347,7 @@ class PsiTable:
                                                       "mRNA_starts",
                                                       "mRNA_ends"]):
         """
-        Output filtered comparisons table to.
+        Output filtered comparisons table.
         """
         if output_dir == None:
             output_dir = self.misowrap_obj.comparisons_dir

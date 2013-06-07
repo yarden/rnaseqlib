@@ -223,7 +223,7 @@ class QualityControl:
             # Count reads (fetch returns an iterator)
             # Do not count duplicates
             num_ribo = count_nondup_reads(ribo_reads)
-            self.logger.info("NUM RIBO: %d" %(num_ribo))
+            self.logger.info("Number ribo reads: %d" %(num_ribo))
         except:
             self.logger.warning("Could not fetch %s reads" %(chr_ribo))
         return num_ribo

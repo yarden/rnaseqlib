@@ -55,6 +55,44 @@ def bam_to_fastx(in_file, out_file, record_type="fasta"):
     out_handle.close()
 
 
+def get_fastx_type(fastx_filename):
+    """
+    Decide if it's a FASTQ file or a FASTA file.
+    Assume FASTQ by default.
+    """
+    # Try to decode the file by its extension
+    if (fastx_filename.lower().endswith(".fasta") or \
+        fastx_filename.lower().endswith(".fa") or \
+        fastx_filename.lower().endswith(".fasta.gz")):
+        return "fasta"
+    elif (fastx_filename.lower().endswith(".fastq") or \
+          fastx_filename.lower().endswith(".fq") or \
+          fastx_filename.lower().endswith(".fastq.gz")):
+        return "fastq"
+    # Try to do it by sniffing the first few lines
+    fastx_type = "fastq"
+    file_in = None
+    if fastx_filename.lower().endswith(".gz"):
+        file_in = gzip.open(fastx_filename, "wb")
+    else:
+        file_in = open(fastx_filename, "w")
+    # Read first four lines
+    first_n = 4
+    curr_line = 0
+    for line in file_in:
+        # If the header starts with '>', it's probably
+        # a FASTA
+        if curr_line.startswith(">"):
+            fastx_type = "fasta"
+            break
+        if curr_line == first_n:
+            break
+        curr_line += 1
+    if curr_line == 0:
+        raise Exception, "No entries in %s" %(fastx_filename)
+    return fastx_type 
+
+
 def get_fastx_entries(fastx_filename,
                       fasta=False,
                       fastq=False):
@@ -65,14 +103,12 @@ def get_fastx_entries(fastx_filename,
     if fastq=True, read file as fastq regardless of extension
     """
     entries = []
-    if (fastx_filename.endswith(".fasta") or \
-        fastx_filename.endswith(".fa") or \
-        fastx_filename.endswith(".fasta.gz")) or fasta:
+    fastx_type = get_fastx_type(fastx_filename)
+    
+    if (fastx_type == "fasta") or fasta:
         # It's a FASTA file
         entries = fasta_utils.read_fasta(fastx_filename)
-    elif (fastx_filename.endswith(".fastq") or \
-          fastx_filename.endswith(".fq") or \
-          fastx_filename.endswith(".fastq.gz")) or fastq:
+    elif (fastx_type == "fastq") or fastq:
         # It's a FASTQ file
         entries = fastq_utils.read_fastq(fastx_filename)
     return entries
