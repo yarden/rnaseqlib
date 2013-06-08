@@ -18,6 +18,54 @@ import rnaseqlib.stats.clustering as clustering
 import rnaseqlib.utils as utils
 
 
+def get_pwm_from_clustalw(clustalw_fname):
+    """
+    Get PWM from CLUSTALW alignments file.
+
+    Return PWM and motif object.
+    """
+    from Bio import Motif
+    from Bio.Alphabet import IUPAC
+    import Bio.Seq as bio_seq
+    import Bio.AlignIO as align_io
+    # Load CLUSTALW file
+    if not os.path.isfile(clustalw_fname):
+        raise Exception, "CLUSTALW file %s does not exist" %(clustalw_fname)
+    clustalw_input = align_io.read(clustalw_fname, "clustal")
+    motif_obj = Motif.Motif(alphabet=IUPAC.unambiguous_dna)
+    # Add sequences from CLUSTALW alignment to motif object
+    for clustalw_seq in clustalw_input.get_all_seqs():
+        curr_seq = bio_seq.Seq(str(clustalw_seq.seq), IUPAC.unambiguous_dna)
+        motif_obj.add_instance(curr_seq)
+    # Compute PWM
+    pwm = motif_obj.pwm()
+    return pwm, motif_obj
+
+
+def pwm_to_csv(pwm, output_fname,
+               delim="\t",
+               alphabet_order=["A", "C", "G", "T"]):
+    """
+    Output PWM object (BioPython PWM object from
+    Motif class) to a text file in tab-delimited format.
+
+    Each row is an alphabet letter and each column a position.
+    """
+    matrix_pwm = []
+    for letter in alphabet_order:
+        # Frequencies for all positions for this letter
+        freqs = [float(row[letter]) for row in pwm]
+        matrix_pwm.append(freqs)
+    matrix_pwm = np.array(matrix_pwm)
+    # Renormalize to 1 with lower precision    
+    matrix_pwm = matrix_pwm / sum(matrix_pwm)
+    output_file = open(output_fname, "w")
+    for row in matrix_pwm:
+        row_line = "%s\n" %(delim.join([str(f) for f in row]))
+        output_file.write(row_line)
+    output_file.close()
+
+
 class MotifCluster:
     def __init__(self, kmers):
         """
