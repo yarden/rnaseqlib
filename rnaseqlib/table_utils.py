@@ -12,6 +12,7 @@ import pandas
 import pybedtools
 
 import rnaseqlib
+import rnaseqlib.utils as utils
 import rnaseqlib.tables as tables
 
     
@@ -40,20 +41,36 @@ def output_utr_table(tables_dir,
     # Map transcripts to genes
     for row, entry in table_df.iterrows():
         trans_to_gene[entry["name"]] = entry["name2"]
-    # Compute lengths of UTRs
     # Mapping from gene ID to a dictionary mapping each
     # UTR to its length
     genes_to_utr_lens = defaultdict(lambda: defaultdict(int))
     print "Computing lengths of UTRs.."
     gff_utrs = pybedtools.BedTool(utr_gff_fname)
+    # Compute lengths of UTRs for each gene
     for entry in gff_utrs:
         # Get transcript that UTR belongs to
         trans_id = entry.attrs["Parent"]
+        # Get UTR id
+        utr_id = entry.attrs["ID"]
         # Get the gene it corresponds to
         gene_id = trans_to_gene[trans_id]
-        print "GENE_ID: %s" %(gene_id), " for ", trans_id
-        # Compute length of transcript
-        
+        # Compute length of UTRs
+        # Length of UTR
+        utr_len = len(entry)
+        genes_to_utr_lens[gene_id][utr_id] = utr_len
+    # Select UTR for each gene
+    for gene in genes_to_utr_lens:
+        all_utrs = genes_to_utr_lens[gene].items()
+        utr_lens = [curr_utr[1] for curr_utr in all_utrs]
+        print "UTR LENS OF GENE: ", utr_lens, " gene: ", gene
+        if choice_rule == "longest":
+            print "UTR LENS: ", utr_lens
+            utr_indx = utils.max_item(utr_lens)[0]
+            print " CHOSE: ", all_utrs[utr_indx]
+        else:
+            raise Exception, "Unsupported choice rule %s" %(choice_rule)
+    print "genes_to_utr_lens: "
+    print genes_to_utr_lens
         
 
 def main():
