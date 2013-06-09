@@ -68,12 +68,13 @@ def output_utr_table(tables_dir,
             print "UTR LENS: ", utr_lens
             utr_indx = utils.max_item(utr_lens)[0]
             chosen_utr = all_utrs[utr_indx]
+            print "CHOSEN UTR --> ", chosen_utr
             gene_to_chosen_utr[gene] = chosen_utr
         else:
             raise Exception, "Unsupported choice rule %s" %(choice_rule)
     # Now select the relevant entries for outputting. Also
     # add relevant information about genes/length
-    gff_utrs = BedTool(utr_gff_fname)
+    gff_utrs = pybedtools.BedTool(utr_gff_fname)
     gff_out = open(output_fname, "w")
     for entry in gff_utrs:
         # Current UTR id
@@ -84,8 +85,11 @@ def output_utr_table(tables_dir,
         curr_utr_gene = trans_to_gene[curr_utr_trans]
         # If this UTR is the chosen UTR, output it
         if gene_to_chosen_utr[curr_utr_gene][0] == curr_utr_id:
-            print "THIS IS THE CHOSEN UTR"
-            print curr_utr_id
+            entry.attrs["gene_id"] = gene_id
+            entry.attrs["utr_len"] = \
+                str(gene_to_chosen_utr[curr_utr_gene][1])
+            print entry
+            gff_out.write("%s" %(str(entry)))
         else:
             print "Not chosen: ", curr_utr_id
     gff_out.close()
