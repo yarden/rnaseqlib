@@ -7,11 +7,15 @@ import os
 import sys
 import time
 
+from collections import defaultdict
+
 import numpy as np
 
 import cogent
 from cogent.core.usage import DinucUsage
 
+import rnaseqlib
+import rnaseqlib.utils as utils
 
 class DinucFreqs:
     """
@@ -26,7 +30,7 @@ class DinucFreqs:
         # Sequence length
         self.len = len(seq)
         # Calculate dinuc. frequencies
-        self.du = DinucUsage(Overlapping=overlapping)
+        self.du = DinucUsage(seq, Overlapping=overlapping)
         if normalize:
             self.du.normalize()
         # Calculate frequencies for individual bases
@@ -36,6 +40,7 @@ class DinucFreqs:
         G_base = "G"
         C_base = "C"
         self.bases = (A_base, T_base, G_base, C_base)
+        self.base_freqs = defaultdict(int)
         for curr_base in self.bases:
             self.base_freqs[curr_base] = \
                 (self.seq.count(curr_base) / float(self.len))
@@ -44,8 +49,6 @@ class DinucFreqs:
         self.base_freqs[T_base] = max((self.base_freqs["T"],
                                        self.base_freqs["U"]))
         self.base_freqs[U_base] = self.base_freqs[T_base]
-        print "BASE FREQUENCIES: "
-        print self.base_freqs
 
             
     def score(self, subseq):
@@ -76,4 +79,15 @@ class DinucFreqs:
         # positions
         exp_num = num_positions * subseq_score
         return exp_num
+
+
+    def __str__(self):
+        return "DinucFreqs(len=%d, seq=%s)" %(self.len,
+                                              self.seq)
+
+
+    def __repr__(self):
+        return self.__str__()
+
+    
         

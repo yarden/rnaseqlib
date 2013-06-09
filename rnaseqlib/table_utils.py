@@ -90,16 +90,41 @@ def output_utr_table(tables_dir,
             gff_out.write("%s" %(str(entry)))
     gff_out.close()
     
-        
+
+
+def output_table_seqs(table_gff_fname, fi_fname, output_dir):
+    """
+    Output table sequences to a file.
+    """
+    print "Outputting sequences from GFF table..."
+    print "  - Input GFF table: %s" %(table_gff_fname)
+    print "  - Genome FASTA index: %s" %(fi_fname)
+    print "  - Output dir: %s" %(output_dir)
+    utils.make_dir(output_dir)
+    table_basename = os.path.basename(table_gff_fname).rsplit(".", 1)[0]
+    output_fname = os.path.join(output_dir, "%s.fa" %(table_gff_fname))
+    if os.path.isfile(output_fname):
+        print "Found %s. Skipping..." %(output_fname)
+        return
+    entries = pybedtools.BedTool(table_gff_fname)
+    # Output sequences as FASTA
+    try:
+        entries.sequence(fi=fi_fname, fo=output_fname, s=True)
+    except pybedtools.helpers.BEDToolsError as s:
+        print "Ignoring BEDTools error: ", s
+        pass
+    
 
 def main():
     # Load tables from the init dir.
     tables_dir = os.path.expanduser("~/jaen/test/mm9/ucsc/")
     utr_fname = os.path.expanduser("~/jaen/pipeline_init/mm9/ucsc/utrs/ensGene.3p_utrs.gff")
-    #output_fname = "./testtable.gff"
+    output_fname = "./testtable.gff"
     #output_utr_table(tables_dir, utr_fname, output_fname)
-    output_fname = "./smallutrs.gff"
-    utrs = pybedtools.BedTool(output_fname)
+    #output_fname = "./smallutrs.gff"
+    #utrs = pybedtools.BedTool(output_fname)
+    fi_fname = os.path.expanduser("~/jaen/test/mm9/genome/mm9.fa")
+    output_table_seqs(output_fname, fi_fname, ".")
     
 
 
