@@ -63,12 +63,9 @@ def output_utr_table(tables_dir,
     for gene in genes_to_utr_lens:
         all_utrs = genes_to_utr_lens[gene].items()
         utr_lens = [curr_utr[1] for curr_utr in all_utrs]
-        print "UTR LENS OF GENE: ", utr_lens, " gene: ", gene
         if choice_rule == "longest":
-            print "UTR LENS: ", utr_lens
             utr_indx = utils.max_item(utr_lens)[0]
             chosen_utr = all_utrs[utr_indx]
-            print "CHOSEN UTR --> ", chosen_utr
             gene_to_chosen_utr[gene] = chosen_utr
         else:
             raise Exception, "Unsupported choice rule %s" %(choice_rule)
@@ -85,13 +82,12 @@ def output_utr_table(tables_dir,
         curr_utr_gene = trans_to_gene[curr_utr_trans]
         # If this UTR is the chosen UTR, output it
         if gene_to_chosen_utr[curr_utr_gene][0] == curr_utr_id:
-            entry.attrs["gene_id"] = gene_id
+            # Look up the gene ID it belongs to
+            curr_gene_id = trans_to_gene[curr_utr_trans]
+            entry.attrs["gene_id"] = curr_gene_id
             entry.attrs["utr_len"] = \
                 str(gene_to_chosen_utr[curr_utr_gene][1])
-            print entry
             gff_out.write("%s" %(str(entry)))
-        else:
-            print "Not chosen: ", curr_utr_id
     gff_out.close()
     
         
@@ -99,9 +95,12 @@ def output_utr_table(tables_dir,
 def main():
     # Load tables from the init dir.
     tables_dir = os.path.expanduser("~/jaen/test/mm9/ucsc/")
-    utr_fname = os.path.expanduser("~/jaen/pipeline_init/mm9/ucsc/utrs/test.gff")
-    output_fname = "./testtable.gff"
-    output_utr_table(tables_dir, utr_fname, output_fname)
+    utr_fname = os.path.expanduser("~/jaen/pipeline_init/mm9/ucsc/utrs/ensGene.3p_utrs.gff")
+    #output_fname = "./testtable.gff"
+    #output_utr_table(tables_dir, utr_fname, output_fname)
+    output_fname = "./smallutrs.gff"
+    utrs = pybedtools.BedTool(output_fname)
+    
 
 
 if __name__ == "__main__":
