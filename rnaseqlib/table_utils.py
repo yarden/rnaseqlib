@@ -18,7 +18,7 @@ import rnaseqlib.tables as tables
     
 def output_utr_table(tables_dir,
                      utr_gff_fname,
-                     output_fname,
+                     output_dir,
                      choice_rule="longest"):
     """
     Output a UTR table (one UTR per gene) given a
@@ -31,6 +31,9 @@ def output_utr_table(tables_dir,
     Outputs a GFF file.
     """
     print "Outputting UTR table from %s" %(utr_gff_fname)
+    output_basename = os.path.basename(utr_gff_fname).rsplit(".", 1)[0]
+    utils.make_dir(output_dir)
+    output_fname = os.path.join(output_dir, "%s.gff" %(output_basename))
     print "  - Output file: %s" %(output_fname)
     if not os.path.isfile(utr_gff_fname):
         raise Exception, "Cannot find %s" %(utr_gff_fname)
@@ -89,7 +92,7 @@ def output_utr_table(tables_dir,
                 str(gene_to_chosen_utr[curr_utr_gene][1])
             gff_out.write("%s" %(str(entry)))
     gff_out.close()
-    
+    return output_fname
 
 
 def output_table_seqs(table_gff_fname, fi_fname, output_dir):
@@ -102,17 +105,27 @@ def output_table_seqs(table_gff_fname, fi_fname, output_dir):
     print "  - Output dir: %s" %(output_dir)
     utils.make_dir(output_dir)
     table_basename = os.path.basename(table_gff_fname).rsplit(".", 1)[0]
-    output_fname = os.path.join(output_dir, "%s.fa" %(table_gff_fname))
+    output_fname = os.path.join(output_dir, "%s.fa" %(table_basename))
+    print "  - Output file: %s" %(output_fname)
     if os.path.isfile(output_fname):
         print "Found %s. Skipping..." %(output_fname)
         return
     entries = pybedtools.BedTool(table_gff_fname)
+    def fields2name(f):
+        """
+        replace GFF featuretype field with the attributes field.
+        """
+        #f[2] = f[-1]
+        custom_field = "%s:%s-%s:%s" %(f.chrom, f.start, f.stop, f.strand)
+        f[2] = "%s,%s" %(custom_field, f[-1])
+        return f
     # Output sequences as FASTA
     try:
-        entries.sequence(fi=fi_fname, fo=output_fname, s=True)
+        entries.each(fields2name).sequence(fi=fi_fname, fo=output_fname,
+                                           s=True, name=True)
     except pybedtools.helpers.BEDToolsError as s:
-        print "Ignoring BEDTools error: ", s
         pass
+    return output_fname
     
 
 def main():

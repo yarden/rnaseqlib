@@ -192,10 +192,10 @@ class BindnSeq:
         meme_utils.run_meme(self.logger, self.seqs_fname, output_dir)
 
 
-    def score_enriched_motifs(self, kmer_lens, ucsc_tables_dir,
-                              method="max"):
+    def score_enriched_kmers(self, kmer_lens, region_to_seq_fnames,
+                             method="max"):
         """
-        Score enriched motifs in genes. Takes as input a list of
+        Score enriched kmers in genes. Takes as input a list of
         kmers to score and a UCSC tables directory produced by rnaseqlib init feature.
         """
         if len(odds_ratios) == 0:
@@ -203,14 +203,12 @@ class BindnSeq:
                              "is not loaded."
         print "Scoring enriched motifs for: ", kmer_lens
         for kmer_len in kmer_lens:
-            if kmer_len is not in self.odds_ratios:
+            if kmer_len not in self.odds_ratios:
                 raise Exception, "Cannot score enriched motifs for k = %d " \
                                  "since data is not loaded." %(kmer_len)
             # Load the OR data for this kmer length
             kmer_data = self.odds_ratios[kmer_len]
             enriched_kmers = self.rank_enriched_kmers(kmer_data, method=method)
-            print "ENRICHED KMERS: ", enriched_kmers.head()
-            
             
 
     def __str__(self):
