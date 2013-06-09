@@ -59,6 +59,7 @@ def output_utr_table(tables_dir,
         utr_len = len(entry)
         genes_to_utr_lens[gene_id][utr_id] = utr_len
     # Select UTR for each gene
+    gene_to_chosen_utr = {}
     for gene in genes_to_utr_lens:
         all_utrs = genes_to_utr_lens[gene].items()
         utr_lens = [curr_utr[1] for curr_utr in all_utrs]
@@ -66,11 +67,29 @@ def output_utr_table(tables_dir,
         if choice_rule == "longest":
             print "UTR LENS: ", utr_lens
             utr_indx = utils.max_item(utr_lens)[0]
-            print " CHOSE: ", all_utrs[utr_indx]
+            chosen_utr = all_utrs[utr_indx]
+            gene_to_chosen_utr[gene] = chosen_utr
         else:
             raise Exception, "Unsupported choice rule %s" %(choice_rule)
-    print "genes_to_utr_lens: "
-    print genes_to_utr_lens
+    # Now select the relevant entries for outputting. Also
+    # add relevant information about genes/length
+    gff_utrs = BedTool(utr_gff_fname)
+    gff_out = open(output_fname, "w")
+    for entry in gff_utrs:
+        # Current UTR id
+        curr_utr_id = entry.attrs["ID"]
+        # Current UTR's transcript
+        curr_utr_trans = entry.attrs["Parent"]
+        # Get the current UTR's gene
+        curr_utr_gene = trans_to_gene[curr_utr_trans]
+        # If this UTR is the chosen UTR, output it
+        if gene_to_chosen_utr[curr_utr_gene][0] == curr_utr_id:
+            print "THIS IS THE CHOSEN UTR"
+            print curr_utr_id
+        else:
+            print "Not chosen: ", curr_utr_id
+    gff_out.close()
+    
         
 
 def main():
