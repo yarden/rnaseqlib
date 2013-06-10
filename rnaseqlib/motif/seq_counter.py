@@ -50,44 +50,134 @@ class SeqCounter:
         return overlapping_counts
 
 
-    def obs_over_exp_counts(self, subseq):
+    def count_dinuc_subseqs(self, seq, subseqs):
         """
-        Get observed over expected ratio of coutns (non-log!) of
-        subseq in all sequences.
+        Given a sequence and a list of subsequences,
+        return the observed number of occurrences of all subseqs
+        in curr_seq,        
         """
-        counts_and_ratio = []
+        dinuc_freq_obj = dinuc_freq.DinucFreqs(seq)
+        obs_counts = []
+        exp_counts = []
+        for subseq in subseqs:
+            # Observed count of subsequence
+            obs_count = overlap_count(seq, subseq)
+            obs_counts.append(float(obs_count))
+            # Expected count of subsequence
+            exp_count = dinuc_freq_obj.get_expected_num(subseq)
+            exp_counts.append(exp_count)
+        return np.array(obs_counts), np.array(exp_counts)
+
+
+    def count_subseqs(self, seq, subseqs):
+        """
+        Count occurrences of subseqs in seq.
+        """
+        obs_counts = \
+            [float(overlap_count(seq, subseq)) \
+             for subseq in subseqs]
+        return np.array(obs_counts)
+
+
+    def get_subseq_densities(self, subseqs):
+        """
+        Collect densities of subsequences in sequence.
+        """
+        entries = []
+        KB = float(1000)
+        for curr_seq in self.seqs:
+            # Sequence name is FASTA header minus '>' prefix
+            seq_name = curr_seq[0][1:]
+            seq = curr_seq[1]
+            seq_len = len(seq)
+            # Counts of occurrences for all subsequences
+            subseq_counts = self.count_subseqs(seq, subseqs)
+            subseq_len = len(subseqs[0])
+            # Normalize by the number of possible counts
+            # per kb 
+            density_denom = \
+                (float(len(seq) - subseq_len + 1)) / KB
+            # Vector of densities, one for each subsequence
+            densities = subseq_counts / density_denom
+            mean_density = np.mean(densities)
+            median_density = np.median(densities)
+            max_density = max(densities)
+            obs_counts_str = \
+                ",".join(["%d" %(int(c)) for c in subseq_counts])
+            densities_str = \
+                ",".join([str(d) for d in densities])
+            seq_len_in_kb = seq_len / KB
+            entries.append([seq_name,
+                            mean_density,
+                            median_density,
+                            max_density,
+                            obs_counts_str,
+                            densities_str,
+                            seq_len,
+                            seq_len_in_kb])
+        col_names = ["header",
+                     "mean_density", "median_density", "max_density",
+                     "obs_counts", "densities", "seq_len",
+                     "seq_len_in_kb"]
+        entries = pandas.DataFrame(entries,
+                                   columns=col_names).set_index("header")
+        # Sort in place by mean density in descending order
+        entries.sort(column=["mean_density"],
+                     ascending=False,
+                     inplace=True)
+        return entries
+                
+
+    def obs_over_exp_counts_dinuc(self, subseqs):
+        """
+        Get observed over expected ratio of counts (non-log!) of
+        subsequences in all sequences.
+        """
+        entries = []
         t1 = time.time()
         num_seqs = 0
         for curr_seq in self.seqs:
-            seq_name = curr_seq[0]
-            # Observed counts for subseq
-            obs_count = overlap_count(curr_seq[1], subseq)
-            # Expected counts for subseq based on
-            # dinucleotide frequencies
-            dinuc_freq_obj = dinuc_freq.DinucFreqs(curr_seq[1])
-            exp_count = dinuc_freq_obj.get_expected_num(subseq)
-            if exp_count == 0:
-                # If expected count is 0, don't divide by it, just
-                # consider the ratio 0
-                ratio = 0
-            else:
-                ratio = float(obs_count) / float(exp_count)
+            # Sequence name is FASTA header without leading '>'
+            seq_name = curr_seq[0][1:]
+            # Get observed and expected counts for all subseqs
+            # in the current sequence
+            obs_counts, exp_counts = self.count_subseqs(curr_seq[1], subseqs)
+            # Calculate ratios
+            ratios = obs_counts / exp_counts
+            # All ratios
+            ratios_str = ",".join(["%.3f" %(r) for r in ratios])
+            # The maximum ratio
+            max_ratio_indx, max_ratio = utils.max_item(ratios)
+            # Get the observed counts of the kmer with highest ratio
+            max_ratio_obs_count = int(obs_counts[max_ratio_indx])
+            obs_counts_str = ",".join(["%d" %(int(oc)) for oc in obs_counts])
+            exp_counts_str = ",".join(["%.2f" %(ec) for ec in exp_counts])
             # Collect raw counts and ratio in order:
-            # sequence name, obs count, exp count, obs / exp ratio
-            counts_and_ratio.append([seq_name, obs_count, exp_count, ratio])
+            # sequence name, obs counts, exp counts, obs / exp ratios
+            entries.append([seq_name,
+                            max_ratio,
+                            max_ratio_obs_count,
+                            obs_counts_str,
+                            exp_counts_str,
+                            ratios_str])
             num_seqs += 1
-            #####
             if num_seqs == 100:
-                print "QUITTING EARLY!"
+                print "Quitting early!"
+                print "=" * 10
                 break
         t2 = time.time()
         print "Counting occurrences in %d sequences took %.2f seconds" \
               %(num_seqs, (t2 - t1))
-        col_names = ["header", "obs_count", "exp_count", "ratio"]
-        counts_and_ratio = \
-            pandas.DataFrame(np.array(counts_and_ratio),
-                             columns=col_names)
-        return counts_and_ratio
+        col_names = ["header", "max_ratio", "max_ratio_obs_count",
+                     "obs_counts", "exp_counts", "ratios"]
+        entries = \
+            pandas.DataFrame(np.array(entries),
+                             columns=col_names).set_index("header")
+        # Sort in descending order
+        entries.sort(column=["max_ratio"],
+                     ascending=False,
+                     inplace=True)
+        return entries
             
 
     def expected_dinuc_count(self, subseq):

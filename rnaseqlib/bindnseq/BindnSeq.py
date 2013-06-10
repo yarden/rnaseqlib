@@ -193,9 +193,17 @@ class BindnSeq:
         meme_utils.run_meme(self.logger, self.seqs_fname, output_dir)
 
 
+    def get_fc_cutoff(self, or_df, percentile_cutoff=95):
+        """
+        Return fold change cutoffs for each kmer length. Select
+        cutoff to yield top %X percentile of kmers.
+        """
+        fc_cutoff = np.percentile(or_df["rank"], percentile_cutoff)
+        return fc_cutoff
+
+
     def output_enriched_kmers_scores(self, kmer_lens, region_to_seq_fnames,
                                      output_dir,
-                                     fold_cutoff=1.5,
                                      method="max"):
         """
         Score enriched kmers in different regions. Calculates the
@@ -218,7 +226,6 @@ class BindnSeq:
         """
         print "Outputting enriched kmers scores..."
         print "  - Output dir: %s" %(output_dir)
-        print "  - Fold cutoff: %.2f" %(fold_cutoff)
         print "  - Method: %s" %(method)
         utils.make_dir(output_dir)
         if len(self.odds_ratios) == 0:
@@ -232,15 +239,17 @@ class BindnSeq:
             # Load the OR data for this kmer length
             kmer_data = self.odds_ratios[kmer_len]
             # Order kmers by enrichment
-            enriched_kmers = self.rank_enriched_kmers(kmer_data, method=method)
+            ranked_kmers = self.rank_enriched_kmers(kmer_data, method=method)
+            fold_cutoff = self.get_fc_cutoff(ranked_kmers)
+            print "  - Fold for %d cutoff: %.2f" %(kmer_len, fold_cutoff)
             # Select only kmers that meet the fold cutoff
-            enriched_kmers = enriched_kmers[enriched_kmers["rank"] >= fold_cutoff]
+            enriched_kmers = ranked_kmers[ranked_kmers["rank"] >= fold_cutoff]
             print "Total of %d enriched kmers" %(len(enriched_kmers))
             # Load the sequences for the region of interest
             for region in region_to_seq_fnames:
                 output_fname = \
                     os.path.join(output_dir,
-                                 "enriched_kmers_%s.%d_kmer.txt" \
+                                 "enriched_kmers.%s.%d_kmer.txt" \
                                  %(region, kmer_len))
                 if os.path.isfile(output_fname):
                     print "Found %s. Skipping..." %(output_fname)
@@ -250,9 +259,13 @@ class BindnSeq:
                     print "Skipping %s" %(region)
                     continue
                 fasta_counter = seq_counter.SeqCounter(seq_fname)
-                counts_and_ratios = fasta_counter.obs_over_exp_counts("GTAGT")
-                print "Outputting %s data to %s" %(region, output_fname)
-                counts_and_ratios.to_csv(output_fname, sep="\t")
+                enriched_kmers_to_score = list(enriched_kmers["kmer"])
+                subseq_densities = \
+                    fasta_counter.get_subseq_densities(enriched_kmers_to_score)
+                print "Outputting to: %s" %(output_fname)
+                subseq_densities.to_csv(output_fname,
+                                        sep="\t",
+                                        float_format="%.4f")
             
 
     def __str__(self):
