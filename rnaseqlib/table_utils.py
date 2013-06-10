@@ -109,7 +109,7 @@ def output_table_seqs(table_gff_fname, fi_fname, output_dir):
     print "  - Output file: %s" %(output_fname)
     if os.path.isfile(output_fname):
         print "Found %s. Skipping..." %(output_fname)
-        return
+        return output_fname
     entries = pybedtools.BedTool(table_gff_fname)
     def fields2name(f):
         """
@@ -117,7 +117,7 @@ def output_table_seqs(table_gff_fname, fi_fname, output_dir):
         """
         #f[2] = f[-1]
         custom_field = "%s:%s-%s:%s" %(f.chrom, f.start, f.stop, f.strand)
-        f[2] = "%s,%s" %(custom_field, f[-1])
+        f[2] = "%s;%s" %(custom_field, f[-1])
         return f
     # Output sequences as FASTA
     try:

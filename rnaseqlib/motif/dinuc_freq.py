@@ -50,16 +50,36 @@ class DinucFreqs:
                                        self.base_freqs["U"]))
         self.base_freqs[U_base] = self.base_freqs[T_base]
 
+
+    def get_dinuc_freqs_from(self, base, all_bases="ATGC"):
+        """
+        Get a list of dinucleotide base from the given base to
+        each other base.
+
+        base -> A
+        base -> T
+        ...
+        """
+        return [self.du["%s%s" %(base, possible_base)] \
+                for possible_base in all_bases]
+
             
-    def score(self, subseq):
+    def prob_score(self, subseq):
+        """
+        Score probability of subseq in sequence.
+        """
         if len(subseq) == 0:
             return 0
         # Score first base
         total_logscore = np.log(self.base_freqs[subseq[0]])
         for prev_base, next_base in utils.iter_by_pair(subseq, 1):
-            # Score dinucleotide
+            # Score current dinucleotide
             curr_dinuc = "%s%s" %(prev_base, next_base)
-            total_logscore += np.log(self.du[curr_dinuc])
+            # Divide by sum of all other transitions from the previous base
+            curr_dinuc_freq = self.du[curr_dinuc]
+            denom_dinuc_freqs = np.sum(self.get_dinuc_freqs_from(prev_base))
+            total_logscore += (np.log(curr_dinuc_freq) - \
+                               np.log(denom_dinuc_freqs))
         total_score = np.exp(total_logscore)
         return total_score
 
@@ -71,10 +91,10 @@ class DinucFreqs:
         """
         subseq_len = len(subseq)
         # Calculcate score of sequence (its probability)
-        subseq_score = self.score(subseq)
+        subseq_score = self.prob_score(subseq)
         # Calculate the number of possible positions for the subseq
         # to occur within the larger sequence
-        num_positions = self.seq_len - subseq_len + 1
+        num_positions = self.len - subseq_len + 1
         # Expected number is the score times the number of possible
         # positions
         exp_num = num_positions * subseq_score

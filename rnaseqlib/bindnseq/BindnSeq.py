@@ -12,6 +12,7 @@ import scipy
 
 import rnaseqlib
 import rnaseqlib.motif.meme_utils as meme_utils
+import rnaseqlib.motif.seq_counter as seq_counter
 import rnaseqlib.utils as utils
 
 
@@ -192,13 +193,35 @@ class BindnSeq:
         meme_utils.run_meme(self.logger, self.seqs_fname, output_dir)
 
 
-    def score_enriched_kmers(self, kmer_lens, region_to_seq_fnames,
-                             method="max"):
+    def output_enriched_kmers_scores(self, kmer_lens, region_to_seq_fnames,
+                                     output_dir,
+                                     fold_cutoff=1.5,
+                                     method="max"):
         """
-        Score enriched kmers in genes. Takes as input a list of
-        kmers to score and a UCSC tables directory produced by rnaseqlib init feature.
+        Score enriched kmers in different regions. Calculates the
+        sum of number of occurrences of each enriched kmer
+        in the region of interest and compares it to the expected
+        sum of occurrences based on a first-order Markov model.
+
+        Parameters:
+        -----------
+
+        kmer_lens: list of kmer lengths to score enrichment for
+        
+        region_to_seq_fnames: mapping from region name (e.g. 3p_utr)
+        to FASTA files with their sequences
+
+        fold_cutoff: fold cutoff for enriched kmers
+
+        method: method to use for fold cutoff across BindnSeq concentrations
+        (max uses maximum fold change across all concentrations)
         """
-        if len(odds_ratios) == 0:
+        print "Outputting enriched kmers scores..."
+        print "  - Output dir: %s" %(output_dir)
+        print "  - Fold cutoff: %.2f" %(fold_cutoff)
+        print "  - Method: %s" %(method)
+        utils.make_dir(output_dir)
+        if len(self.odds_ratios) == 0:
             raise Exception, "Cannot score enriched motifs since OR data " \
                              "is not loaded."
         print "Scoring enriched motifs for: ", kmer_lens
@@ -208,7 +231,28 @@ class BindnSeq:
                                  "since data is not loaded." %(kmer_len)
             # Load the OR data for this kmer length
             kmer_data = self.odds_ratios[kmer_len]
+            # Order kmers by enrichment
             enriched_kmers = self.rank_enriched_kmers(kmer_data, method=method)
+            # Select only kmers that meet the fold cutoff
+            enriched_kmers = enriched_kmers[enriched_kmers["rank"] >= fold_cutoff]
+            print "Total of %d enriched kmers" %(len(enriched_kmers))
+            # Load the sequences for the region of interest
+            for region in region_to_seq_fnames:
+                output_fname = \
+                    os.path.join(output_dir,
+                                 "enriched_kmers_%s.%d_kmer.txt" \
+                                 %(region, kmer_len))
+                if os.path.isfile(output_fname):
+                    print "Found %s. Skipping..." %(output_fname)
+                    continue
+                seq_fname = region_to_seq_fnames[region]
+                if seq_fname is None:
+                    print "Skipping %s" %(region)
+                    continue
+                fasta_counter = seq_counter.SeqCounter(seq_fname)
+                counts_and_ratios = fasta_counter.obs_over_exp_counts("GTAGT")
+                print "Outputting %s data to %s" %(region, output_fname)
+                counts_and_ratios.to_csv(output_fname, sep="\t")
             
 
     def __str__(self):
