@@ -74,9 +74,9 @@ def get_fastx_type(fastx_filename):
     fastx_type = "fastq"
     file_in = None
     if fastx_filename.lower().endswith(".gz"):
-        file_in = gzip.open(fastx_filename, "wb")
+        file_in = gzip.open(fastx_filename, "rb")
     else:
-        file_in = open(fastx_filename, "w")
+        file_in = open(fastx_filename, "r")
     # Read first four lines
     first_n = 4
     curr_line = 0
