@@ -48,7 +48,14 @@ def output_intron_table(tables_dir,
     trans_to_gene = trans_to_gene_from_table(tables_dir)
     table_fname = os.path.join(tables_dir, "ensGene.kgXref.combined.txt")
     table_df = pandas.read_table(table_fname, sep="\t")
-    trans_to_gene
+    trans_to_gene = trans_to_gene_from_table(tables_dir)
+    intron_entries = pybedtools.BedTool(intron_gff_fname)
+    output_file = open(output_fname, "w")
+    for entry in intron_entries:
+        entry.attrs["region_len"] = len(entry)
+        print "Writing: ", str(entry)
+        output_file.write(str(entry))
+    output_file.close()
     
     
 def output_utr_table(tables_dir,

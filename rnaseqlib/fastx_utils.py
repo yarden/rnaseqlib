@@ -83,7 +83,7 @@ def get_fastx_type(fastx_filename):
     for line in file_in:
         # If the header starts with '>', it's probably
         # a FASTA
-        if curr_line.startswith(">"):
+        if line.startswith(">"):
             fastx_type = "fasta"
             break
         if curr_line == first_n:
