@@ -785,6 +785,8 @@ class GeneTable:
                                     "start",
                                     "end",
                                     "name",
+                                    # added score
+                                    "score",
                                     "strand"]
         merged_exons_filename = os.path.join(self.exons_dir,
                                              "ensGene.merged_exons.bed")
@@ -871,14 +873,19 @@ class GeneTable:
         """
         if self.source != "ensGene":
             return
-        output_filename = os.path.join(self.introns_dir,
-                                       "ensGene.introns.bed")
+        bed_output_fname = os.path.join(self.introns_dir,
+                                        "ensGene.introns.bed")
+        gff_output_fname = os.path.join(self.introns_dir,
+                                        "ensGene.introns.gff")
         print "Outputting introns..."
-        if os.path.isfile(output_filename):
-            print "  - Found %s. Skipping..." %(output_filename)
+        if os.path.isfile(bed_output_fname) and \
+           os.path.isfile(gff_output_fname):
+            print "Found introns, skipping..."
             return
-        print " - Output file: %s" %(output_filename)
-        introns_file = open(output_filename, "w")
+        print " - Output file (BED): %s" %(bed_output_fname)
+        print " - Output file (GFF): %s" %(gff_output_fname)
+        bed_introns_file = open(bed_output_fname, "w")
+        gff_introns_file = open(gff_output_fname, "w")
         # Load ensGene exons
         merged_exons_by_gene = self.load_merged_exons_by_gene()
         for gene_id, merged_exons in merged_exons_by_gene.iteritems():
@@ -902,14 +909,38 @@ class GeneTable:
                 if intron_size < min_intron_size:
                     continue
                 intron_coords.append((intron_start, intron_end))
-            bedtools_utils.output_intervals_as_bed(introns_file,
+            # Output introns as BED
+            bedtools_utils.output_intervals_as_bed(bed_introns_file,
                                                    chrom,
                                                    intron_coords,
                                                    strand,
                                                    name=gene_id)
-        introns_file.close()
+            # Output introns as GFF: add 1 to start
+            gff_intron_coords = [(s + 1, e) for s, e in intron_coords]
+            for intron_num, curr_intron in enumerate(gff_intron_coords):
+                start_coord, end_coord = curr_intron
+                if start_coord > end_coord:
+                    # Ensure start is less than end for GFF
+                    start_coord, end_coord = end_coord, start_coord
+                # 1-based intron numbering
+                intron_id = "%s.intron%d" %(gene_id, intron_num + 1)
+                curr_gff_interval = [chrom,
+                                     "ensGene",
+                                     "intron",
+                                     str(start_coord),
+                                     str(end_coord),
+                                     ".",
+                                     strand,
+                                     ".",
+                                     "Name=%s;Parent=%s;ID=%s" %(intron_id,
+                                                                 gene_id,
+                                                                 intron_id)]
+                gff_line = "%s\n" %("\t".join(curr_gff_interval))
+                gff_introns_file.write(gff_line)
+        bed_introns_file.close()
+        gff_introns_file.close()
         # Sort introns
-        bedtools_utils.sort_bedfile_inplace(output_filename)
+        bedtools_utils.sort_bedfile_inplace(bed_output_fname)
                                                    
 
     def parse_string_int_list(self, int_list_as_str,

@@ -11,6 +11,7 @@ import rnaseqlib.utils as utils
 import rnaseqlib.fasta_utils as fasta_utils
 import rnaseqlib.fastq_utils as fastq_utils
 
+import gzip
 
 def write_open_fastx(fastx_filename):
     """

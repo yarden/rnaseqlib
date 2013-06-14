@@ -27,6 +27,22 @@ coverageBed_path = utils.which("coverageBed")
 fastaFromBed_path = utils.which("fastaFromBed")
 
 
+def bed_to_gff(bedtool_input):
+    """
+    Convert BedTool corresponding to BED
+    file into a GFF file.
+    """
+    for bed_entry in bedtool_input:
+        # chrom, start, end, name, score, strand
+        chrom = bed_entry.fields[0]
+        start = bed_entry.fields[1]
+        end = bed_entry.fields[2]
+        name = bed_entry.fields[3]
+        if int(start) > int(end):
+            start, end = end, start
+        fields_to_use = [chrom, start, end, name]
+
+
 def sample_intervals(start, end, interval_size,
                      num_intervals=1,
                      exclude_interval=None,
@@ -444,6 +460,25 @@ def output_intervals_as_bed(out_file, chrom, interval_coords, strand,
         bed_line = make_bed_line(chrom, start, end,
                                  name, score, strand)
         out_file.write("%s\n" %(bed_line))
+
+
+# def output_intervals_as_gff(out_file, chrom, interval_coords, strand,
+#                             entry_id):
+#     """
+#     Output intervals as BED.
+
+#     Takes:
+
+#     - out_file: file handle to the BED
+#     - chrom: chromosome
+#     - interval_coords: list of (start, end) coords for parts
+#     - strand: the strand
+
+#     NOTE: Assumes interval_coords are in 0-based format already!
+#     """
+#     for part in interval_coords:
+#         start, end = part
+#         out_file.write("%s\n" %(bed_line))
 
 
 def convert_gff_to_bed(input_stream, output_stream,

@@ -15,6 +15,41 @@ import rnaseqlib
 import rnaseqlib.utils as utils
 import rnaseqlib.tables as tables
 
+
+def trans_to_gene_from_table(tables_dir):
+    """
+    Return mapping from transcript to gene given
+    a pipeline init tables directory.
+    """
+    table_fname = os.path.join(tables_dir, "ensGene.kgXref.combined.txt")
+    if not os.path.isfile(table_fname):
+        raise Exception, "Cannot find combined table %s" %(table_fname)
+    trans_to_gene = {}
+    # Map transcripts to genes
+    for row, entry in table_df.iterrows():
+        trans_to_gene[entry["name"]] = entry["name2"]
+    return trans_to_gene
+    
+
+def output_intron_table(tables_dir,
+                        intron_gff_fname,
+                        output_dir):
+    """
+    Output a table of introns. Just adds length
+    and gene information to each entry.
+    """
+    print "Outputting intron table from %s" %(intron_gff_fname)
+    output_basename = os.path.basename(intron_gff_fname).rsplit(".", 1)[0]
+    utils.make_dir(output_dir)
+    output_fname = os.path.join(output_dir, "%s.gff" %(output_basename))
+    print "  - Output file: %s" %(output_fname)
+    if not os.path.isfile(intron_gff_fname):
+        raise Exception, "Cannot find %s" %(intron_gff_fname)
+    trans_to_gene = trans_to_gene_from_table(tables_dir)
+    table_fname = os.path.join(tables_dir, "ensGene.kgXref.combined.txt")
+    table_df = pandas.read_table(table_fname, sep="\t")
+    trans_to_gene
+    
     
 def output_utr_table(tables_dir,
                      utr_gff_fname,
@@ -88,7 +123,7 @@ def output_utr_table(tables_dir,
             # Look up the gene ID it belongs to
             curr_gene_id = trans_to_gene[curr_utr_trans]
             entry.attrs["gene_id"] = curr_gene_id
-            entry.attrs["utr_len"] = \
+            entry.attrs["region_len"] = \
                 str(gene_to_chosen_utr[curr_utr_gene][1])
             gff_out.write("%s" %(str(entry)))
     gff_out.close()
