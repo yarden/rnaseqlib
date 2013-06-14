@@ -50,12 +50,16 @@ def read_fastq(fastq_in):
         fqlines = list(islice(fastqiter, 4))
         if len(fqlines) == 4:
             header1,seq,header2,qual = fqlines
-            if header1.startswith('@') and header2.startswith('+'):
+            # Allow header1 to have '@' somewhere in it, not just in the
+            # first line, mainly to header FASTQ files with odd headers
+            if (header1.startswith('@') or "@" in header1) and \
+                header2.startswith('+'):
                 yield header1[1:], seq, header2, qual
             else:
+                print "Problem with formatting of FASTQ file detected."
                 print "header1: ", header1, " header2: ", header2
-                raise ValueError("Invalid header lines: %s and %s (line %d)" \
-                                 % (header1, header2, line_num))
+                raise "Invalid header lines: %s and %s (line %d)" \
+                      %(header1, header2, line_num)
         elif len(fqlines) == 0:
             raise StopIteration
         else:
