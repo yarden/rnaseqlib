@@ -52,13 +52,13 @@ def read_fastq(fastq_in):
             header1,seq,header2,qual = fqlines
             # Allow header1 to have '@' somewhere in it, not just in the
             # first line, mainly to header FASTQ files with odd headers
-            if (header1.startswith('@') or "@" in header1) and \
+            if (header1.startswith('@') or ("@" in header1)) and \
                 header2.startswith('+'):
                 yield header1[1:], seq, header2, qual
             else:
                 print "Problem with formatting of FASTQ file detected."
                 print "header1: ", header1, " header2: ", header2
-                raise ValueError("Invalid header lines: %s and %s (line %d)" \
+                raise ValueError("Invalid header lines in FASTQ: %s and %s (line %d)" \
                                  %(header1, header2, line_num))
         elif len(fqlines) == 0:
             raise StopIteration
