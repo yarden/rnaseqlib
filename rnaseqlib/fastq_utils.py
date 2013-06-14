@@ -58,8 +58,8 @@ def read_fastq(fastq_in):
             else:
                 print "Problem with formatting of FASTQ file detected."
                 print "header1: ", header1, " header2: ", header2
-                raise "Invalid header lines: %s and %s (line %d)" \
-                      %(header1, header2, line_num)
+                raise ValueError("Invalid header lines: %s and %s (line %d)" \
+                                 %(header1, header2, line_num))
         elif len(fqlines) == 0:
             raise StopIteration
         else:
