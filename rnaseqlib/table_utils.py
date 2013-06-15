@@ -26,6 +26,7 @@ def trans_to_gene_from_table(tables_dir):
         raise Exception, "Cannot find combined table %s" %(table_fname)
     trans_to_gene = {}
     # Map transcripts to genes
+    table_df = pandas.read_table(table_fname, sep="\t")
     for row, entry in table_df.iterrows():
         trans_to_gene[entry["name"]] = entry["name2"]
     return trans_to_gene
@@ -52,8 +53,8 @@ def output_intron_table(tables_dir,
     intron_entries = pybedtools.BedTool(intron_gff_fname)
     output_file = open(output_fname, "w")
     for entry in intron_entries:
-        entry.attrs["region_len"] = len(entry)
-        print "Writing: ", str(entry)
+        print "entry : ", entry, len(entry), str(entry)
+        entry.attrs["region_len"] = str(len(entry))
         output_file.write(str(entry))
     output_file.close()
     
