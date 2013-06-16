@@ -50,10 +50,10 @@ def read_fastq(fastq_in):
         fqlines = list(islice(fastqiter, 4))
         if len(fqlines) == 4:
             header1,seq,header2,qual = fqlines
-            # If the header is binary, skip this FASTQ entry
+            # If the header is binary, convert it to plain text
             if "\0" in header1:
-                print "Skipping binary header %s" %(header1)
-                continue
+                print "Removing binary from header: %s" %(header1)
+                header1 = header1.replace("\0", "")
             # Allow header1 to have '@' somewhere in it, not just in the
             # first line, mainly to header FASTQ files with odd headers
             if (header1.startswith('@') or ("@" in header1)) and \
@@ -70,7 +70,8 @@ def read_fastq(fastq_in):
             print "Length of FASTQ unit: %d" %(len(fqlines))
             print header1, ",", seq, ",", header2, ",", qual
             print "Problematic line no: %d" %(line_num)
-            raise EOFError("Failed to parse four lines from fastq file!")
+            # Do not raise error
+            #raise EOFError("Failed to parse four lines from fastq file!")
         line_num += 1
 
 

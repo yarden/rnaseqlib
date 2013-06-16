@@ -53,10 +53,14 @@ def output_intron_table(tables_dir,
     intron_entries = pybedtools.BedTool(intron_gff_fname)
     output_file = open(output_fname, "w")
     for entry in intron_entries:
-        print "entry : ", entry, len(entry), str(entry)
+        transcripts = entry.attrs["Parent"].split(",")
+        genes_str = \
+            ",".join([trans_to_gene[trans] for trans in transcripts])
+        entry.attrs["gene_id"] = genes_str
         entry.attrs["region_len"] = str(len(entry))
         output_file.write(str(entry))
     output_file.close()
+    return output_fname
     
     
 def output_utr_table(tables_dir,
