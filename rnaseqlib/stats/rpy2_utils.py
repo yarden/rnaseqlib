@@ -45,6 +45,7 @@ def run_ma_loess(x, y):
     corrected_y = 2**((2*A - corrected_m)/2.)
     return corrected_x, corrected_y
 
+
 def where_na_like(l):
     """
     Return indices where array is NA-like
@@ -53,16 +54,51 @@ def where_na_like(l):
     return np.where(bool_index)[0]
 
 
-def run_loess(x, y, span=0.8):
+def run_loess(x, y, span=0.75):
     """
     Predict y as function of x. Takes two numpy vectors.
     """
     # Ensure that Inf/-Inf values are substituted
     x[where_na_like(x)] = robj.NA_Real
     y[where_na_like(x)] = robj.NA_Real
+    print x, y, " < < "
     data = robj.DataFrame({"x": x, "y": y})
-    loess_fit = r.loess("y ~ x", data=data)
+    loess_fit = r.loess("y ~ x", data=data, span=span,
+                        family="symmetric")
     correction_factor = np.array(list(r.predict(loess_fit, x)))
+    print "CORRECTION FACTOR: ", correction_factor
     corrected_y = \
         np.array(list(y)) - correction_factor
+    print "ORIGINAL Y: ", y
+    print "CORRECTED Y: ", corrected_y
     return corrected_y, correction_factor
+
+
+def run_lowess(x, y, span=0.75):
+    """
+    Predict y as function of x. Takes two numpy vectors.
+
+    Uses 'r.lowess' instead of 'r.loess'.
+    """
+    # Ensure that Inf/-Inf values are substituted
+    x[where_na_like(x)] = robj.NA_Real
+    y[where_na_like(x)] = robj.NA_Real
+    data = robj.DataFrame({"x": x, "y": y})
+    print "x: ", x, "y: ", y
+    lowess_fit = r.lowess(data, f=span)
+    print "LOWESS FIT: ", lowess_fit
+    corrected_y = np.array(list(lowess_fit.y))
+    return corrected_y, correction_factor
+
+
+def main():
+    pass
+    #x = np.array([1, 0.5, 3, 4, 5, 5.5, 6, 7], dtype=np.float)
+    #y = np.array([10, 25, 38, 44.5, 500, 550, 600, 705], dtype=np.float)
+    #print "Results loess: ", run_loess(x, y)
+    #print "Results LOWESS: ", run_lowess(x, y)
+    
+
+
+if __name__ == "__main__":
+    main()
