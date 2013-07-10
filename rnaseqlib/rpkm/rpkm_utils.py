@@ -254,5 +254,7 @@ def loess_normalize_table(rpkm_table, sample_pairs, prefix="norm"):
         # Compute fold change with normalized values
         rpkm_table[fc_col] = sample1_normed / sample2_normed
     return rpkm_table
+
+
     
 

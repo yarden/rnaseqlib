@@ -36,7 +36,7 @@ class Cluster:
     def launch_and_wait(self, cmd, job_name,
                         unless_exists=None,
                         extra_sleep=20,
-                        ppn=4):
+                        ppn=1):
         """
         Launch job and wait until it's done.
         """
@@ -54,8 +54,9 @@ class Cluster:
     
 
     def launch_job(self, cmd, job_name,
-                   ppn=4,
-                   unless_exists=None):
+                   ppn=1,
+                   unless_exists=None,
+                   bsub_queue_type="normal"):
         """
         Launch job on cluster and return a job id.
 
@@ -76,7 +77,7 @@ class Cluster:
             job_id = Mybsub.launchJob(cmd, job_name,
                                       script_options,
                                       self.output_dir,
-                                      queue_type="normal",
+                                      queue_type=bsub_queue_type,
                                       ppn=ppn)
         elif self.cluster_type == "qsub":
             # Use qsub for submission

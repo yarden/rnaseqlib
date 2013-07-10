@@ -14,6 +14,14 @@ import rnaseqlib
 import rnaseqlib.utils as utils
 
 
+def replace_inf_with_na(df, val_to_use=np.nan):
+    """
+    Replace infinite values with np.nan
+    """
+    df = df.replace([np.inf, -np.inf], np.nan)
+    return df
+
+
 def common_cols(df1, df2, except_cols=[]):
     """
     Get common cols between df1/df2 except
@@ -121,6 +129,28 @@ def merge_dfs(dfs_list, how="outer"):
                                     how=how)
     return merged_df
               
+
+def concat_df_cols(dfs_list, axis=1):
+    """
+    Concatenate dataframe columns together, non-redundantly.
+
+    Assumes the concatenation occurs based on the index of
+    each df (each df needs to be indexed.)
+    """
+    if len(dfs_list) == 1:
+        return dfs_list[0]
+    cols = list(dfs_list[0].columns)
+    nonredundant_dfs = [dfs_list[0]]
+    for df in dfs_list[1:]:
+        # Only consider new columns 
+        new_cols = list(df.columns.diff(cols))
+        nonredundant_dfs.append(df[new_cols])
+        cols = new_cols + list(cols)
+    new_df = pandas.concat(dfs_list, axis=axis)
+    return new_df
+        
+        
+    
 
 def select_df_rows(df, cond,
                    columns=None,

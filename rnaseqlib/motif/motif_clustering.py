@@ -172,9 +172,9 @@ def main():
     print data
     dist_func = lambda x, y: sw_align(x, y, return_score=True)
     linkage_method = "average"
-    hclust = clustering.hierarchical_clut(np.array(kmers),
-                                          dist_func,
-                                          linkage_method)
+    hclust = clustering.hierarchical_clust(np.array(kmers),
+                                           dist_func,
+                                           linkage_method)
 
 
 if __name__ == "__main__":

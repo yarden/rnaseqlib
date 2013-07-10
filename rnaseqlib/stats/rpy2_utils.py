@@ -25,7 +25,7 @@ except:
     raise Exception, "Cannot import rpy2."
 
 
-def run_ma_loess(x, y):
+def run_ma_loess(x, y, span=0.75):
     """
     Run MA-based loess normalization on X and Y. Computes
 
@@ -40,7 +40,7 @@ def run_ma_loess(x, y):
     # A = average intensity 1/2(XY)
     A = 0.5 * (np.log2(x) + np.log2(y))
     # Fit M ~ A
-    corrected_m, correction_factor = run_loess(A, M)
+    corrected_m, correction_factor = run_loess(A, M, span=span)
     corrected_x = 2**((2*A + corrected_m)/2.)
     corrected_y = 2**((2*A - corrected_m)/2.)
     return corrected_x, corrected_y
@@ -50,7 +50,8 @@ def where_na_like(l):
     """
     Return indices where array is NA-like
     """
-    bool_index = np.array(map(lambda x: np.isinf(x) or pandas.isnull(x), l))
+    bool_index = np.array(map(lambda x: np.isinf(x) or \
+                              pandas.isnull(x), l))
     return np.where(bool_index)[0]
 
 
@@ -61,16 +62,12 @@ def run_loess(x, y, span=0.75):
     # Ensure that Inf/-Inf values are substituted
     x[where_na_like(x)] = robj.NA_Real
     y[where_na_like(x)] = robj.NA_Real
-    print x, y, " < < "
     data = robj.DataFrame({"x": x, "y": y})
     loess_fit = r.loess("y ~ x", data=data, span=span,
                         family="symmetric")
     correction_factor = np.array(list(r.predict(loess_fit, x)))
-    print "CORRECTION FACTOR: ", correction_factor
     corrected_y = \
         np.array(list(y)) - correction_factor
-    print "ORIGINAL Y: ", y
-    print "CORRECTED Y: ", corrected_y
     return corrected_y, correction_factor
 
 
