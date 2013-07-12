@@ -645,7 +645,7 @@ class Pipeline:
         except:
             self.logger.exception("Failed while running on sample %s" \
                                   %(label))
-            raise
+            raise Exception, "Failed on %s" %(label)
 
             
     def map_reads(self, sample):
