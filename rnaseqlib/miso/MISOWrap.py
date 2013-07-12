@@ -73,8 +73,12 @@ class MISOWrap:
         for this.
         """
         basename_card = "*.gff3"
-        events_to_genes_dir = \
-            utils.pathify(self.settings_info["settings"]["events_to_genes_dir"])
+        events_to_genes_dir = None
+        if "events_to_genes" in self.settings_info["settings"]:
+            events_to_genes_dir = \
+                utils.pathify(self.settings_info["settings"]["events_to_genes_dir"])
+        else:
+            return
         gff_fnames = \
             glob.glob(os.path.join(events_to_genes_dir, basename_card))
         print "Loading events to genes mapping..."

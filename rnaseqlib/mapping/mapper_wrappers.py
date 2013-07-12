@@ -45,6 +45,8 @@ def get_tophat_mapping_cmd(tophat_path,
     if tophat_gtf is not None:
         mapper_cmd += " --GTF %s" %(tophat_gtf)
     # If paired-end, get a pair of files for the sample
+    print "SAMPLE PAIRED: %s" %(sample.paired)
+    raise Exception
     if sample.paired:
         ##
         ## Ensure that arguments are first to Tophat, prior

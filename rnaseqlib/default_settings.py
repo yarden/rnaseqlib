@@ -98,8 +98,9 @@ def set_default_settings(settings_info):
         print "Error: Need \'data_type\' to be set in [pipeline]."
         sys.exit(1)
     data_type = settings_info["pipeline"]["data_type"]
-    # Not paired-end by default
-    settings_info["mapping"]["paired"] = False
+    if "paired" not in settings_info["mapping"]:
+        # Not paired-end by default, only if no setting was given
+        settings_info["mapping"]["paired"] = False
     if data_type == "rnaseq":
         settings_info = set_default_rnaseq_settings(settings_info)
     elif data_type == "riboseq":

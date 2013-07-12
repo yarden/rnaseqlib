@@ -79,43 +79,6 @@ def shuffle_df(df, n, axis=0):
 #     return shuffled_df
 
 
-def combine_dfs(dfs_list, **kwargs):
-    """
-    Combine dataframes into one. 
-    """
-    if len(dfs_list) == 1:
-        combined_df = dfs_list[0]
-        return combined_df
-    combined_df = reduce(lambda x, y: x.combine_first(y), dfs_list)
-#    combined_df = dfs_list[0]
-#    for right_df in dfs_list[1:]:
-        # Get the new columns that are not common
-        #new_noncommon_cols = [c for c in right_df \
-        #                      if (c not in combined_df.columns) or \
-        #                         (c in kwargs["on"])]
-#        new_noncommon_cols = [c for c in right_df \
-#                              if (c not in combined_df.columns)]
-#        print "COMBINING USING: ", new_noncommon_cols
-#        combined_df = pandas.merge(combined_df,
-#                                   right_df[new_noncommon_cols],
-#                                   left_index=True,
-#                                   right_index=True,
-#                                   **kwargs)
-#                                   left_index=True,
-#                                   right_index=True,
-#                                   suffixes=["", ""],
-#                                   **kwargs)
-    # combined_df = reduce(lambda left_df, right_df:
-    #                      pandas.merge(left_df, right_df,
-    #                                   left_index=True,
-    #                                   right_index=True,
-    #                                   suffixes=["_%s" %(df_labels_dict[left_df]),
-    #                                             "_%s" %(df_labels_dict[right_df])],
-    #                                   **kwargs),
-    #                      dfs_list)
-    return combined_df
-
-
 def merge_dfs(dfs_list, how="outer"):
     if len(dfs_list) == 1:
         return dfs_list[0]
@@ -130,7 +93,7 @@ def merge_dfs(dfs_list, how="outer"):
     return merged_df
               
 
-def concat_df_cols(dfs_list, axis=1):
+def combine_dfs(dfs_list, axis=1):
     """
     Concatenate dataframe columns together, non-redundantly.
 
@@ -146,10 +109,8 @@ def concat_df_cols(dfs_list, axis=1):
         new_cols = list(df.columns.diff(cols))
         nonredundant_dfs.append(df[new_cols])
         cols = new_cols + list(cols)
-    new_df = pandas.concat(dfs_list, axis=axis)
+    new_df = pandas.concat(nonredundant_dfs, axis=axis)
     return new_df
-        
-        
     
 
 def select_df_rows(df, cond,
