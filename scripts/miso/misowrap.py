@@ -135,10 +135,13 @@ def run_miso_on_samples(settings_filename, output_dir,
                         base_delay=10,
                         # Batch delay (20 mins by default)
                         batch_delay=60*20,
-                        delay_every_n_jobs=30):
+                        delay_every_n_jobs=30,
+                        event_types=None):
     """
     Run MISO on a set of samples.
     """
+    if event_types is not None:
+        print "Only running MISO on event types: ", event_types
     misowrap_obj = mw.MISOWrap(settings_filename,
                                output_dir,
                                logger_label="run")
@@ -166,6 +169,10 @@ def run_miso_on_samples(settings_filename, output_dir,
         misowrap_obj.logger.info("Processing: %s" %(bam_filename))
         for event_type_dir in event_types_dirs:
             event_type = os.path.basename(event_type_dir)
+            if event_types is not None:
+                if event_type not in event_types:
+                    print "Skipping event type: %s" %(event_type)
+                    continue
             print "  - Using event dir: %s" %(event_type_dir)
             miso_cmd = "%s" %(run_events_analysis)
             bam_basename = os.path.basename(bam_filename)
@@ -377,6 +384,9 @@ def main():
                       "a settings filename.")
     parser.add_option("--output-dir", dest="output_dir", default=None,
                       help="Output directory.")
+    parser.add_option("--event-types", dest="event_types", default=None, type="str",
+                      help="Optional: comma-separated list of event types to run on "
+                      "only, e.g. A3SS,SE")
     (options, args) = parser.parse_args()
 
     greeting()
@@ -393,7 +403,11 @@ def main():
 
     if options.run != None:
         settings_filename = utils.pathify(options.run)
-        run_miso_on_samples(settings_filename, output_dir)
+        event_types = None
+        if options.event_types is not None:
+            event_types = options.event_types.split(",")
+        run_miso_on_samples(settings_filename, output_dir,
+                            event_types=event_types)
 
     if options.summarize != None:
         settings_filename = utils.pathify(options.summarize)

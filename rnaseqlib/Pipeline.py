@@ -74,8 +74,14 @@ class Sample:
         # RPKM tables for the sample
         self.rpkm_tables = defaultdict(lambda: None)
         # Record if a sample is grouped
-        if type(self.rawdata) == list: 
+        # If there's a mixture of single-end and paired-end data
+        # then rawdata is a list containing only one sample
+        if (type(self.rawdata) == list) and \
+           (len(self.rawdata) == 1):
+            self.rawdata = rawdata[0]
+        if type(self.rawdata) == list:
             self.paired = True
+            # Set sample type based on first sample
             self.sample_type = self.rawdata[0].sample_type
         else:
             self.sample_type = self.rawdata.sample_type

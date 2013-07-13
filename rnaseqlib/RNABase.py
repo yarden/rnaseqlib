@@ -166,6 +166,8 @@ class RNABase:
                 %(self.indices_dir)
             return
         print "Building Bowtie index from %d files" %(num_files)
+        for fasta_fname in fasta_files:
+            print " - %s" %(os.path.basename(fasta_fname))
         fasta_str = ",".join(fasta_files)
         # Change to indices directory
         os.chdir(self.indices_dir)
