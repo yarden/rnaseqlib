@@ -269,6 +269,31 @@ def flatten(l):
     return [item for sublist in l for item in sublist]
 
 
+def slices_of_list(l, slice_size):
+    list_of_slices = zip(*(iter(l),) * slice_size)
+    return list_of_slices
+
+
+def get_sliding_pairs(l):
+    """
+    Get sliding pairs from list.
+
+    [1, 2, 3, 4] => [(1,2), (3,4)]
+
+    [1, 2, 3] => [(1,2), (2,3)]
+    """
+    if len(l) % 2 == 0:
+        # Even number of elements lists can be sliced
+        # by 2
+        pairs = slices_of_list(l, 2)
+    else:
+        # If it's an odd number of elements list, slide by two
+        # up until last element and then append last pair
+        pairs = slices_of_list(l[0:-1], 2)
+        pairs.append((l[-2], l[-1]))
+    return pairs
+        
+
 def chunk_list(l, delim):
     record = []
     for r in l:

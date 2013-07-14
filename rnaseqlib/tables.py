@@ -1248,7 +1248,20 @@ def convert_tables_to_gff(tables_outdir):
     t2 = time.time()
     print "Conversion took %.2f minutes." %((t2 - t1)/60.)
     return gff_fnames
-    
+
+
+def is_ucsc_random_chr(chrom):
+    """
+    Return True if it's a UCSC random chromosome.
+    """
+    if "hap" in chrom:
+        return True
+    if "random" in chrom:
+        return True
+    if "gl00" in chrom:
+        return True
+    return False
+            
     
 def convert_knowngene_to_gtf(tables_outdir):
     """
@@ -1257,19 +1270,45 @@ def convert_knowngene_to_gtf(tables_outdir):
     """
     knowngene_filename = os.path.join(tables_outdir,
                                       "knownGene.txt")
-    knowngene_gtf_filename = os.path.join(tables_outdir,
-                                          "knownGene.gtf")
+    # knownGene GTF with random chromosomes
+    knowngene_with_random_gtf_filename = \
+        os.path.join(tables_outdir,
+                     "knownGene_with_random.gtf")
     knowngene_gff_filename = os.path.join(tables_outdir,
                                           "knownGene.gff")
+    # Convert to GTF first
     print "Converting knownGene format to GTF..."
     if not os.path.isfile(knowngene_filename):
         print "Error: Cannot find %s" %(knowngene_filename)
         sys.exit(1)
     convert_cmd = "cat %s | cut -f1-10 | genePredToGtf file stdin %s -source=knownGene" \
         %(knowngene_filename,
-          knowngene_gtf_filename)
-    if not os.path.isfile(knowngene_gtf_filename):
+          knowngene_with_random_gtf_filename)
+    if not os.path.isfile(knowngene_with_random_gtf_filename):
         os.system(convert_cmd)
+    # Create a version of the GTF that does not have random chromosomes
+    knowngene_gtf_filename = \
+        os.path.join(tables_outdir, "knownGene.gtf")
+    if not os.path.isfile(knowngene_gtf_filename):
+        knowngene_in = open(knowngene_with_random_gtf_filename, "r")
+        knowngene_out = open(knowngene_gtf_filename, "w")
+        print "Creating version without random chromosomes.."
+        random_chroms = {}
+        for line in knowngene_in:
+            if line.startswith("#"):
+                continue
+            chrom = line.split("\t")[0]
+            if is_ucsc_random_chr(chrom):
+                random_chroms[chrom] = True
+                continue
+            # Write line to file since it's not a random chrom
+            knowngene_out.write(line)
+        print "Removed random chroms: "
+        for rand_chrom in random_chroms:
+            print " - %s" %(rand_chrom)
+        knowngene_in.close()
+        knowngene_out.close()
+    # Then convert only the one without random chromosomes to GFF as well
     gtf2gff_cmd = "gtf2gff3.pl"
     convert_gff_cmd = "%s %s > %s" %(gtf2gff_cmd,
                                      knowngene_gtf_filename,
