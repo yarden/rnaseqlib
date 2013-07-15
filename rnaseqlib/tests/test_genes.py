@@ -25,11 +25,11 @@ class TestGenes:
         Test calculation of constitutive exons
         """
         print "Testing constitutive exons"
-        # Load gene table
         genes_to_test = ["ENSG00000135097", "ENSG00000153944",
                          "ENSG00000242866", "ENSG00000187223",
                          "ENSG00000250590"]
         for gene_id in genes_to_test:
+            # Load gene table
             gt = tables.GeneTable(os.path.join(test_utils.TESTDIR, "hg19"), "ensGene")
             ensGene_fname = \
                 test_utils.load_test_data(os.path.join("hg19",
@@ -47,8 +47,8 @@ class TestGenes:
             assert len(const_exons) > 0, "Could not find constitutive exons!"
             print "Computing CDS constitutive exons..."
             cds_const_exons = gene.compute_const_exons(cds_only=True)
+            print "CDS-only constitutive exons: "
             print "  - cds_const_exons: ", cds_const_exons
-            assert len(const_exons) > 0, "Could not find CDS-only constitutive exons!"
 
 
 if __name__ == "__main__":
