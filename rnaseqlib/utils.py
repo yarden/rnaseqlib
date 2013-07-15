@@ -30,6 +30,13 @@ def parse_attributes(attributes_str):
     return attributes
 
 
+def elts_from_list(l, indices):
+    """
+    Return elements from list by their indices.
+    """
+    return [l[ind] for ind in indices]
+
+
 def get_logger(logger_name, log_outdir,
                level=logging.INFO,
                include_stdout=True):

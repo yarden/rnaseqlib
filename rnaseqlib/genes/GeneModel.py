@@ -5,8 +5,13 @@ import os
 import sys
 import time
 
+
 import numpy
 from numpy import *
+import numpy as np
+
+import rnaseqlib
+import rnaseqlib.utils as utils
 
 import misopy
 import misopy.gff_utils as gff_utils
@@ -17,7 +22,7 @@ class Gene:
     """
     Representation of a gene model.
 
-    By convention, all coordinates will be a 1-based start (GFF conventions.)
+    By convention, all coordinates will be a 1-based start (GFF convention.)
     """
     __slots__ = ['transcripts', 'chrom', 'strand', 'label', 'gene_symbol',
                  'parts', 'const_exons', 'has_cds']
@@ -96,7 +101,8 @@ class Gene:
     def compute_const_exons(self,
                             base_diff=6,
                             cds_only=False,
-                            frac_const=.7):
+                            frac_const=.7,
+                            min_exon_space=40):
         """
         Get constitutive exons.
 
@@ -130,6 +136,37 @@ class Gene:
             else:
                 self.const_exons = transcripts[0].parts
             return self.const_exons
+        # If there's one or more fully constitutive exons, use these only
+        self.const_exons, max_frac = \
+            self.get_const_exons_from_transcripts(transcripts,
+                                                  frac_const,
+                                                  cds_only,
+                                                  base_diff,
+                                                  min_exon_space=min_exon_space)
+        return self.const_exons
+
+    
+    def get_const_exons_from_transcripts(self,
+                                         transcripts,
+                                         frac_const,
+                                         cds_only,
+                                         base_diff,
+                                         min_exon_space=40):
+        """
+        Get (approximately) constitutive exons in set of transcripts.
+        Return the constitutive exons and the fraction of
+        transcripts they appear in.
+
+        Parameters:
+        -----------
+
+        transcripts: set of transcripts
+        frac_const: fraction of transcripts an exon must be in to be
+        constitutive
+        base_diff: base difference allowed when considering an exon
+        to be 'included' in transcript
+        """
+        num_trans = len(transcripts)
         # Iterate through each exon and determine what fraction
         # of the transcripts it appears in.
         exons = self.get_parts(cds_only=cds_only)
@@ -137,6 +174,8 @@ class Gene:
         approx_const_exons = []
         # Exons that occur in all transcripts
         fully_const_exons = []
+        # Fraction of transcripts that each exon occurs in
+        exons_fracs = []
         for exon in exons:
             # Calculate if the exon is in or out of each
             # transcript
@@ -148,20 +187,33 @@ class Gene:
             # occurs.
             in_transcripts_frac = \
                 len(where(exon_status == True)[0]) / float(num_trans)
+            exons_fracs.append(in_transcripts_frac)
+            # Track which exons are fully constitutive, i.e.
+            # occur in all exons
+            if in_transcripts_frac == 1:
+                fully_const_exons.append(exon)
             if in_transcripts_frac >= frac_const:
-                # Track which exons are fully constitutive, i.e.
-                # occur in all exons
-                if in_transcripts_frac == 1:
-                    fully_const_exons.append(exon)
                 approx_const_exons.append(exon)
-        # If there's one or more fully constitutive exons, use these only
+        # Get the exons that are most approximately constitutive, i.e.
+        # occur in highest fraction of transcripts
+        exons_fracs = np.array(exons_fracs)
+        max_frac = exons_fracs.max()
+        approx_exons_inds = np.where((max_frac == exons_fracs))[0]
+        approx_const_exons = utils.elts_from_list(exons, approx_exons_inds)
+        const_exons = []
         if len(fully_const_exons) >= 1:
-            self.const_exons = fully_const_exons
+            const_exons = fully_const_exons
         else:
             # Otherwise use the nearly-constitutive exons (i.e. exons
             # that occur in a high fraction of the transcripts)
-            self.const_exons = approx_const_exons
-        return self.const_exons
+            const_exons = approx_const_exons
+        # Compute sum of lengths of exons
+        sum_lens = np.sum([exon.len for exon in const_exons])
+        if sum_lens < min_exon_space:
+            raise Exception, "Error: sum of exon lengths for %s is only %d" \
+                  %(self.label, sum_lens)
+        return const_exons, max_frac
+
 
 #     def old_compute_const_exons(self,
 #                             base_diff=6,
@@ -438,6 +490,8 @@ class Part:
                                          start,
                                          end,
                                          strand)
+        self.len = end - start + 1
+
 
     def __repr__(self):
         return "Part(%s, %s)" %(str(self.start),

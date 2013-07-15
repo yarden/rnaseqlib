@@ -229,13 +229,14 @@ class GeneTable:
                               "protAcc",
                               "description"]
         kgXref_filename = os.path.join(self.table_dir, "kgXref.txt")
+        self.kgXref_table = pandas.DataFrame([])
         if not os.path.isfile(kgXref_filename):
-            print "Error: Cannot find kgXref table %s" \
+            print "WARNING: Cannot find kgXref table %s" \
                 %(kgXref_filename)
-            sys.exit(1)
-        self.kgXref_table = pandas.read_table(kgXref_filename,
-                                              sep="\t",
-                                              names=self.kgXref_header)
+        else:
+            self.kgXref_table = pandas.read_table(kgXref_filename,
+                                                  sep="\t",
+                                                  names=self.kgXref_header)
             
 
     def load_tables(self, tables_only=False):
@@ -325,9 +326,10 @@ class GeneTable:
         ensGene_filename = os.path.join(self.table_dir,
                                         "ensGene.txt")
         if not os.path.isfile(ensGene_filename):
-            print "Error: Cannot find ensGene table %s" \
+            print "WARNING: Cannot find ensGene table %s" \
                 %(ensGene_filename)
-            sys.exit(1)
+            print "Not loading tables."
+            return
         known_to_ensembl_filename = os.path.join(self.table_dir,
                                                  "knownToEnsembl.txt")
         if not os.path.isfile(known_to_ensembl_filename):
@@ -531,11 +533,12 @@ class GeneTable:
         return genes_by_id
             
 
-    def get_ensGene_by_genes(self):
+    def get_ensGene_by_genes(self, ensGene_filename=None):
         print "Loading Ensembl table into genes..."
         # Main ensGene table
-        ensGene_filename = os.path.join(self.table_dir,
-                                        "ensGene.txt")
+        if ensGene_filename is None:
+            ensGene_filename = os.path.join(self.table_dir,
+                                            "ensGene.txt")
         if not os.path.isfile(ensGene_filename):
             raise Exception, "Cannot find ensGene table %s" \
                 %(ensGene_filename)
