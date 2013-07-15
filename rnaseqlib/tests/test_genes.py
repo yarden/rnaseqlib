@@ -26,9 +26,10 @@ class TestGenes:
         """
         print "Testing constitutive exons"
         # Load gene table
-        gt = tables.GeneTable(os.path.join(test_utils.TESTDIR, "hg19"), "ensGene")
-        genes_to_test = ["ENSG00000135097", "ENSG00000153944"]
+        genes_to_test = ["ENSG00000135097", "ENSG00000153944",
+                         "ENSG00000242866", "ENSG00000187223"]
         for gene_id in genes_to_test:
+            gt = tables.GeneTable(os.path.join(test_utils.TESTDIR, "hg19"), "ensGene")
             ensGene_fname = \
                 test_utils.load_test_data(os.path.join("hg19",
                                                        "ensGene.hg19.%s.txt" %(gene_id)))
