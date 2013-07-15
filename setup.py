@@ -40,6 +40,7 @@ setup(name = 'rnaseqlib',
                   'rnaseqlib.motif',
                   'rnaseqlib.ribo',
                   'rnaseqlib.stats',
+                  'rnaseqlib.tests',
                   'scripts'],
       # distutils always uses forward slashes      
       scripts = ['scripts/rna_pipeline.py',

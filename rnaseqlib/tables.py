@@ -640,10 +640,12 @@ class GeneTable:
             rec_type = "exon"
             genes_to_exons = []
             genes_to_exons_header = ["gene_id", "exons"]
+            if const_only:
+                genes_to_exons_header.append("frac_const")
             for gene_id, gene in self.genes.iteritems():
                 if const_only:
                     # Get only constitutive exons
-                    exons = \
+                    exons, frac_str = \
                       gene.compute_const_exons(base_diff=self.constitutive_exon_diff,
                                                frac_const=self.frac_constitutive,
                                                cds_only=cds_only)
@@ -660,6 +662,8 @@ class GeneTable:
                     exon_labels = ",".join(exon_labels)
                 entry = {"gene_id": gene_id,
                          "exons": exon_labels}
+                if const_only:
+                    entry["frac_const"] = frac_str
                 genes_to_exons.append(entry)
                 # Output constitutive exons to GFF file
                 GeneModel.output_parts_as_gff(gff_out,

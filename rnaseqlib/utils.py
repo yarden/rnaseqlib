@@ -37,6 +37,20 @@ def elts_from_list(l, indices):
     return [l[ind] for ind in indices]
 
 
+def sort_list_by_list(list_to_sort, sort_values,
+                      reverse=False):
+    """
+    Sort list 'list_to_sort' by the values in
+    'sort_values'
+    """
+    assert (len(list_to_sort) == len(sort_values)), \
+           "Lists must be of same length."
+    sorted_list = \
+        [x for (y,x) in sorted(zip(sort_values, list_to_sort),
+                               reverse=reverse)]
+    return sorted_list
+
+
 def get_logger(logger_name, log_outdir,
                level=logging.INFO,
                include_stdout=True):

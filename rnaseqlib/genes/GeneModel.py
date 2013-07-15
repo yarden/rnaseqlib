@@ -16,6 +16,7 @@ import rnaseqlib.utils as utils
 import misopy
 import misopy.gff_utils as gff_utils
 
+import operator
 from collections import namedtuple
 
 class Gene:
@@ -130,20 +131,22 @@ class Gene:
         num_trans = len(transcripts)
         # If we have only one transcript then all
         # exons are constitutive
+        frac_str = "NA"
         if num_trans == 1:
             if cds_only:
                 self.const_exons = transcripts[0].get_cds_parts()
             else:
                 self.const_exons = transcripts[0].parts
-            return self.const_exons
+            frac_str = ",".join(len(self.const_exons) * ["1"])
+            return self.const_exons, frac_str
         # If there's one or more fully constitutive exons, use these only
-        self.const_exons, max_frac = \
+        self.const_exons, frac_str = \
             self.get_const_exons_from_transcripts(transcripts,
                                                   frac_const,
                                                   cds_only,
                                                   base_diff,
                                                   min_exon_space=min_exon_space)
-        return self.const_exons
+        return self.const_exons, frac_str
 
     
     def get_const_exons_from_transcripts(self,
@@ -170,12 +173,11 @@ class Gene:
         # Iterate through each exon and determine what fraction
         # of the transcripts it appears in.
         exons = self.get_parts(cds_only=cds_only)
-        # Exons that occur in at least a fraction of the transcripts
-        approx_const_exons = []
-        # Exons that occur in all transcripts
-        fully_const_exons = []
         # Fraction of transcripts that each exon occurs in
         exons_fracs = []
+        frac_str = "NA"
+        if len(exons) == 0:
+            return exons, frac_str
         for exon in exons:
             # Calculate if the exon is in or out of each
             # transcript
@@ -188,31 +190,37 @@ class Gene:
             in_transcripts_frac = \
                 len(where(exon_status == True)[0]) / float(num_trans)
             exons_fracs.append(in_transcripts_frac)
-            # Track which exons are fully constitutive, i.e.
-            # occur in all exons
-            if in_transcripts_frac == 1:
-                fully_const_exons.append(exon)
-            if in_transcripts_frac >= frac_const:
-                approx_const_exons.append(exon)
-        # Get the exons that are most approximately constitutive, i.e.
-        # occur in highest fraction of transcripts
-        exons_fracs = np.array(exons_fracs)
-        max_frac = exons_fracs.max()
-        approx_exons_inds = np.where((max_frac == exons_fracs))[0]
-        approx_const_exons = utils.elts_from_list(exons, approx_exons_inds)
-        const_exons = []
-        if len(fully_const_exons) >= 1:
-            const_exons = fully_const_exons
-        else:
-            # Otherwise use the nearly-constitutive exons (i.e. exons
-            # that occur in a high fraction of the transcripts)
-            const_exons = approx_const_exons
+        ## Get the exons that are most approximately constitutive, i.e.
+        ## occur in high fraction of transcripts
+        exons_dict = \
+            dict([(exon, frac) for exon, frac in zip(exons, exons_fracs)])
+        # Sort exons by how constitutive they are
+        sorted_exons = \
+            sorted(exons_dict.iteritems(), key=operator.itemgetter(1),
+                   reverse=True)
+        # Get maximally constitutive exons first
+        max_frac = max(exons_fracs)
+        const_exons = \
+            [e[0] for e in sorted_exons if e[1] == max_frac]
+        # Fraction of transcripts chosen exons appear in 
+        fracs = len(const_exons) * [max_frac]
         # Compute sum of lengths of exons
         sum_lens = np.sum([exon.len for exon in const_exons])
         if sum_lens < min_exon_space:
-            raise Exception, "Error: sum of exon lengths for %s is only %d" \
+            print "NOTE: sum of constitutive exon lengths for %s is only %d" \
                   %(self.label, sum_lens)
-        return const_exons, max_frac
+            # Try to get next exon in list if there are any
+            if len(sorted_exons) >= 2:
+                next_exon, next_exon_frac = sorted_exons[1]
+                print "Fetching next exon which appears in %.2f fraction " \
+                      "of transcripts" %(next_exon_frac)
+                const_exons.append(next_exon)
+                fracs.append(next_exon_frac)
+                sum_lens += next_exon.len
+        # Return constitutive exons and a string describing the fraction of
+        # transcripts they appear in
+        frac_str = ",".join(["%.2f" %(f) for f in fracs])
+        return const_exons, frac_str
 
 
 #     def old_compute_const_exons(self,
