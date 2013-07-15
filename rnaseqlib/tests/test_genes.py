@@ -44,6 +44,7 @@ class TestGenes:
         print "Computing CDS constitutive exons..."
         cds_const_exons = gene.compute_const_exons(cds_only=True)
         print "  - cds_const_exons: ", cds_const_exons
+        assert len(const_exons) > 0, "Could not find CDS-only constitutive exons!"
         
 
 if __name__ == "__main__":
