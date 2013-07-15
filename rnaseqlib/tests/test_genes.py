@@ -27,25 +27,27 @@ class TestGenes:
         print "Testing constitutive exons"
         # Load gene table
         gt = tables.GeneTable(os.path.join(test_utils.TESTDIR, "hg19"), "ensGene")
-        ensGene_fname = \
-            test_utils.load_test_data(os.path.join("hg19",
-                                                   "ensGene.hg19.ENSG00000153944.txt"))
-        # Load ensembl genes table into GeneModel objects
-        gt.get_ensGene_by_genes(ensGene_fname)
-        print "Loaded genes: "
-        for g in gt.genes:
-            print g, " => ", gt.genes[g]
-        assert "ENSG00000153944" in gt.genes, "Could not load ENSG00000153944"
-        gene = gt.genes["ENSG00000153944"]
-        print "Computing constitutive exons..."
-        const_exons = gene.compute_const_exons(base_diff=6, frac_const=0.3)
-        print "  - const_exons: ", const_exons
-        assert len(const_exons) > 0, "Could not find constitutive exons!"
-        print "Computing CDS constitutive exons..."
-        cds_const_exons = gene.compute_const_exons(cds_only=True)
-        print "  - cds_const_exons: ", cds_const_exons
-        assert len(const_exons) > 0, "Could not find CDS-only constitutive exons!"
-        
+        genes_to_test = ["ENSG00000135097", "ENSG00000153944"]
+        for gene_id in genes_to_test:
+            ensGene_fname = \
+                test_utils.load_test_data(os.path.join("hg19",
+                                                       "ensGene.hg19.%s.txt" %(gene_id)))
+            # Load ensembl genes table into GeneModel objects
+            gt.get_ensGene_by_genes(ensGene_fname)
+            print "Loaded genes: "
+            for g in gt.genes:
+                print g, " => ", gt.genes[g]
+            assert gene_id in gt.genes, "Could not load %s" %(gene_id)
+            gene = gt.genes[gene_id]
+            print "Computing constitutive exons..."
+            const_exons = gene.compute_const_exons(base_diff=6, frac_const=0.3)
+            print "  - const_exons: ", const_exons
+            assert len(const_exons) > 0, "Could not find constitutive exons!"
+            print "Computing CDS constitutive exons..."
+            cds_const_exons = gene.compute_const_exons(cds_only=True)
+            print "  - cds_const_exons: ", cds_const_exons
+            assert len(const_exons) > 0, "Could not find CDS-only constitutive exons!"
+
 
 if __name__ == "__main__":
     test_g = TestGenes()
