@@ -1039,8 +1039,6 @@ class ConstExons:
               self.gff_filename,
               len(self.genes_to_exons))
         
-        
-
 
 ##
 ## Related table utilities
@@ -1065,6 +1063,81 @@ def get_ucsc_tables_urls(genome):
         table_url = "%s/%s" %(ucsc_database, table_label)
         table_labels.append([table_label, table_url])
     return table_labels
+
+
+def download_all_ucsc_headers(genome, ucsc_tables, output_dir):
+    """
+    Download all the necessary table headers for
+    a genome and save them to a text file.
+    """
+    print "Downloading all UCSC headers for %s" %(genome)
+    print "  - Output dir: %s" %(output_dir)
+    headers_outdir = os.path.join(output_dir, "ucsc", "headers")
+    utils.make_dir(headers_outdir)
+    for table_info in ucsc_tables:
+        table_fname = table_info[0]
+        table_name = table_fname.split(".")[0]
+        # Get header for current table
+        header = download_ucsc_table_header(genome, table_name)
+        header_fname = \
+            os.path.join(headers_outdir, "%s.header.txt" %(table_name))
+        # Write header to file in headers directory
+        with open(header_fname, "w") as header_out:
+            header_str = "\t".join(header)
+            header_out.write("%s\n" %(header_str))
+
+
+def download_ucsc_table_header(genome, table_name):
+    """
+    Get UCSC table headers for a given table.
+    """
+    print "Downloading header for %s (%s)" %(table_name,
+                                             genome)
+    mysql_path = utils.which("mysql")
+    if mysql_path is None:
+        print "WARNING: Could not find \'mysql\' on your system. " \
+              "Not fetching headers for UCSC tables from mysql. " \
+              "Will have to guess headers instead."
+        return None
+    # Query headers as TSV from MySQL database
+    mysql_cmd = \
+        "%s --user=genome --host=genome-mysql.cse.ucsc.edu -A -D %s " \
+        "-e \'desc %s\' -N -B" \
+        %(mysql_path,
+          genome,
+          table_name)
+    p = \
+        subprocess.Popen(mysql_cmd,
+                         shell=True,
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE)
+    ret_val = p.wait()
+    if ret_val != 0:
+        print "ERROR: Failed to get header."
+        print "Standard output was: "
+        for s in p.stdout:
+            print s.strip()
+        print "Standard error was: "
+        for e in p.stderr:
+            print e.strip()
+        return None
+    # Command has not failed, so parse header
+    header = []
+    for line in p.stdout:
+        line = line.strip()
+        if line.startswith("Field"):
+            # Skip header that describes each header field
+            continue
+        fields = line.split("\t")
+        header.append(fields[0])
+    return header
+
+
+def load_ucsc_table_headers(init_dir, table_names):
+    """
+    Load headers that have already been downloaded.
+    """
+    pass
     
 
 def download_ucsc_tables(genome,
@@ -1094,6 +1167,8 @@ def download_ucsc_tables(genome,
             continue
         # Uncompress table
         utils.gunzip_file(table_filename, tables_outdir)
+    # Download all the table headers and save them to file
+    download_all_ucsc_headers(genome, ucsc_tables, output_dir)
 
 
 def add_introns_to_gff_files(gff_fnames, output_dir):
