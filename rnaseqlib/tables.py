@@ -9,6 +9,7 @@ import sys
 import time
 import csv
 import subprocess
+import glob
 
 import itertools
 import operator
@@ -53,8 +54,20 @@ UCSC_TABLE_LABELS = ["knownGene.txt.gz",
                      "tRNAs.txt.gz"]
 
 ##
-## Headers for UCSC tables (based on SQL schema)
+## Default headers for UCSC tables (based on SQL schema)
+## Only used if the actual headers cannot be downloaded from mysql
+## database
 ##
+UCSC_KGXREF_HEADER = \
+    ["kgID",
+     "mRNA",
+     "spID",
+     "spDisplayID",
+     "geneSymbol",
+     "refseq",
+     "protAcc",
+     "description"]
+
 UCSC_ENSGENE_HEADER = ["bin",
                        "name",
                        "chrom",
@@ -102,12 +115,26 @@ UCSC_KNOWNGENE_HEADER = ["name",
                          "proteinID",
                          "alignID"]
 
+UCSC_TRNAS_HEADER = ["bin",
+                     "chrom",
+                     "chromStart",
+                     "chromEnd",
+                     "name",
+                     "score",
+                     "strand",
+                     "aa",
+                     "ac",
+                     "intron",
+                     "trnaScore",
+                     "genomeUrl",
+                     "trnaUrl"]
+
 
 ##
 ## Helper functions for loading tables (used outside of
 ## GeneTable)
 ##
-def load_ucsc_table_as_df(table_fname):
+def load_ucsc_table_as_df(table_fname, header):
     """
     Load UCSC table as DataFrame.
     """
@@ -125,23 +152,23 @@ def load_ucsc_table_as_df(table_fname):
     return df
 
     
-def load_ensGene_table_as_df(table_fname, sep="\t"):
+def load_ensGene_table_as_df(table_fname, header, sep="\t"):
     table = pandas.read_table(table_fname,
                               sep=sep,
-                              header=UCSC_ENSGENE_HEADER)
+                              header=header)
     return table
 
 
-def load_knownGene_table_as_df(table_fname, sep="\t"):
+def load_knownGene_table_as_df(table_fname, header, sep="\t"):
     table = pandas.read_table(table_fname,
                               sep=sep,
-                              header=UCSC_KNOWNGENE_HEADER)
+                              header=header)
 
 
-def load_refGene_table_as_df(table_fname, sep="\t"):
+def load_refGene_table_as_df(table_fname, header, sep="\t"):
     table = pandas.read_table(table_fname,
                               sep=sep,
-                              header=UCSC_REFGENE_HEADER)
+                              header=header)
     return table
 
 
@@ -151,8 +178,10 @@ class GeneTable:
     """
     def __init__(self, table_dir, source,
                  tables_only=False,
-                 params={}):
+                 params={},
+                 headers=None):
         self.table_dir = table_dir
+        self.headers = headers
         self.exons_dir = os.path.join(self.table_dir, "exons")
         self.const_exons_dir = os.path.join(self.exons_dir,
                                             "const_exons")
@@ -190,7 +219,14 @@ class GeneTable:
         self.kgXref_table = None
         # Initialize output directories
         self.init_dirs()
-        # Load tables
+        # Load default headers for table if they were not given
+        if self.headers is None:
+            self.headers = {}
+            self.headers["kgXref"] = UCSC_KGXREF_HEADER
+            self.headers["ensGene"] = UCSC_ENSGENE_HEADER
+            self.headers["knownGene"] = UCSC_KNOWNGENE_HEADER
+            self.headers["refGene"] = UCSC_REFGENE_HEADER
+        # Load tables        
         self.load_tables(tables_only=tables_only)
         
 
@@ -208,26 +244,8 @@ class GeneTable:
         """
         Load kgXref table mapping UCSC transcript names to
         Ensembl transcript names.
-
-        kgXref.txt format:
-
-          `kgID` varchar(40) NOT NULL,
-          `mRNA` varchar(40) default NULL,
-          `spID` varchar(40) default NULL,
-          `spDisplayID` varchar(40) default NULL,
-          `geneSymbol` varchar(40) default NULL,
-          `refseq` varchar(40) default NULL,
-          `protAcc` varchar(40) default NULL,
-          `description` longblob NOT NULL,        
         """
-        self.kgXref_header = ["kgID",
-                              "mRNA",
-                              "spID",
-                              "spDisplayID",
-                              "geneSymbol",
-                              "refseq",
-                              "protAcc",
-                              "description"]
+        self.kgXref_header = self.headers["kgXref"]
         kgXref_filename = os.path.join(self.table_dir, "kgXref.txt")
         self.kgXref_table = pandas.DataFrame([])
         if not os.path.isfile(kgXref_filename):
@@ -237,6 +255,16 @@ class GeneTable:
             self.kgXref_table = pandas.read_table(kgXref_filename,
                                                   sep="\t",
                                                   names=self.kgXref_header)
+        # Select only columns of interest
+        relevant_cols = ["kgID",
+                         "mRNA",
+                         "spID",
+                         "spDisplayID",
+                         "geneSymbol",
+                         "refseq",
+                         "protAcc",
+                         "description"]
+        self.kgXref_table = self.kgXref_table[relevant_cols]
             
 
     def load_tables(self, tables_only=False):
@@ -320,7 +348,7 @@ class GeneTable:
         if tables_only is True, do not parse table into
         genes but only load tables.
         """
-        self.ensGene_header = UCSC_ENSGENE_HEADER
+        self.ensGene_header = self.headers["ensGene"]
         self.knownToEnsembl_header = ["knownGene_name",
                                       "name"]
         ensGene_filename = os.path.join(self.table_dir,
@@ -1071,8 +1099,8 @@ def download_all_ucsc_headers(genome, ucsc_tables, output_dir):
     a genome and save them to a text file.
     """
     print "Downloading all UCSC headers for %s" %(genome)
-    print "  - Output dir: %s" %(output_dir)
     headers_outdir = os.path.join(output_dir, "ucsc", "headers")
+    print "  - Output dir: %s" %(headers_outdir)
     utils.make_dir(headers_outdir)
     for table_info in ucsc_tables:
         table_fname = table_info[0]
@@ -1133,11 +1161,35 @@ def download_ucsc_table_header(genome, table_name):
     return header
 
 
-def load_ucsc_table_headers(init_dir, table_names):
+def load_ucsc_table_headers(output_dir):
     """
     Load headers that have already been downloaded.
+
+    Returns mapping from table names to their headers, e.g.
+
+    'ensGene': ['bin', ...]
     """
-    pass
+    print "Loading UCSC headers..."
+    headers_dir = os.path.join(output_dir, "ucsc", "headers")
+    if not os.path.isdir(headers_dir):
+        print "Error: Cannot load headers from %s" %(headers_dir)
+        print "Are you sure you ran \'--init\' with a version of " \
+              "rnaseqlib that automatically downloads headers?"
+        return False
+    header_fnames = glob.glob(os.path.join(headers_dir, "*.header.txt"))
+    headers = {}
+    for header_fname in header_fnames:
+        table_fname = os.path.basename(header_fname)
+        if not table_fname.endswith(".txt"):
+            continue
+        fields = table_fname.split(".")
+        if len(fields) != 3:
+            continue
+        table_name = fields[0]
+        with open(header_fname, "r") as header_in:
+            header = header_in.readline().strip().split("\t")
+            headers[table_name] = header
+    return headers
     
 
 def download_ucsc_tables(genome,
@@ -1150,6 +1202,9 @@ def download_ucsc_tables(genome,
     print "Download UCSC tables..."
     print "  - Output dir: %s" %(tables_outdir)
     ucsc_tables = get_ucsc_tables_urls(genome)
+    # Download all the table headers and save them to file
+    download_all_ucsc_headers(genome, ucsc_tables, output_dir)
+    # Download the UCSC tables
     for table_label, table_url in ucsc_tables:
         print "Downloading %s" %(table_label)
         # If the table exists in uncompressed form, don't download it
@@ -1167,8 +1222,6 @@ def download_ucsc_tables(genome,
             continue
         # Uncompress table
         utils.gunzip_file(table_filename, tables_outdir)
-    # Download all the table headers and save them to file
-    download_all_ucsc_headers(genome, ucsc_tables, output_dir)
 
 
 def add_introns_to_gff_files(gff_fnames, output_dir):
@@ -1195,8 +1248,6 @@ def process_ucsc_tables(genome, output_dir,
     ##
     ## Process misc. tables
     ##
-    # tRNA table
-    process_tRNA_table(tables_outdir)
     # snoRNA table
     # ...
     # mitoRNA table
@@ -1205,9 +1256,18 @@ def process_ucsc_tables(genome, output_dir,
     ## Process gene tables
     ##
     table_names = ["ensGene"]#, "refGene"]
+    # Load table headers
+    headers = load_ucsc_table_headers(output_dir)
+    # get tRNA table header
+    tRNA_header = UCSC_TRNAS_HEADER
+    if headers is not None:
+        print "HEADERS: ", headers
+        tRNA_header = headers["tRNAs"]
+    process_tRNA_table(tables_outdir, tRNA_header)
     for table_name in table_names:
         table = GeneTable(tables_outdir, table_name,
-                          params=init_params)
+                          params=init_params,
+                          headers=headers)
         # Output the table's exons as GFF
         table.output_exons_as_gff()
         # Output the table's CDS-only exons as GFF
@@ -1227,45 +1287,13 @@ def process_ucsc_tables(genome, output_dir,
         table.output_introns()
 
 
-def process_tRNA_table(tables_outdir,
+def process_tRNA_table(tables_outdir, tRNA_header,
                        delimiter="\t"):
     """
     Process tRNA table from UCSC.
-    
-        CREATE TABLE `tRNAs` (
-          `bin` smallint(5) unsigned NOT NULL,
-          `chrom` varchar(255) NOT NULL,
-          `chromStart` int(10) unsigned NOT NULL,
-          `chromEnd` int(10) unsigned NOT NULL,
-          `name` varchar(255) NOT NULL,
-          `score` int(10) unsigned NOT NULL,
-          `strand` char(1) NOT NULL,
-          `aa` varchar(255) NOT NULL,
-          `ac` varchar(255) NOT NULL,
-          `intron` varchar(255) NOT NULL,
-          `trnaScore` float NOT NULL,
-          `genomeUrl` varchar(255) NOT NULL,
-          `trnaUrl` varchar(255) NOT NULL,
-          PRIMARY KEY  (`chrom`,`chromStart`,`chromEnd`),
-          KEY `binChrom` (`chrom`,`bin`)
-        ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-        SET character_set_client = @saved_cs_client;
     """
     # Process tRNA table
     tRNA_filename = os.path.join(tables_outdir, "tRNAs.txt")
-    tRNA_header = ["bin",
-                   "chrom",
-                   "chromStart",
-                   "chromEnd",
-                   "name",
-                   "score",
-                   "strand",
-                   "aa",
-                   "ac",
-                   "intron",
-                   "trnaScore",
-                   "genomeUrl",
-                   "trnaUrl"]
     if not os.path.isfile(tRNA_filename):
         print "WARNING: Could not find tRNA table %s" \
             %(tRNA_filename)

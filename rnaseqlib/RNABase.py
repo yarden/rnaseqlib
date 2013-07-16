@@ -82,6 +82,8 @@ class RNABase:
         """
         Load gene information.
         """
+        # Load all UCSC headers
+        headers = tables.load_ucsc_table_headers(self.output_dir)
         # Load all gene tables
         for table_name in self.gene_table_names:
             table = tables.GeneTable(self.ucsc_tables_dir,
