@@ -313,7 +313,7 @@ This creates filtered versions of the comparison ``.miso_bf`` files and places t
               - RI samples here...
               - ...
 
-4. **Combine comparisons** into single files and place them in the directory where our comparisons are. Takes the ``comparisons`` directory (which contains MISO comparisons) and the settings file ::
+5. **Combine comparisons** into single files and place them in the directory where our comparisons are. Takes the ``comparisons`` directory (which contains MISO comparisons) and the settings file ::
 
   misowrap.py combine-comparisons miso_output/comparisons/ misowrap_settings.txt --output-dir miso_output/comparisons/
 
