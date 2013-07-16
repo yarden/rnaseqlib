@@ -30,7 +30,10 @@ from argh import arg
 @arg("logs-outdir", help="Directory where to place logs.")
 @arg("--delay", help="Delay between execution of cluster jobs")
 @arg("--dry-run", help="Dry run: do not submit or execute jobs.")
-def summarize(setings_filename, logs_outdir):
+def summarize(settings,
+              logs_outdir,
+              delay=5,
+              dry_run=False):
     """
     Summarize samples in MISO directory.
     """
@@ -279,14 +282,20 @@ def filter(settings,
     psi_table = pt.PsiTable(misowrap_obj)
     psi_table.output_filtered_comparisons()
 
-                
-def compute_insert_lens(settings_filename,
-                        output_dir):
+
+@arg("settings", help="misowrap settings filename.")
+@arg("logs_outdir", help="directory where to place logs.")
+@arg("--dry-run", help="Dry run. Do not execute any jobs or commands.")
+def compute_insert_lens(settings,
+                        output_dir,
+                        dry_run=False):
     """
     Compute insert lengths for all samples.
     """
+    settings_filename = utils.pathify(settings)
+    logs_outdir = utils.pathify(logs_outdir)
     misowrap_obj = mw.MISOWrap(settings_filename,
-                               output_dir,
+                               logs_outdir,
                                logger_label="insert_lens")
     const_exons_gff = misowrap_obj.const_exons_gff
     if not os.path.isfile(const_exons_gff):
@@ -315,9 +324,12 @@ def compute_insert_lens(settings_filename,
             os.system(insert_len_cmd)
 
 
-def combine_comparisons(settings_filename,
-                        comparisons_dir,
-                        output_dir,
+@arg("settings", help="misowrap settings filename.")
+@arg("logs-outdir", help="Directory where to place logs.")
+@arg("--delay", help="Delay between execution of cluster jobs")
+@arg("--dry-run", help="Dry run: do not submit or execute jobs.")
+def combine_comparisons(settings,
+                        logs_outdir,
                         common_cols=["isoforms",
                                      "chrom",
                                      "strand",
@@ -325,6 +337,8 @@ def combine_comparisons(settings_filename,
                                      "mRNA_ends",
                                      "gene_id",
                                      "gene_symbol"],
+                        delay=5,
+                        dry_run=False,
                         NA_VAL="NA"):
     """
     Output combined MISO comparisons. For each event type,
@@ -332,58 +346,71 @@ def combine_comparisons(settings_filename,
     based on the 'comparison_groups' in the misowrap
     settings file.
     """
+    settings_filename = utils.pathify(settings)
+    logs_outdir = utils.pathify(logs_outdir)
+    utils.make_dir(logs_outdir)
     misowrap_obj = mw.MISOWrap(settings_filename,
-                               output_dir,
+                               logs_outdir,
                                logger_label="combine_comparisons")
     comparisons_dir = misowrap_obj.comparisons_dir    
     if not os.path.isdir(comparisons_dir):
         misowrap_obj.logger.critical("Comparisons directory %s not found. " \
                                      %(comparisons_dir))
         sys.exit(1)
-    output_dir = os.path.join(output_dir,
-                              "combined_comparisons")
-    utils.make_dir(output_dir)
+    # Comparison types to combine: unfiltered comparisons and filtered comparisons
+    # (if available)
+    unfiltered_comp_dir = os.path.join(comparisons_dir,
+                                       "combined_comparisons")
+    filtered_comp_dir = os.path.join(comparisons_dir,
+                                     "filtered_events")
+    dirs_to_process = [unfiltered_comp_dir, filtered_comp_dir]
     comparison_groups = misowrap_obj.comparison_groups
-    # For each event type, output the sample comparisons
-    for event_type in misowrap_obj.event_types:
-         # Collection of MISO comparison dataframes (to be merged later)
-        # for the current event type
-        comparison_dfs = []
-        comparison_labels = []
-        event_dir = os.path.join(comparisons_dir, event_type)
-        if not os.path.isdir(event_dir):
-            misowrap_obj.logger.info("Cannot find event type %s dir, " \
-                                     "skipping..." %(event_type))
+    for curr_comp_dir in dirs_to_process:
+        if not os.path.isdir(curr_comp_dir):
+            print "Comparisons directory %s not found, skipping" %(curr_comp_dir)
             continue
-        # Look only at sample comparisons within each sample group
-        for comp_group in comparison_groups:
-            sample_pairs = utils.get_pairwise_comparisons(comp_group)
-            misowrap_obj.logger.info("  - Total of %d comparisons" \
-                                     %(len(sample_pairs)))
-            for sample1, sample2 in sample_pairs:
-                # Load miso_bf file for the current comparison
-                # and join it to the combined df
-                comparison_name = "%s_vs_%s" %(sample1, sample2)
-                bf_data = miso_utils.load_miso_bf_file(event_dir,
-                                                       comparison_name,
-                                                       substitute_labels=True)
-                if bf_data is None:
-                    misowrap_obj.logger.warning("Could not find comparison %s" \
-                                                %(comparison_name))
-                    continue
-                comparison_dfs.append(bf_data)
-                comparison_labels.append(comparison_name)
-        # Merge the comparison dfs together
-        combined_df = pandas_utils.combine_dfs(comparison_dfs)
-        output_filename = os.path.join(output_dir,
-                                       "%s.miso_bf" %(event_type))
-        misowrap_obj.logger.info("Outputting %s results to: %s" \
-                                 %(event_type, output_filename))
-        combined_df.to_csv(output_filename,
-                           float_format="%.4f",
-                           sep="\t",
-                           na_rep=NA_VAL,
-                           index=True)
+        # For each event type, output the sample comparisons
+        for event_type in misowrap_obj.event_types:
+            # Collection of MISO comparison dataframes (to be merged later)
+            # for the current event type
+            comparison_dfs = []
+            comparison_labels = []
+            event_dir = os.path.join(curr_comp_dir, event_type)
+            if not os.path.isdir(event_dir):
+                misowrap_obj.logger.info("Cannot find event type %s dir, " \
+                                         "skipping..." %(event_type))
+                continue
+            # Look only at sample comparisons within each sample group
+            for comp_group in comparison_groups:
+                sample_pairs = utils.get_pairwise_comparisons(comp_group)
+                misowrap_obj.logger.info("  - Total of %d comparisons" \
+                                         %(len(sample_pairs)))
+                for sample1, sample2 in sample_pairs:
+                    # Load miso_bf file for the current comparison
+                    # and join it to the combined df
+                    comparison_name = "%s_vs_%s" %(sample1, sample2)
+                    bf_data = miso_utils.load_miso_bf_file(event_dir,
+                                                           comparison_name,
+                                                           substitute_labels=True)
+                    if bf_data is None:
+                        misowrap_obj.logger.warning("Could not find comparison %s" \
+                                                    %(comparison_name))
+                        continue
+                    comparison_dfs.append(bf_data)
+                    comparison_labels.append(comparison_name)
+            # Merge the comparison dfs together
+            print "Merging comparisons for %s" %(event_type)
+            combined_df = pandas_utils.combine_dfs(comparison_dfs)
+            output_filename = os.path.join(output_dir,
+                                           "%s.miso_bf" %(event_type))
+            misowrap_obj.logger.info("Outputting %s results to: %s" \
+                                     %(event_type, output_filename))
+            if not dry_run:
+                combined_df.to_csv(output_filename,
+                                   float_format="%.4f",
+                                   sep="\t",
+                                   na_rep=NA_VAL,
+                                   index=True)
 
 
 def greeting(parser=None):
