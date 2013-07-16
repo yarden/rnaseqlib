@@ -378,7 +378,6 @@ class PsiTable:
                 print "Outputting to: %s" %(output_filename)
                 curr_df = filtered_df.ix[label].sort_index(by=sort_column,
                                                            ascending=False)
-                # Add genes information to df
                 curr_df.to_csv(output_filename,
                                sep=self.delimiter,
                                float_format="%.4f",

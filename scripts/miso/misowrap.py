@@ -26,9 +26,10 @@ from argcomplete.completers import EnvironCompleter
 from argh import arg
 
 
-#def summarize_miso_samples(settings_filename,
-#                           output_dir):
-
+@arg("settings", help="misowrap settings filename.")
+@arg("logs-outdir", help="Directory where to place logs.")
+@arg("--delay", help="Delay between execution of cluster jobs")
+@arg("--dry-run", help="Dry run: do not submit or execute jobs.")
 def summarize(setings_filename, logs_outdir):
     """
     Summarize samples in MISO directory.
@@ -264,9 +265,9 @@ def run(settings, logs_outdir,
 @arg("settings", help="misowrap settings filename.")
 @arg("logs_outdir", help="directory where to place logs.")
 @arg("--dry-run", help="Dry run. Do not execute any jobs or commands.")
-def filter_events(settings,
-                  logs_outdir,
-                  dry_run=False):
+def filter(settings,
+           logs_outdir,
+           dry_run=False):
     """
     Output a set of filtered MISO comparisons.
     """
