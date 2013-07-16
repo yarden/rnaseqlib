@@ -21,14 +21,20 @@ import rnaseqlib.miso.miso_utils as miso_utils
 import rnaseqlib.cluster_utils.cluster as cluster
 import rnaseqlib.pandas_utils as pandas_utils
 
+import argh
+from argcomplete.completers import EnvironCompleter
+from argh import arg
 
-def summarize_miso_samples(settings_filename,
-                           output_dir):
+
+#def summarize_miso_samples(settings_filename,
+#                           output_dir):
+
+def summarize(setings_filename, logs_outdir):
     """
     Summarize samples in MISO directory.
     """
     misowrap_obj = mw.MISOWrap(settings_filename,
-                               output_dir,
+                               logs_outdir,
                                logger_label="summarize")
     bam_files = misowrap_obj.bam_files
     sample_labels = misowrap_obj.sample_labels
@@ -67,13 +73,23 @@ def summarize_miso_samples(settings_filename,
                 os.system(summary_cmd)
             
 
-def compare_miso_samples(settings_filename,
-                         output_dir):
+###
+### Add @ headers here
+###
+@arg("settings", help="misowrap settings filename.")
+@arg("logs-outdir", help="Directory where to place logs.")
+@arg("--delay", help="Delay between execution of cluster jobs")
+@arg("--dry-run", help="Dry run: do not submit or execute jobs.")
+def compare(settings,
+            logs_outdir,
+            delay=5,
+            dry_run=False):
     """
     Run a MISO samples comparison between all pairs of samples.
     """
+    settings_filename = utils.pathify(settings)
     misowrap_obj = mw.MISOWrap(settings_filename,
-                               output_dir,
+                               logs_outdir,
                                logger_label="compare")
     bam_files = misowrap_obj.bam_files
     sample_labels = misowrap_obj.sample_labels
@@ -123,28 +139,43 @@ def compare_miso_samples(settings_filename,
                       sample2)
                 misowrap_obj.logger.info("Executing: %s" %(compare_cmd))
                 if misowrap_obj.use_cluster:
-                    misowrap_obj.my_cluster.launch_job(compare_cmd,
-                                                       job_name,
-                                                       ppn=1)
+                    if not dry_run:
+                        misowrap_obj.my_cluster.launch_job(compare_cmd,
+                                                           job_name,
+                                                           ppn=1)
+                        time.sleep(delay)
                 else:
-                    os.system(compare_cmd)
+                    if not dry_run:
+                        os.system(compare_cmd)
 
 
-def run_miso_on_samples(settings_filename, output_dir,
-                        use_cluster=True,
-                        base_delay=10,
-                        # Batch delay (20 mins by default)
-                        batch_delay=60*20,
-                        delay_every_n_jobs=30,
-                        event_types=None):
+@arg("settings", help="misowrap settings filename.")
+@arg("logs-outdir", help="Directory where to place logs.")
+@arg("--use-cluster", help="Use cluster to submit jobs.")
+@arg("--base-delay", help="Base delay to use (in seconds).")
+@arg("--batch-delay",
+     help="Delay to use between batches of jobs (in seconds).")
+@arg("--delay-every-n-jobs",
+     help="Number of jobs after which a delay is imposed.")
+@arg("--dry-run", help="Dry run: do not submit or execute jobs.")
+def run(settings, logs_outdir,
+        use_cluster=True,
+        base_delay=10,
+        # Batch delay (20 mins by default)
+        batch_delay=60*20,
+        delay_every_n_jobs=30,
+        dry_run=False,
+        event_types=None):
     """
     Run MISO on a set of samples.
     """
+    settings_filename = utils.pathify(settings)
     if event_types is not None:
         print "Only running MISO on event types: ", event_types
     misowrap_obj = mw.MISOWrap(settings_filename,
-                               output_dir,
+                               logs_outdir,
                                logger_label="run")
+    output_dir = misowrap_obj.miso_outdir
     bam_files = misowrap_obj.bam_files
     read_len = misowrap_obj.read_len
     overhang_len = misowrap_obj.overhang_len
@@ -213,9 +244,10 @@ def run_miso_on_samples(settings_filename, output_dir,
             misowrap_obj.logger.info("Executing: %s" %(miso_cmd))
             job_name = "%s_%s" %(sample_label, event_type)
             if use_cluster:
-                misowrap_obj.my_cluster.launch_job(miso_cmd,
-                                                   job_name,
-                                                   ppn=1)
+                if not dry_run:
+                    misowrap_obj.my_cluster.launch_job(miso_cmd,
+                                                       job_name,
+                                                       ppn=1)
                 if n == delay_every_n_jobs:
                     # Larger delay everytime we've submitted n jobs
                     misowrap_obj.logger.info("Submitted %d jobs, now waiting %.2f mins." \
@@ -224,17 +256,23 @@ def run_miso_on_samples(settings_filename, output_dir,
                     n = 0
                 time.sleep(base_delay)
             else:
-                os.system(miso_cmd)
+                if not dry_run:
+                    os.system(miso_cmd)
             n += 1
 
 
-def filter_events(settings_filename,
-                  output_dir):
+@arg("settings", help="misowrap settings filename.")
+@arg("logs_outdir", help="directory where to place logs.")
+@arg("--dry-run", help="Dry run. Do not execute any jobs or commands.")
+def filter_events(settings,
+                  logs_outdir,
+                  dry_run=False):
     """
     Output a set of filtered MISO comparisons.
     """
+    settings_filename = utils.pathify(settings)
     misowrap_obj = mw.MISOWrap(settings_filename,
-                               output_dir,
+                               logs_outdir,
                                logger_label="filter")
     misowrap_obj.logger.info("Filtering MISO events...")
     psi_table = pt.PsiTable(misowrap_obj)
@@ -254,7 +292,6 @@ def compute_insert_lens(settings_filename,
         print "Error: %s const exons GFF does not exist." \
             %(const_exons_gff)
         sys.exit(1)
-
     pe_utils_path = misowrap_obj.pe_utils_cmd 
     insert_len_output_dir = os.path.join(output_dir, "insert_lens")
     num_bams = len(misowrap_obj.bam_files)
@@ -297,6 +334,7 @@ def combine_comparisons(settings_filename,
     misowrap_obj = mw.MISOWrap(settings_filename,
                                output_dir,
                                logger_label="combine_comparisons")
+    comparisons_dir = misowrap_obj.comparisons_dir    
     if not os.path.isdir(comparisons_dir):
         misowrap_obj.logger.critical("Comparisons directory %s not found. " \
                                      %(comparisons_dir))
@@ -335,9 +373,7 @@ def combine_comparisons(settings_filename,
                 comparison_dfs.append(bf_data)
                 comparison_labels.append(comparison_name)
         # Merge the comparison dfs together
-        combined_df = pandas_utils.combine_dfs(comparison_dfs,
-#                                               on=common_cols,
-                                               how="outer")
+        combined_df = pandas_utils.combine_dfs(comparison_dfs)
         output_filename = os.path.join(output_dir,
                                        "%s.miso_bf" %(event_type))
         misowrap_obj.logger.info("Outputting %s results to: %s" \
@@ -356,81 +392,78 @@ def greeting(parser=None):
             
         
 def main():
-    from optparse import OptionParser
-    parser = OptionParser()
-      
-    parser.add_option("--run", dest="run", nargs=1, default=None,
-                      help="Run MISO on a set of events. "
-                      "Takes a settings filename.")
-    parser.add_option("--summarize", dest="summarize", nargs=1, default=None,
-                      help="Run MISO summarize on a set of samples. "
-                      "Takes a settings filename.")
-    parser.add_option("--compare", dest="compare", nargs=1, default=None,
-                      help="Run MISO sample comparisons on all pairwise "
-                      "comparisons. Takes a settings filename.")
-    parser.add_option("--filter", dest="filter", nargs=1,
-                      default=None,
-                      help="Filter a set of MISO comparisons. "
-                      "Takes a settings filename.")
-    parser.add_option("--compute-insert-lens", dest="compute_insert_lens",
-                      nargs=1, default=None,
-                      help="Compute insert lengths for a set of BAM files. " 
-                      "Takes a settings filename.")
-    parser.add_option("--combine-comparisons", dest="combine_comparisons",
-                      nargs=2, default=None,
-                      help="Combine MISO comparisons into a single file, "
-                      "based on the \'comparison_groups\' parameter in the "
-                      "settings file. Takes a MISO comparisons directory and "
-                      "a settings filename.")
-    parser.add_option("--output-dir", dest="output_dir", default=None,
-                      help="Output directory.")
-    parser.add_option("--event-types", dest="event_types", default=None, type="str",
-                      help="Optional: comma-separated list of event types to run on "
-                      "only, e.g. A3SS,SE")
-    (options, args) = parser.parse_args()
-
     greeting()
+    
+    argh.dispatch_commands([
+        run,
+        summarize,
+        compare,
+        combine_comparisons,
+    ])
+    # from optparse import OptionParser
+    # parser = OptionParser()
+      
+    # parser.add_option("--run", dest="run", nargs=1, default=None,
+    #                   help="Run MISO on a set of events. "
+    #                   "Takes a settings filename.")
+    # parser.add_option("--summarize", dest="summarize", nargs=1, default=None,
+    #                   help="Run MISO summarize on a set of samples. "
+    #                   "Takes a settings filename.")
+    # parser.add_option("--compare", dest="compare", nargs=1, default=None,
+    #                   help="Run MISO sample comparisons on all pairwise "
+    #                   "comparisons. Takes a settings filename.")
+    # parser.add_option("--filter", dest="filter", nargs=1,
+    #                   default=None,
+    #                   help="Filter a set of MISO comparisons. "
+    #                   "Takes a settings filename.")
+    # parser.add_option("--compute-insert-lens", dest="compute_insert_lens",
+    #                   nargs=1, default=None,
+    #                   help="Compute insert lengths for a set of BAM files. " 
+    #                   "Takes a settings filename.")
+    # parser.add_option("--combine-comparisons", dest="combine_comparisons",
+    #                   nargs=2, default=None,
+    #                   help="Combine MISO comparisons into a single file, "
+    #                   "based on the \'comparison_groups\' parameter in the "
+    #                   "settings file. Takes a MISO comparisons directory and "
+    #                   "a settings filename.")
+    # parser.add_option("--output-dir", dest="output_dir", default=None,
+    #                   help="Output directory.")
+    # parser.add_option("--event-types", dest="event_types", default=None, type="str",
+    #                   help="Optional: comma-separated list of event types to run on "
+    #                   "only, e.g. A3SS,SE")
+    # (options, args) = parser.parse_args()
 
-    if options.output_dir == None:
-        print "Error: need --output-dir.\n"
-        parser.print_help()
-        sys.exit(1)
+
+    # if options.run != None:
+    #     settings_filename = utils.pathify(options.run)
+    #     event_types = None
+    #     if options.event_types is not None:
+    #         event_types = options.event_types.split(",")
+    #     run_miso_on_samples(settings_filename, output_dir,
+    #                         event_types=event_types)
+
+    # if options.summarize != None:
+    #     settings_filename = utils.pathify(options.summarize)
+    #     summarize_miso_samples(settings_filename, output_dir)
         
-    output_dir = utils.pathify(options.output_dir)
+    # if options.compare != None:
+    #     settings_filename = utils.pathify(options.compare)
+    #     compare_miso_samples(settings_filename, output_dir)
 
-    if not os.path.isdir(output_dir):
-        os.makedirs(output_dir)
+    # if options.filter != None:
+    #     settings_filename = utils.pathify(options.filter)
+    #     filter_events(settings_filename, output_dir)
 
-    if options.run != None:
-        settings_filename = utils.pathify(options.run)
-        event_types = None
-        if options.event_types is not None:
-            event_types = options.event_types.split(",")
-        run_miso_on_samples(settings_filename, output_dir,
-                            event_types=event_types)
+    # if options.compute_insert_lens != None:
+    #     settings_filename = utils.pathify(options.compute_insert_lens)
+    #     compute_insert_lens(settings_filename, output_dir)
 
-    if options.summarize != None:
-        settings_filename = utils.pathify(options.summarize)
-        summarize_miso_samples(settings_filename, output_dir)
-        
-    if options.compare != None:
-        settings_filename = utils.pathify(options.compare)
-        compare_miso_samples(settings_filename, output_dir)
-
-    if options.filter != None:
-        settings_filename = utils.pathify(options.filter)
-        filter_events(settings_filename, output_dir)
-
-    if options.compute_insert_lens != None:
-        settings_filename = utils.pathify(options.compute_insert_lens)
-        compute_insert_lens(settings_filename, output_dir)
-
-    if options.combine_comparisons != None:
-        comparisons_dir = options.combine_comparisons[0]
-        settings_filename = utils.pathify(options.combine_comparisons[1])
-        combine_comparisons(settings_filename,
-                            comparisons_dir,
-                            output_dir)
+    # if options.combine_comparisons != None:
+    #     comparisons_dir = options.combine_comparisons[0]
+    #     settings_filename = utils.pathify(options.combine_comparisons[1])
+    #     combine_comparisons(settings_filename,
+    #                         comparisons_dir,
+    #                         output_dir)
         
 
 if __name__ == '__main__':

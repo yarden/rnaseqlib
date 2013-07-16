@@ -125,11 +125,14 @@ class PsiTable:
         """
         Load MISO summary files.
         """
+        miso_samples_dir = utils.pathify(miso_samples_dir)
         print "Loading summary files.."
         summaries_dict = defaultdict(dict)
         for sample in self.sample_labels:
             for event_type in self.event_types:
                 sample_name, label = sample
+                print "SAMPLE NAME: ", sample_name
+                print " SAMPLE LABEL: ", label
                 sample_dir = os.path.join(miso_samples_dir,
                                           sample_name,
                                           event_type)
