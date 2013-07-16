@@ -299,7 +299,7 @@ This compare samples to each other and places the output of comparisons in a ``c
 
 4. **Filter comparisons** based on reads counts, using the count filters defined for each event type in ``misowrap_settings.txt``: ::
 
-  misowrap.py filter misowrap_settings.txt --output-dir miso_output/
+  misowrap.py filter misowrap_settings.txt miso_output/
 
 This creates filtered versions of the comparison ``.miso_bf`` files and places them in the directory ``filtered_events`` in the MISO comparisons directory (which is the ``comparisons`` directory in the MISO output directory given in ``misowrap_settings.txt``). For example: ::
 
@@ -315,7 +315,7 @@ This creates filtered versions of the comparison ``.miso_bf`` files and places t
 
 4. **Combine comparisons** into single files and place them in the directory where our comparisons are. Takes the ``comparisons`` directory (which contains MISO comparisons) and the settings file ::
 
-  misowrap.py combine miso_output/comparisons/ misowrap_settings.txt --output-dir miso_output/comparisons/
+  misowrap.py combine-comparisons miso_output/comparisons/ misowrap_settings.txt --output-dir miso_output/comparisons/
 
 This outputs single files that contain information about events pooled from all the samples described in the settings file. It also creates a filtered version of these combined events where the read filters (defined for each event) in ``misowrap_settings.txt`` are applied to the samples. The resulting output structure is: ::
 

@@ -154,6 +154,49 @@ def filter_comparisons(fname, output_dir,
     # Filter comparisons
     # ...
     filtered_df = None
+            comparison_counts = \
+                self.load_comparisons_counts_from_df(comparisons_df[event_type])
+            # Get counts for each read class for sample 1 and sample 2
+            comparison_counts = \
+                miso_utils.get_counts_by_class("sample1_counts_int",
+                                               "sample1",
+                                               comparison_counts)
+            comparison_counts = \
+                miso_utils.get_counts_by_class("sample2_counts_int",
+                                               "sample2",
+                                               comparison_counts)
+            filtered_df = comparison_counts
+            # Filter exclusion reads
+            # Only apply this to events other than TandemUTRs!
+            if "TandemUTR" in event_type:
+                atleast_exc = 0
+                atleast_const = 5
+            # Filter inclusion reads
+            filtered_df = \
+                filtered_df[filtered_df["sample1_inc_counts"] \
+                            | filtered_df["sample2_inc_counts"] \
+                            >= atleast_inc]
+            # Filter exclusion reads
+            filtered_df = \
+                filtered_df[filtered_df["sample1_exc_counts"] \
+                            | filtered_df["sample2_exc_counts"] \
+                            >= atleast_exc]
+            # Filter the sum of inclusion and exclusion reads
+            sample1_sum = \
+                filtered_df["sample1_inc_counts"] + \
+                filtered_df["sample1_exc_counts"]
+            sample2_sum = \
+                filtered_df["sample2_inc_counts"] + \
+                filtered_df["sample2_exc_counts"]
+            filtered_df = \
+                filtered_df[sample1_sum | sample2_sum >= atleast_sum]
+            # Filter constitutive reads
+            filtered_df = \
+                filtered_df[filtered_df["sample1_const_counts"] \
+                            | filtered_df["sample2_const_counts"] \
+                            >= atleast_const]
+            self.filtered_events[event_type] = filtered_df
+    
     if not dry_run:
         # Call filtered comparisons here
         pass
@@ -170,7 +213,8 @@ def filter_comparisons(fname, output_dir,
 
 def main():
     argh.dispatch_commands([
-        filter_comparisons
+        filter_comparisons,
+        combine_comparisons
     ])
     
 

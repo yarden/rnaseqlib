@@ -37,13 +37,13 @@ def summarize(settings,
     """
     Summarize samples in MISO directory.
     """
+    settings_filename = utils.pathify(settings)
     misowrap_obj = mw.MISOWrap(settings_filename,
                                logs_outdir,
                                logger_label="summarize")
     bam_files = misowrap_obj.bam_files
     sample_labels = misowrap_obj.sample_labels
     print "Summarizing MISO output..."
-    print "  - Output dir: %s" %(output_dir)
     for sample_label in sample_labels:
         sample_basename = sample_label[0]
         sample_dir_path = \
@@ -70,11 +70,13 @@ def summarize(settings,
                                            os.path.basename(event_dirname))
             print "Executing: %s" %(summary_cmd)
             if misowrap_obj.use_cluster:
-                misowrap_obj.my_cluster.launch_job(summary_cmd,
-                                                   job_name,
-                                                   ppn=1)
+                if not dry_run:
+                    misowrap_obj.my_cluster.launch_job(summary_cmd,
+                                                       job_name,
+                                                       ppn=1)
             else:
-                os.system(summary_cmd)
+                if not dry_run:
+                    os.system(summary_cmd)
             
 
 ###

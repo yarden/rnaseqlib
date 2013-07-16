@@ -11,6 +11,41 @@ import pandas
 import rnaseqlib
 import rnaseqlib.utils as utils
 
+
+def load_comparisons_counts_from_df(df,
+                                    counts_labels=["sample1_counts",
+                                                   "sample2_counts"]):
+    """
+    Return sample1 and sample2 counts from comparisons
+    MISO file.
+    """
+    # Don't process empty dfs
+    if df.empty:
+        return
+    # Get list of counts for each sample
+    col1, col2 = counts_labels[0], counts_labels[1]
+    sample1_col = "%s_int" %(col1)
+    sample2_col = "%s_int" %(col2)
+    df[sample1_col] = df[col1].apply(parse_miso_counts)
+    df[sample2_col] = df[col2].apply(parse_miso_counts)
+    return df
+
+
+def get_counts_by_class(col_label, df_col, df):
+    """
+    Return counts for each MISO read class.
+    """
+    df["%s_inc_counts" %(df_col)] = \
+        np.array(map(lambda x: x[0], df[col_label].values))
+    df["%s_exc_counts" %(df_col)] = \
+        np.array(map(lambda x: x[1], df[col_label].values))
+    df["%s_const_counts" %(df_col)] = \
+        np.array(map(lambda x: x[2], df[col_label].values))
+    df["%s_neither_counts" %(df_col)] = \
+        np.array(map(lambda x: x[3], df[col_label].values))
+    return df
+
+
 def read_pe_params(insert_len_filename):
     """
     Get paired-end parameters from .insert_len file.

@@ -220,25 +220,6 @@ class PsiTable:
         self.comparisons_df = dataframe_dict
 
 
-    def load_comparisons_counts_from_df(self, df,
-                                        counts_labels=["sample1_counts",
-                                                       "sample2_counts"]):
-        """
-        Return sample1 and sample2 counts from comparisons
-        MISO file.
-        """
-        # Don't process empty dfs
-        if df.empty:
-            return
-        # Get list of counts for each sample
-        col1, col2 = counts_labels[0], counts_labels[1]
-        sample1_col = "%s_int" %(col1)
-        sample2_col = "%s_int" %(col2)
-        df[sample1_col] = df[col1].apply(parse_miso_counts)
-        df[sample2_col] = df[col2].apply(parse_miso_counts)
-        return df
-
-
     def filter_coverage_events(self, comparisons_df=None,
                                atleast_inc=1,
                                atleast_exc=1,
@@ -271,14 +252,16 @@ class PsiTable:
                     atleast_const = event_filters["atleast_const"]
             print "Filtering event type: %s" %(event_type)
             comparison_counts = \
-                self.load_comparisons_counts_from_df(comparisons_df[event_type])
+                miso_utils.load_comparisons_counts_from_df(comparisons_df[event_type])
             # Get counts for each read class for sample 1 and sample 2
-            comparison_counts = self.get_counts_by_class("sample1_counts_int",
-                                                         "sample1",
-                                                         comparison_counts)
-            comparison_counts = self.get_counts_by_class("sample2_counts_int",
-                                                         "sample2",
-                                                         comparison_counts)
+            comparison_counts = \
+                miso_utils.get_counts_by_class("sample1_counts_int",
+                                               "sample1",
+                                               comparison_counts)
+            comparison_counts = \
+                miso_utils.get_counts_by_class("sample2_counts_int",
+                                               "sample2",
+                                               comparison_counts)
             filtered_df = comparison_counts
             # Filter exclusion reads
             # Only apply this to events other than TandemUTRs!
@@ -310,21 +293,6 @@ class PsiTable:
                             | filtered_df["sample2_const_counts"] \
                             >= atleast_const]
             self.filtered_events[event_type] = filtered_df
-
-        
-    def get_counts_by_class(self, col_label, df_col, df):
-        """
-        Return counts for each MISO read class.
-        """
-        df["%s_inc_counts" %(df_col)] = \
-            np.array(map(lambda x: x[0], df[col_label].values))
-        df["%s_exc_counts" %(df_col)] = \
-            np.array(map(lambda x: x[1], df[col_label].values))
-        df["%s_const_counts" %(df_col)] = \
-            np.array(map(lambda x: x[2], df[col_label].values))
-        df["%s_neither_counts" %(df_col)] = \
-            np.array(map(lambda x: x[3], df[col_label].values))
-        return df
 
 
     def output_filtered_comparisons(self, output_dir=None,
