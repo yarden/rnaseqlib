@@ -25,24 +25,6 @@ from miso_utils import \
      get_bf_filename
 
 
-def parse_miso_counts(counts_str):
-    """
-    Parse two-isoform MISO counts.
-    """
-    counts = defaultdict(int)
-    fields = re.findall("(\(.{3}\):\d+)", counts_str)
-    for field in fields:
-        read_class, num_reads = field.split(":")
-        counts[read_class] = num_reads
-    # Canonical ordering
-    counts_vector = map(int, [counts["(1,0)"],
-                              counts["(0,1)"],
-                              counts["(1,1)"],
-                              counts["(0,0)"]])
-    return np.array(counts_vector,
-                    dtype=np.int64)
-    
-
 class PsiTable:
     """
     Representation of Psi values from a set of samples.
@@ -131,8 +113,6 @@ class PsiTable:
         for sample in self.sample_labels:
             for event_type in self.event_types:
                 sample_name, label = sample
-                print "SAMPLE NAME: ", sample_name
-                print " SAMPLE LABEL: ", label
                 sample_dir = os.path.join(miso_samples_dir,
                                           sample_name,
                                           event_type)

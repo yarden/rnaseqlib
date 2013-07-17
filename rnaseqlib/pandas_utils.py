@@ -93,17 +93,40 @@ def merge_dfs(dfs_list, how="outer"):
     return merged_df
               
 
-def combine_dfs(dfs_list, axis=1):
+def is_df_indexed(df):
+    """
+    Check if dataframe has the default index or not.
+    """
+    num_rows = len(df)
+    indexed = not pandas.Index(np.arange(0, num_rows)).equals(df.index)
+    return indexed
+
+
+def combine_dfs(dfs_list, axis=1, combine_first=True):
     """
     Concatenate dataframe columns together, non-redundantly.
 
     Assumes the concatenation occurs based on the index of
     each df (each df needs to be indexed.)
+
+    If 'combine_first' is True, first fill in all the non-missing
+    values between dataframes on common columns
     """
+    first_df = dfs_list[0]
     if len(dfs_list) == 1:
-        return dfs_list[0]
-    cols = list(dfs_list[0].columns)
-    nonredundant_dfs = [dfs_list[0]]
+        return first_df
+    # Check that the dataframes are indexed
+    for df in dfs_list:
+        assert (is_df_indexed(df) == True), \
+               "Dataframe %s is not indexed! Cannot combine." \
+               %(str(df.columns))
+    cols = list(first_df.columns)
+    # If asked, combine dataframes first to fill in non-missing
+    # values where there are missing values
+    if combine_first:
+        for next_df in dfs_list:
+            first_df = first_df.combine_first(next_df)
+    nonredundant_dfs = [first_df]
     for df in dfs_list[1:]:
         # Only consider new columns 
         new_cols = list(df.columns.diff(cols))

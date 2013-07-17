@@ -268,11 +268,11 @@ def run(settings, logs_outdir,
 
 
 @arg("settings", help="misowrap settings filename.")
-@arg("logs_outdir", help="directory where to place logs.")
+@arg("logs-outdir", help="directory where to place logs.")
 @arg("--dry-run", help="Dry run. Do not execute any jobs or commands.")
-def filter(settings,
-           logs_outdir,
-           dry_run=False):
+def filter_comparisons(settings,
+                       logs_outdir,
+                       dry_run=False):
     """
     Output a set of filtered MISO comparisons.
     """
@@ -286,7 +286,7 @@ def filter(settings,
 
 
 @arg("settings", help="misowrap settings filename.")
-@arg("logs_outdir", help="directory where to place logs.")
+@arg("logs-outdir", help="directory where to place logs.")
 @arg("--dry-run", help="Dry run. Do not execute any jobs or commands.")
 def compute_insert_lens(settings,
                         output_dir,
@@ -354,18 +354,19 @@ def combine_comparisons(settings,
     misowrap_obj = mw.MISOWrap(settings_filename,
                                logs_outdir,
                                logger_label="combine_comparisons")
-    comparisons_dir = misowrap_obj.comparisons_dir    
+    comparisons_dir = misowrap_obj.comparisons_dir
     if not os.path.isdir(comparisons_dir):
         misowrap_obj.logger.critical("Comparisons directory %s not found. " \
                                      %(comparisons_dir))
         sys.exit(1)
     # Comparison types to combine: unfiltered comparisons and filtered comparisons
     # (if available)
-    unfiltered_comp_dir = os.path.join(comparisons_dir,
-                                       "combined_comparisons")
+    unfiltered_comp_dir = comparisons_dir
     filtered_comp_dir = os.path.join(comparisons_dir,
                                      "filtered_events")
-    dirs_to_process = [unfiltered_comp_dir, filtered_comp_dir]
+    #dirs_to_process = [unfiltered_comp_dir, filtered_comp_dir]
+    print "ONLY PROCESSING FILTERED EVENTS!"
+    dirs_to_process = [filtered_comp_dir]
     comparison_groups = misowrap_obj.comparison_groups
     for curr_comp_dir in dirs_to_process:
         if not os.path.isdir(curr_comp_dir):
@@ -373,6 +374,9 @@ def combine_comparisons(settings,
             continue
         # For each event type, output the sample comparisons
         for event_type in misowrap_obj.event_types:
+            if event_type != "SE":
+                print "\nSKIPPING %s\n" %(event_type)
+                continue
             # Collection of MISO comparison dataframes (to be merged later)
             # for the current event type
             comparison_dfs = []
@@ -383,14 +387,18 @@ def combine_comparisons(settings,
                                          "skipping..." %(event_type))
                 continue
             # Look only at sample comparisons within each sample group
+            print "EVENR DIR: ", event_dir
             for comp_group in comparison_groups:
                 sample_pairs = utils.get_pairwise_comparisons(comp_group)
                 misowrap_obj.logger.info("  - Total of %d comparisons" \
                                          %(len(sample_pairs)))
+                print "SAMPLE PAIRS: ", sample_pairs
+                sample_pairs = [(u'eber_1st_r1_2', u'eber4x_merge_r1_2'), (u'eber_1st_r1_2', u'pcep4_merge_r1_2'), (u'eber_2nd_r1_2', u'eber4x_merge_r1_2'), (u'eber_2nd_r1_2', u'pcep4_merge_r1_2'), (u'eber4x_merge_r1_2', u'pcep4_merge_r1_2')]
                 for sample1, sample2 in sample_pairs:
                     # Load miso_bf file for the current comparison
                     # and join it to the combined df
                     comparison_name = "%s_vs_%s" %(sample1, sample2)
+                    print "Loading comparison from: %s" %(event_dir)
                     bf_data = miso_utils.load_miso_bf_file(event_dir,
                                                            comparison_name,
                                                            substitute_labels=True)
@@ -403,6 +411,8 @@ def combine_comparisons(settings,
             # Merge the comparison dfs together
             print "Merging comparisons for %s" %(event_type)
             combined_df = pandas_utils.combine_dfs(comparison_dfs)
+            output_dir = os.path.join(curr_comp_dir, "combined_comparisons")
+            utils.make_dir(output_dir)
             output_filename = os.path.join(output_dir,
                                            "%s.miso_bf" %(event_type))
             misowrap_obj.logger.info("Outputting %s results to: %s" \
@@ -412,7 +422,8 @@ def combine_comparisons(settings,
                                    float_format="%.4f",
                                    sep="\t",
                                    na_rep=NA_VAL,
-                                   index=True)
+                                   index=True,
+                                   index_label="event_name")
 
 
 def greeting(parser=None):
@@ -428,6 +439,7 @@ def main():
         run,
         summarize,
         compare,
+        filter_comparisons,
         combine_comparisons,
     ])
     # from optparse import OptionParser

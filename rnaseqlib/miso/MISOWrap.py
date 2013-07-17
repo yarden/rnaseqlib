@@ -15,6 +15,7 @@ import rnaseqlib.miso.misowrap_settings as misowrap_settings
 import rnaseqlib.miso.PsiTable as pt
 import rnaseqlib.miso.miso_utils as miso_utils
 import rnaseqlib.cluster_utils.cluster as cluster
+import rnaseqlib.gff.gffutils_helpers as gffutils_helpers
 
 class MISOWrap:
     """
@@ -31,8 +32,7 @@ class MISOWrap:
         utils.make_dir(self.output_dir)
         # MISO output directory (where raw output is)
         self.miso_outdir = None
-        # Comparisons output directory
-        self.comparisons_outdir = None
+        self.comparisons_dir = None
         # BAM files to process
         self.bam_files = None
         # Sample labels
@@ -73,29 +73,41 @@ class MISOWrap:
         for this.
         """
         basename_card = "*.gff3"
-        events_to_genes_dir = None
-        if "events_to_genes" in self.settings_info["settings"]:
-            events_to_genes_dir = \
-                utils.pathify(self.settings_info["settings"]["events_to_genes_dir"])
+        gff_events_dir = None
+        if "gff_events_dir" in self.settings_info["settings"]:
+            gff_events_dir = \
+                utils.pathify(self.settings_info["settings"]["gff_events_dir"])
         else:
-            return
+            print "Error: \'gff_events_dir\' directory with path to " \
+                  "*.gff3 files used cannot be found in settings " \
+                  "file. Cannot read gene information."
+            sys.exit(1)
         gff_fnames = \
-            glob.glob(os.path.join(events_to_genes_dir, basename_card))
+            glob.glob(os.path.join(gff_events_dir, basename_card))
         print "Loading events to genes mapping..."
-        print "  - Input directory: %s" %(events_to_genes_dir)
+        print "  - Input directory: %s" %(gff_events_dir)
         print "  - Number of files: %d" %(len(gff_fnames))
-        self.events_to_genes = defaultdict(lambda: defaultdict(str))
+        self.events_to_genes = defaultdict(dict)
         for fname in gff_fnames:
+            print "Parsing %s" %(fname)
+            t1 = time.time()
             event_type = os.path.basename(fname).split(".")[0]
-            gff_entries = pybedtools.BedTool(fname)
-            gene_entries = gff_entries.filter(lambda x: x.fields[2] == "gene")
-            for gene in gene_entries:
-                # Parse Ensembl gene, RefSeq and gene symbols
-                attrs = gene.attrs
-                self.events_to_genes[event_type][attrs["ID"]] = \
-                    {"ensg_id": attrs["ensg_id"],
-                     "refseq_id": attrs["refseq_id"],
-                     "gsymbol": attrs["gsymbol"]}
+            #gff_entries = pybedtools.BedTool(fname)
+            #gene_entries = gff_entries.filter(lambda x: x.fields[2] == "gene")
+            with open(fname) as gff_in:
+                for line in gff_in:
+                    if line.startswith("#"): continue
+                    fields = line.strip().split("\t")
+                    if fields[2] != "gene":
+                        continue
+                    attrs_str = fields[-1]
+                    attrs = gffutils_helpers.parse_gff_attribs(attrs_str)
+                    self.events_to_genes[event_type][attrs["ID"]] = \
+                        {"ensg_id": attrs["ensg_id"],
+                         "refseq_id": attrs["refseq_id"],
+                         "gsymbol": attrs["gsymbol"]}
+                t2 = time.time()
+            print "Parsing of GFF took %.2f seconds" %(t2 - t1)
             
 
     # def load_events_to_genes(self,
@@ -172,7 +184,7 @@ class MISOWrap:
         # Sample labels
         self.sample_labels = self.settings_info["data"]["sample_labels"]
         # Set output directories
-        self.comparisons_dir = os.path.join(self.output_dir, 
+        self.comparisons_dir = os.path.join(self.miso_outdir,
                                             "comparisons")
         self.comparison_groups = \
             self.settings_info["data"]["comparison_groups"]

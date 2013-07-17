@@ -299,7 +299,7 @@ This compare samples to each other and places the output of comparisons in a ``c
 
 4. **Filter comparisons** based on reads counts, using the count filters defined for each event type in ``misowrap_settings.txt``: ::
 
-  misowrap.py filter misowrap_settings.txt miso_output/
+  misowrap.py filter-comparisons misowrap_settings.txt miso_output/
 
 This creates filtered versions of the comparison ``.miso_bf`` files and places them in the directory ``filtered_events`` in the MISO comparisons directory (which is the ``comparisons`` directory in the MISO output directory given in ``misowrap_settings.txt``). For example: ::
 
@@ -327,32 +327,6 @@ This outputs single files that contain information about events pooled from all 
           - SE.miso_bf           # combined, filtered comparisons for all SE events
           - RI.miso_bf           # combined, filtered comparisons for all RI events
           - ...
-
-
-Features
---------
-
-``misowrap`` takes the following arguments: ::
-
-
-  --run                 Run MISO on a set of events. Takes a settings
-                        filename.
-  --summarize
-                        Run MISO summarize on a set of samples. Takes a
-                        settings filename.
-
-  --compare             Run MISO sample comparisons on all pairwise
-                        comparisons. Takes a settings filename.
-
-  --filter              Filter a set of MISO events. Takes a settings
-                        filename.
-
-  --compute-insert-lens
-                        Compute insert lengths for a set of BAM files. takes a
-                        settings filename.
-
-  --output-dir
-                        Output directory.
 
 
 

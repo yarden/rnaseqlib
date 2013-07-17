@@ -131,6 +131,15 @@ def get_flanking_introns_coords(gene_obj):
                "dn_intron": dn_intron_coords}
     return regions
 
+
+def parse_gff_attribs(attrib_str):
+    attribs = {}
+    for pair in attrib_str.split(";"):
+        key, val = pair.split("=")
+        attribs[key] = val
+    return attribs
+
+
 def get_event_recs_from_gene(gene_obj, gene_tree):
     """
     Given a gene object a tree of gene records,

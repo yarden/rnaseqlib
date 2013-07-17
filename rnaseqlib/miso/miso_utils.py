@@ -5,12 +5,35 @@ import os
 import sys
 import time
 import glob
+import re
 
 import pandas
+
+import numpy as np
 
 import rnaseqlib
 import rnaseqlib.utils as utils
 
+from collections import defaultdict
+
+
+def parse_miso_counts(counts_str):
+    """
+    Parse two-isoform MISO counts.
+    """
+    counts = defaultdict(int)
+    fields = re.findall("(\(.{3}\):\d+)", counts_str)
+    for field in fields:
+        read_class, num_reads = field.split(":")
+        counts[read_class] = num_reads
+    # Canonical ordering
+    counts_vector = map(int, [counts["(1,0)"],
+                              counts["(0,1)"],
+                              counts["(1,1)"],
+                              counts["(0,0)"]])
+    return np.array(counts_vector,
+                    dtype=np.int64)
+    
 
 def load_comparisons_counts_from_df(df,
                                     counts_labels=["sample1_counts",

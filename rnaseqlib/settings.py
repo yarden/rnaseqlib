@@ -19,7 +19,6 @@ def load_settings(config_filename,
                               "stranded",
                               "mapper",
                               "adaptors_file",
-                              "gff_events",
                               "python"],
                   # Parameters to be interpreted as Python lists or
                   # data structures,
