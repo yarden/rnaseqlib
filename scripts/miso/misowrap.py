@@ -364,9 +364,7 @@ def combine_comparisons(settings,
     unfiltered_comp_dir = comparisons_dir
     filtered_comp_dir = os.path.join(comparisons_dir,
                                      "filtered_events")
-    #dirs_to_process = [unfiltered_comp_dir, filtered_comp_dir]
-    print "ONLY PROCESSING FILTERED EVENTS!"
-    dirs_to_process = [filtered_comp_dir]
+    dirs_to_process = [unfiltered_comp_dir, filtered_comp_dir]
     comparison_groups = misowrap_obj.comparison_groups
     for curr_comp_dir in dirs_to_process:
         if not os.path.isdir(curr_comp_dir):
@@ -374,9 +372,6 @@ def combine_comparisons(settings,
             continue
         # For each event type, output the sample comparisons
         for event_type in misowrap_obj.event_types:
-            if event_type != "SE":
-                print "\nSKIPPING %s\n" %(event_type)
-                continue
             # Collection of MISO comparison dataframes (to be merged later)
             # for the current event type
             comparison_dfs = []
@@ -387,13 +382,10 @@ def combine_comparisons(settings,
                                          "skipping..." %(event_type))
                 continue
             # Look only at sample comparisons within each sample group
-            print "EVENR DIR: ", event_dir
             for comp_group in comparison_groups:
                 sample_pairs = utils.get_pairwise_comparisons(comp_group)
                 misowrap_obj.logger.info("  - Total of %d comparisons" \
                                          %(len(sample_pairs)))
-                print "SAMPLE PAIRS: ", sample_pairs
-                sample_pairs = [(u'eber_1st_r1_2', u'eber4x_merge_r1_2'), (u'eber_1st_r1_2', u'pcep4_merge_r1_2'), (u'eber_2nd_r1_2', u'eber4x_merge_r1_2'), (u'eber_2nd_r1_2', u'pcep4_merge_r1_2'), (u'eber4x_merge_r1_2', u'pcep4_merge_r1_2')]
                 for sample1, sample2 in sample_pairs:
                     # Load miso_bf file for the current comparison
                     # and join it to the combined df
