@@ -9,7 +9,8 @@ import glob
 import re
 
 import tempfile
-#import gffutils
+import gffutils
+import shutil
 import string
 from string import maketrans
 
@@ -103,6 +104,24 @@ def coords_from_relative_regions(skipped_exon,
     return translated_coords
 
 
+def sort_mRNAs_by_len(gff_db, gene_id):
+    """
+    Given a gff database (gffutils) and a gene id,
+    return the mRNAs belonging to this gene
+    sorted by their length (sum of their exon lengths).
+    """
+    # Get each mRNA's lengths
+    mRNA_lens = {}
+    for mRNA in gff_db.children(gene_id, featuretype="mRNA"):
+        mRNA_lens[mRNA.id] = \
+            sum(len(exon) for exon in gff_db.children(mRNA,
+                                                      featuretype="exon"))
+    # Sort mRNAs by length
+    sorted_mRNAs = \
+        sorted(mRNA_lens.items(), key=lambda x: x[1], reverse=True)
+    return sorted_mRNAs
+
+
 def get_flanking_introns_coords(gene_obj):
     """
     Get coordinates of flanking intron regions around a
@@ -138,6 +157,118 @@ def parse_gff_attribs(attrib_str):
         key, val = pair.split("=")
         attribs[key] = val
     return attribs
+
+
+
+def add_nonredundant_events(source_events_gff, target_events_gff,
+                            output_dir):
+    """
+    Add GFF events from 'source_events_gff' to 'target_events_gff'
+    and place the result in output directory.
+    """
+    print "Adding nonredundant events.."
+    print "  - Source: %s" %(source_events_gff)
+    print "  - Target: %s" %(target_events_gff)
+    utils.make_dir(output_dir)
+    gff_output_fname = \
+        os.path.join(output_dir,
+                     os.path.basename(target_events_gff))
+    print "  - Output file: %s" %(gff_output_fname)
+    if not os.path.isfile(source_events_gff + ".db"):
+        source_db = gffutils.create_db(source_events_gff,
+                                       source_events_gff + ".db")
+    else:
+        source_db = gffutils.FeatureDB(source_events_gff + ".db")
+    if not os.path.isfile(target_events_gff + ".db"):
+        target_db = gffutils.create_db(target_events_gff,
+                                       target_events_gff + ".db")
+    else:
+        target_db = gffutils.FeatureDB(target_events_gff + ".db")
+    # Get non-redundant events that should be imported (gene IDs)
+    # from source to target
+    nonredundant_fname = \
+        os.path.join(output_dir,
+                     "%s.nonredundant.txt" \
+                     %(os.path.basename(target_events_gff)))
+    nonredundant_genes = \
+        get_nonredundant_genes(source_db, target_db, nonredundant_fname)
+    print "Copying %s to %s" %(target_events_gff, gff_output_fname)
+    shutil.copyfile(target_events_gff, gff_output_fname)
+    print "Appending non-redundant genes to %s" %(gff_output_fname)
+    # Append non-redundant genes to target GFF
+    num_nonredundant = len(nonredundant_genes)
+    print "Adding %d non-redundant genes" %(num_nonredundant)
+    gff_out = open(gff_output_fname, "a")
+    for gene_to_output in nonredundant_genes:
+        gene_rec = source_db[gene_to_output]
+        gff_out.write("%s\n" %(str(gene_rec)))
+        # Output gene's children
+        for child_rec in source_db.children(gene_to_output):
+            gff_out.write("%s\n" %(str(child_rec)))
+    gff_out.close()
+            
+
+def get_nonredundant_genes(source_db, target_db, output_fname):
+    print "Getting non-redundant genes..."
+    t1 = time.time()
+    out_file = open(output_fname, "w")
+    genes_to_import = []
+    for source_gene in source_db.all_features(featuretype="gene"):
+        source_gene_id = source_gene.attributes["ID"][0]
+        # Get long source mRNA
+        mRNA_lens = \
+            gffutils_helpers.sort_mRNAs_by_len(source_db,
+                                               source_gene_id)
+        long_source_mRNA = source_db[mRNA_lens[0][0]]
+        # Exons of source mRNA
+        source_exons = source_db.children(long_source_mRNA,
+                                          featuretype="exon")
+        # Get all exons from target DB in vicinity of long source mRNA
+        source_mRNA_region = "%s:%d-%d" %(long_source_mRNA.seqid,
+                                          long_source_mRNA.start,
+                                          long_source_mRNA.end)
+        # Get exon features that fall within mRNAs
+        target_exons = \
+            [t_region for t_region in target_db.region(source_mRNA_region) \
+             if t_region.featuretype == "exon"]
+        if len(target_exons) == 0:
+            continue
+        target_mRNAs_to_exons = defaultdict(list)
+        # Map mRNAs from target to exons
+        for target_exon in target_exons:
+            exon_parent = target_exon.attributes["Parent"][0]
+            target_mRNAs_to_exons[exon_parent].append(target_exon)
+        exons_matched = False
+        for target_mRNA in target_mRNAs_to_exons:
+            mRNA_exons = target_mRNAs_to_exons[target_mRNA]
+            if is_equal_exons(list(source_exons), list(mRNA_exons)):
+                exons_matched = True
+                break
+        # Otherwise, exons not matched and need to write them out
+        if not exons_matched:
+            # Write gene
+            line = "%s\n" %(str(source_gene))
+            genes_to_import.append(source_gene)
+            out_file.write(line)
+    out_file.close()
+    t2 = time.time()
+    print "  - Nonredundant genes fetching took %.2f secs" %(t2 - t1)
+    return genes_to_import
+    
+
+def is_equal_exons(exons_a, exons_b):
+    """
+    Return True if exons of A are same as exons of B.
+    """
+    if len(exons_a) != len(exons_b):
+        return False
+    # Compile B's coordinates and start/ends
+    b_exons = dict([((b.seqid, b.start, b.end), True) \
+                    for b in exons_b])
+    for a in exons_a:
+        if (a.seqid, a.start, a.end) not in b_exons:
+            return False
+    return True
 
 
 def get_event_recs_from_gene(gene_obj, gene_tree):

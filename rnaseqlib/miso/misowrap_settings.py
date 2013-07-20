@@ -68,8 +68,7 @@ def check_misowrap_settings(settings_info):
 
 def load_misowrap_settings(config_filename,
                            # Integer parameters
-                           INT_PARAMS=["readlen",
-                                       "overhanglen",
+                           INT_PARAMS=["overhanglen",
                                        "chunk_jobs",
                                        # Filters for events
                                        "atleast_inc",
@@ -91,7 +90,8 @@ def load_misowrap_settings(config_filename,
                                        "pipeline_dir"],
                            DATA_PARAMS=["bam_files",
                                         "sample_labels",
-                                        "comparison_groups"]):
+                                        "comparison_groups",
+                                        "readlen"]):
     config = ConfigParser.ConfigParser()
     print "Loading settings from: %s" %(config_filename)
     if not os.path.isfile(config_filename):
@@ -113,6 +113,20 @@ def load_misowrap_settings(config_filename,
             else:
                 settings_info[section][option] = \
                     ast.literal_eval(config.get(section, option))
+                # Handle read length parameter. Normally just a single
+                # value interpreted as integer, but sometimes is a list of lists
+                # describing the read length for each of the samples, in case
+                # samples have distinct read lengths.
+                if option == "readlen":
+                    readlen_val = settings_info[section][option]
+                    # If it's not a list, interpret it as an integer
+                    if type(settings_info[section][option]) != list:
+                        print "Got scalar readlen %s" %(readlen_val)
+                        settings_info[section][option] = \
+                            int(readlen_val)
+                    else:
+                        print "Got composite readlen %s" %(readlen_val)
+                    raise Exception
     # Error-check the existing settings
     check_misowrap_settings(settings_info)
     # Set default values for settings 

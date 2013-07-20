@@ -4,6 +4,7 @@
 import os
 import sys
 import time
+import datetime
 from time import gmtime, strftime
 import glob
 import re
@@ -49,6 +50,10 @@ def sort_list_by_list(list_to_sort, sort_values,
         [x for (y,x) in sorted(zip(sort_values, list_to_sort),
                                reverse=reverse)]
     return sorted_list
+
+
+def get_curr_datetime():
+    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 
 
 def get_logger(logger_name, log_outdir,

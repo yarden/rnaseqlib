@@ -79,9 +79,6 @@ def summarize(settings,
                     os.system(summary_cmd)
             
 
-###
-### Add @ headers here
-###
 @arg("settings", help="misowrap settings filename.")
 @arg("logs-outdir", help="Directory where to place logs.")
 @arg("--delay", help="Delay between execution of cluster jobs")
@@ -99,7 +96,6 @@ def compare(settings,
                                logger_label="compare")
     bam_files = misowrap_obj.bam_files
     sample_labels = misowrap_obj.sample_labels
-    read_len = misowrap_obj.read_len
     overhang_len = misowrap_obj.overhang_len
     miso_bin_dir = misowrap_obj.miso_bin_dir
     miso_output_dir = misowrap_obj.miso_outdir
@@ -120,10 +116,10 @@ def compare(settings,
             misowrap_obj.logger.info("Comparing %s %s" %(sample1,
                                                          sample2))
             # Directories for each sample
-            sample1_dir = os.path.join(miso_output_dir,
-                                       sample1)
-            sample2_dir = os.path.join(miso_output_dir,
-                                       sample2)
+            sample1_dir = utils.pathify(os.path.join(miso_output_dir,
+                                                     sample1))
+            sample2_dir = utils.pathify(os.path.join(miso_output_dir,
+                                                     sample2))
             for event_type in misowrap_obj.event_types:
                 sample1_event_dir = os.path.join(sample1_dir,
                                                  event_type)
@@ -154,6 +150,22 @@ def compare(settings,
                     if not dry_run:
                         os.system(compare_cmd)
 
+
+def get_read_len(sample_label, readlen_val):
+    """
+    Extract read length for the current sample.
+    """
+    if type(readlen_val) != list:
+        # Return constant read length (same for all samples)
+        return str(readlen_val)
+    else:
+        # Extract the read length relevant for this sample
+        for val in readlen_val:
+            if val[0] == sample_label:
+                return val[1]
+        raise Exception, "Read length for %s not found (%s)" \
+                         %(sample_label, str(readlen_val))
+    
 
 @arg("settings", help="misowrap settings filename.")
 @arg("logs-outdir", help="Directory where to place logs.")
@@ -232,8 +244,10 @@ def run(settings, logs_outdir,
                 # Paired-end parameters
                 miso_cmd += " --paired-end %.2f %.2f" %(pe_params["mean"],
                                                         pe_params["sdev"])
-            # Read length
-            miso_cmd += " --read-len %d" %(read_len)
+            # Read length: if it's a list, then use the read length appropriate
+            # for the current sample
+            curr_read_len = get_read_len(sample_label, read_len)
+            miso_cmd += " --read-len %d" %(curr_read_len)
             # Overhang length
             miso_cmd += " --overhang-len %d" %(overhang_len)
             # Prefilter?
@@ -242,7 +256,7 @@ def run(settings, logs_outdir,
             # Output directory
             miso_cmd += " --output-dir %s" %(sample_output_dir)
             # Use cluster
-            if misowrap_obj.use_cluster:
+            if use_cluster:
                 miso_cmd += " --use-cluster"
                 miso_cmd += " --chunk-jobs %d" %(misowrap_obj.chunk_jobs)
             # Settings
@@ -288,9 +302,11 @@ def filter_comparisons(settings,
 @arg("settings", help="misowrap settings filename.")
 @arg("logs-outdir", help="directory where to place logs.")
 @arg("--dry-run", help="Dry run. Do not execute any jobs or commands.")
+@arg("--use-cluster", help="Use cluster.")
 def compute_insert_lens(settings,
                         output_dir,
-                        dry_run=False):
+                        dry_run=False,
+                        use_cluster=True):
     """
     Compute insert lengths for all samples.
     """
@@ -318,7 +334,7 @@ def compute_insert_lens(settings,
               insert_len_output_dir)
         print "Executing: %s" %(insert_len_cmd)
         job_name = "%s_insert_len" %(sample_name)
-        if misowrap_obj.use_cluster:
+        if use_cluster:
             misowrap_obj.my_cluster.launch_job(insert_len_cmd,
                                                job_name,
                                                ppn=1)
