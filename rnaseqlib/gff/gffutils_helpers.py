@@ -14,6 +14,8 @@ import shutil
 import string
 from string import maketrans
 
+from collections import defaultdict
+
 import pybedtools
 
 import rnaseqlib
@@ -174,16 +176,8 @@ def add_nonredundant_events(source_events_gff, target_events_gff,
         os.path.join(output_dir,
                      os.path.basename(target_events_gff))
     print "  - Output file: %s" %(gff_output_fname)
-    if not os.path.isfile(source_events_gff + ".db"):
-        source_db = gffutils.create_db(source_events_gff,
-                                       source_events_gff + ".db")
-    else:
-        source_db = gffutils.FeatureDB(source_events_gff + ".db")
-    if not os.path.isfile(target_events_gff + ".db"):
-        target_db = gffutils.create_db(target_events_gff,
-                                       target_events_gff + ".db")
-    else:
-        target_db = gffutils.FeatureDB(target_events_gff + ".db")
+    source_db = gffutils.create_db(source_events_gff, ":memory:")
+    target_db = gffutils.create_db(target_events_gff, ":memory:")
     # Get non-redundant events that should be imported (gene IDs)
     # from source to target
     nonredundant_fname = \
@@ -201,11 +195,38 @@ def add_nonredundant_events(source_events_gff, target_events_gff,
     gff_out = open(gff_output_fname, "a")
     for gene_to_output in nonredundant_genes:
         gene_rec = source_db[gene_to_output]
-        gff_out.write("%s\n" %(str(gene_rec)))
+        line = format_gff_rec_as_line(gene_rec)
+        gff_out.write(line)
         # Output gene's children
         for child_rec in source_db.children(gene_to_output):
-            gff_out.write("%s\n" %(str(child_rec)))
+            child_line = format_gff_rec_as_line(child_rec)
+            gff_out.write(child_line)
     gff_out.close()
+    return gff_output_fname
+
+
+def format_gff_rec_as_line(rec):
+    """
+    Return GFF record as line. Ignore emtpy attribute fields.
+    """
+    start = rec.start
+    end = rec.end
+    if int(start) > int(end):
+        start, end = end, start
+    fields = map(str, [rec.seqid,
+                       rec.source,
+                       rec.featuretype,
+                       start,
+                       end,
+                       rec.score,
+                       rec.strand,
+                       rec.frame])
+    # Get attributes without empty fields
+    attrs_str = ";".join(["%s=%s" %(attr, ",".join(val)) \
+                          for attr, val in rec.attributes.items() \
+                          if len(val) != 0])
+    line = "%s\t%s\n" %("\t".join(fields), attrs_str)
+    return line
             
 
 def get_nonredundant_genes(source_db, target_db, output_fname):
@@ -214,11 +235,11 @@ def get_nonredundant_genes(source_db, target_db, output_fname):
     out_file = open(output_fname, "w")
     genes_to_import = []
     for source_gene in source_db.all_features(featuretype="gene"):
-        source_gene_id = source_gene.attributes["ID"][0]
+        source_gene_id = source_gene.id
         # Get long source mRNA
         mRNA_lens = \
-            gffutils_helpers.sort_mRNAs_by_len(source_db,
-                                               source_gene_id)
+            sort_mRNAs_by_len(source_db,
+                              source_gene_id)
         long_source_mRNA = source_db[mRNA_lens[0][0]]
         # Exons of source mRNA
         source_exons = source_db.children(long_source_mRNA,
@@ -241,13 +262,15 @@ def get_nonredundant_genes(source_db, target_db, output_fname):
         exons_matched = False
         for target_mRNA in target_mRNAs_to_exons:
             mRNA_exons = target_mRNAs_to_exons[target_mRNA]
-            if is_equal_exons(list(source_exons), list(mRNA_exons)):
+            A = list(source_exons)
+            B = list(mRNA_exons)
+            if is_equal_exons(A, B):
                 exons_matched = True
                 break
         # Otherwise, exons not matched and need to write them out
         if not exons_matched:
             # Write gene
-            line = "%s\n" %(str(source_gene))
+            line = "%s\n" %(str(source_gene).strip())
             genes_to_import.append(source_gene)
             out_file.write(line)
     out_file.close()
