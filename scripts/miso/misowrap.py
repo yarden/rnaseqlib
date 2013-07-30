@@ -247,7 +247,7 @@ def run(settings, logs_outdir,
             # Read length: if it's a list, then use the read length appropriate
             # for the current sample
             curr_read_len = get_read_len(sample_label, read_len)
-            miso_cmd += " --read-len %d" %(curr_read_len)
+            miso_cmd += " --read-len %d" %(int(curr_read_len))
             # Overhang length
             miso_cmd += " --overhang-len %d" %(overhang_len)
             # Prefilter?
@@ -391,7 +391,6 @@ def combine_comparisons(settings,
             # Collection of MISO comparison dataframes (to be merged later)
             # for the current event type
             comparison_dfs = []
-            comparison_labels = []
             event_dir = os.path.join(curr_comp_dir, event_type)
             if not os.path.isdir(event_dir):
                 misowrap_obj.logger.info("Cannot find event type %s dir, " \
@@ -415,7 +414,6 @@ def combine_comparisons(settings,
                                                     %(comparison_name))
                         continue
                     comparison_dfs.append(bf_data)
-                    comparison_labels.append(comparison_name)
             # Merge the comparison dfs together
             print "Merging comparisons for %s" %(event_type)
             combined_df = pandas_utils.combine_dfs(comparison_dfs)

@@ -163,19 +163,18 @@ def parse_gff_attribs(attrib_str):
 
 
 def add_nonredundant_events(source_events_gff, target_events_gff,
-                            output_dir):
+                            output_fname):
     """
     Add GFF events from 'source_events_gff' to 'target_events_gff'
-    and place the result in output directory.
+    and place the result in output file.
     """
     print "Adding nonredundant events.."
     print "  - Source: %s" %(source_events_gff)
     print "  - Target: %s" %(target_events_gff)
+    print "  - Output file: %s" %(output_fname)
+    output_fname = utils.pathify(output_fname)
+    output_dir = os.path.dirname(output_fname)
     utils.make_dir(output_dir)
-    gff_output_fname = \
-        os.path.join(output_dir,
-                     os.path.basename(target_events_gff))
-    print "  - Output file: %s" %(gff_output_fname)
     source_db = gffutils.create_db(source_events_gff, ":memory:")
     target_db = gffutils.create_db(target_events_gff, ":memory:")
     # Get non-redundant events that should be imported (gene IDs)
@@ -186,13 +185,13 @@ def add_nonredundant_events(source_events_gff, target_events_gff,
                      %(os.path.basename(target_events_gff)))
     nonredundant_genes = \
         get_nonredundant_genes(source_db, target_db, nonredundant_fname)
-    print "Copying %s to %s" %(target_events_gff, gff_output_fname)
-    shutil.copyfile(target_events_gff, gff_output_fname)
-    print "Appending non-redundant genes to %s" %(gff_output_fname)
+    print "Copying %s to %s" %(target_events_gff, output_fname)
+    shutil.copyfile(target_events_gff, output_fname)
+    print "Appending non-redundant genes to %s" %(output_fname)
     # Append non-redundant genes to target GFF
     num_nonredundant = len(nonredundant_genes)
     print "Adding %d non-redundant genes" %(num_nonredundant)
-    gff_out = open(gff_output_fname, "a")
+    gff_out = open(output_fname, "a")
     for gene_to_output in nonredundant_genes:
         gene_rec = source_db[gene_to_output]
         line = format_gff_rec_as_line(gene_rec)
@@ -202,7 +201,7 @@ def add_nonredundant_events(source_events_gff, target_events_gff,
             child_line = format_gff_rec_as_line(child_rec)
             gff_out.write(child_line)
     gff_out.close()
-    return gff_output_fname
+    return output_fname
 
 
 def format_gff_rec_as_line(rec):

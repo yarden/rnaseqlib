@@ -72,6 +72,7 @@ class MISOWrap:
         Load mapping from events to genes. Use the new GFF files
         for this.
         """
+        print "Loading events to genes mapping.."
         basename_card = "*.gff3"
         gff_events_dir = None
         if "gff_events_dir" in self.settings_info["settings"]:

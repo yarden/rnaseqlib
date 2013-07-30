@@ -3,34 +3,48 @@
 ##
 import scipy
 import numpy
+import numpy as np
 from numpy import *
 from scipy import *
 
 from scipy.stats.stats import pearsonr, spearmanr
 
 
-def spearman_dist(u, v, na_vals=["NA"]):
+def spearman_dist(u, v, na_vals=["NA", np.nan]):
     """
-    Compuute Spearman distance for vectors u, v.
+    Compute Spearman distance for vectors u, v.
 
     Returns 1 - spearmanr(u, v).
     """
     matrix = [[x, y] for x, y in zip(u, v) \
-              if (u not in na_vals) and (v not in na_vals)]
+              if (x not in na_vals) and (y not in na_vals)]
     matrix = array(matrix)
     spearman = scipy.stats.spearmanr(matrix[:, 0], matrix[:, 1])[0]
     return 1 - spearman
 
 
+def pearson_dist(u, v, na_vals=["NA", np.nan]):
+    """
+    Compute Pearson distance for vectors u, v.
+
+    Returns 1 - spearmanr(u, v).
+    """
+#    matrix = [[x, y] for x, y in zip(u, v) \
+#              if (x not in na_vals) and (y not in na_vals)]
+#    matrix = array(matrix)
+    pearson = scipy.stats.pearsonr(u, v)[0]
+    return 1 - pearson
+
+
 def my_pdist(X, dist_func,
-             na_values=["NA"]):
+             na_vals=["NA", np.nan, np.inf, -np.inf]):
     """
     (inefficient) pdist function that takes an arbitrary
     distance function (a lambda).
 
     X: data matrix
     dist_func: lambda that returns distance on vector
-    na_values: values to consider as missing data
+    na_vals: values to consider as missing data
     """
     X = array(X, dtype=object)
     if len(X.shape) == 1:
@@ -43,11 +57,12 @@ def my_pdist(X, dist_func,
         pdist_row = []
         for col2 in range(num_cols):
             pairs = array([[x, y] for x, y in zip(X[:, col1], X[:, col2]) \
-                           if (x not in na_values) and (y not in na_values)])
+                           if (x not in na_vals) and (y not in na_vals)])
             if len(pairs) == 0:
                 continue
             dist = dist_func(pairs[:, 0],
-                             pairs[:, 1])
+                             pairs[:, 1],
+                             na_vals=na_vals)
             pdist_row.append(dist)
         dist_matrix.append(pdist_row)
     dist_matrix = array(dist_matrix)

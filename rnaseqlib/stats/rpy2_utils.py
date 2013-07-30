@@ -88,6 +88,7 @@ def run_lowess(x, y, span=0.75):
     return corrected_y, correction_factor
 
 
+
 def main():
     pass
     #x = np.array([1, 0.5, 3, 4, 5, 5.5, 6, 7], dtype=np.float)

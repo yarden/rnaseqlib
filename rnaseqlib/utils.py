@@ -258,6 +258,15 @@ def max_item(values):
                                key=operator.itemgetter(1))
     return max_index, max_value
 
+def min_item(values):
+    """
+    Return min value index, min value
+    """
+    min_index, min_value = min(enumerate(values),
+                               key=operator.itemgetter(1))
+    return min_index, min_value
+
+
 
 def get_pairwise_from_sets(first_samples, second_samples):
     seen_pairs = []

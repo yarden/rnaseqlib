@@ -80,7 +80,8 @@ def output_utr_table(tables_dir,
     print "Outputting UTR table from %s" %(utr_gff_fname)
     output_basename = os.path.basename(utr_gff_fname).rsplit(".", 1)[0]
     utils.make_dir(output_dir)
-    output_fname = os.path.join(output_dir, "%s.gff" %(output_basename))
+    output_fname = os.path.join(output_dir, "%s.%s.gff" %(output_basename,
+                                                          choice_rule))
     print "  - Output file: %s" %(output_fname)
     if not os.path.isfile(utr_gff_fname):
         raise Exception, "Cannot find %s" %(utr_gff_fname)
@@ -115,6 +116,10 @@ def output_utr_table(tables_dir,
         utr_lens = [curr_utr[1] for curr_utr in all_utrs]
         if choice_rule == "longest":
             utr_indx = utils.max_item(utr_lens)[0]
+            chosen_utr = all_utrs[utr_indx]
+            gene_to_chosen_utr[gene] = chosen_utr
+        elif choice_rule == "shortest":
+            utr_indx = utils.min_item(utr_lens)[0]
             chosen_utr = all_utrs[utr_indx]
             gene_to_chosen_utr[gene] = chosen_utr
         else:
