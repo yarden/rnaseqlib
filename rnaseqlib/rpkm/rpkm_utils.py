@@ -1,4 +1,3 @@
-
 ##
 ## Utilities for computing RPKM
 ##
@@ -8,11 +7,10 @@ import time
 
 from collections import defaultdict
 
+import subprocess
+
 import rnaseqlib
 import rnaseqlib.utils as utils
-
-import misopy
-import misopy.exon_utils as exon_utils
 
 import pandas
 
@@ -80,7 +78,8 @@ def output_rpkm(sample,
                                                         table_name))
         rpkm_tables[table_name] = rpkm_output_filename
         if os.path.isfile(rpkm_output_filename):
-            logger.info("  - Skipping RPKM output, found %s" %(rpkm_output_filename))
+            logger.info("  - Skipping RPKM output, found %s" \
+                        %(rpkm_output_filename))
             continue
         # Directory where BAM containing mapping to constitutive
         # exons be stored
@@ -89,9 +88,10 @@ def output_rpkm(sample,
         utils.make_dir(bam2gff_outdir)
         # Map reads to GFF of constitutive exons
         # Use the rRNA subtracted BAM file
-        exons_bam_fname = exon_utils.map_bam2gff(sample.ribosub_bam_filename,
-                                                 const_exons.gff_filename,
-                                                 bam2gff_outdir)
+        logger.info("Mapping BAM to GFF %s" %(const_exons.gff_filename))
+        exons_bam_fname = map_bam2gff(sample.ribosub_bam_filename,
+                                      const_exons.gff_filename,
+                                      bam2gff_outdir)
         # Compute RPKMs for sample: use number of ribosub mapped reads
         num_mapped = int(sample.qc.qc_results["num_ribosub_mapped"])
         if num_mapped == 0:
@@ -111,6 +111,98 @@ def output_rpkm(sample,
                                                           rpkm_output_filename))
     return rpkm_output_filename
     
+
+def map_bam2gff_subproc(logger, bam_filename, gff_filename, output_dir,
+                        interval_label="gff"):
+    """
+    Map BAM file against intervals in GFF, return results as BAM.
+
+    Only keep hits that are in the interval.
+
+    Uses tagBam utility from bedtools.
+    """
+    gff_basename = os.path.basename(gff_filename)
+    bam_basename = os.path.basename(bam_filename)
+    output_dir = os.path.join(output_dir, "bam2gff_%s" \
+                              %(gff_basename))
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
+
+    output_filename = os.path.join(output_dir, bam_basename)
+
+    print "Mapping BAM to GFF..."
+    print "  - BAM: %s" %(bam_filename)
+    print "  - GFF: %s" %(gff_filename)
+    print "  - Output file: %s" %(output_filename)
+    if os.path.isfile(output_filename):
+        print "WARNING: %s exists. Skipping.." \
+              %(output_filename)
+        return output_filename
+
+    # Compile the tagBam command and pipe it to samtools to get
+    # text, grep-able output
+    tagBam = "tagBam"
+    tagBam_cmd = \
+        "%s -i %s -files %s -labels %s -intervals -f 1 | samtools view -h - " \
+        %(tagBam, bam_filename, gff_filename,
+          interval_label)
+    if utils.which(tagBam) is None:
+        logger.error("Aborting operation: tagBam not found.")
+        sys.exit(1)
+    # Call tagBam and check that it returned successfully
+    print "Preparing to call tagBam..."
+    tagBam_proc = subprocess.Popen(tagBam_cmd,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT,
+                                   shell=True)
+    # BAM process
+    print "Preparing to output results as BAM..."
+    bam_cmd = "samtools view -Shb -o %s - "
+    bam_proc = subprocess.Popen(bam_cmd,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT,
+                                stdin=subprocess.PIPE,
+                                shell=True)
+    # Iterate through the output of grep
+    num_headers = 0
+    num_hits = 0
+    for sam_read in tagBam_proc.stdout:
+        gff_interval = ":%s:" %(interval_label)
+        # If it's a header or a SAM read that matches a GFF interval,
+        # pass it on to be converted to BAM
+        if sam_read.startswith("@"):
+            bam_proc.stdin.write(sam_read)
+            num_headers += 1
+        elif gff_interval in sam_read:
+            bam_proc.stdin.write(sam_read)
+            num_hits += 1
+    tagBam_retval = tagBam_proc.wait()
+    if num_headers == 0:
+        # If no headers were found even, something must have failed
+        # at the tagBam call.
+        logger.error("tagBam call failed.")
+        logger.error("tagBam error code: %d" %(tagBam_retval)) 
+        sys.exit(1)
+    if num_hits == 0:
+        # If there were headers present but no hits, no read
+        # must have mapped to the GFF intervals
+        logger.warning("tagBam did not yield hits in GFF intervals. " \
+                     "Found %d headers in BAM file. Do your headers in the GFF " \
+                     "file match the headers of the BAM?" \
+                     %(num_headers))
+    # Read the output of BAM proc
+    bam_results = bam_proc.communicate()
+    if bam_proc.returncode != 0:
+        if "truncated" in bam_results[0]:
+            logger.warning("Truncated BAM file produced by tagBam. " \
+                           "This occurs if the BAM is empty because no " \
+                           "read matched the GFF intervals.")
+        else:
+            logger.error("Conversion of tagBam hits to BAM failed.")
+            logger.error("Output was %s" %(bam_results[0]))
+            sys.exit(1)
+    return output_filename
+
     
 def output_rpkm_from_gff_aligned_bam(bam_filename,
                                      num_mapped,
