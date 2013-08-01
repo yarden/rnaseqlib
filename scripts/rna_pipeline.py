@@ -133,12 +133,12 @@ def main():
                       help="Fraction (number between 0 and 1) of " \
                       "transcripts that an exon can be in to be considered " \
                       "constitutive. Default is 0.7 (i.e. 70% of " \
-                      "transcripts.)")
+                      "transcripts.) [OBSOLETE]")
     parser.add_option("--constitutive-exon-diff", dest="constitutive_exon_diff",
                       nargs=1, default=10, type="int",
                       help="Number of \'wiggle\' bases by which an exon can " \
                       "differ in order to be considered constitutive. By " \
-                      "default set to 10.")
+                      "default set to 10. [OBSOLETE]")
     (options, args) = parser.parse_args()
 
     greeting()

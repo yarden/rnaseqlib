@@ -89,9 +89,10 @@ def output_rpkm(sample,
         # Map reads to GFF of constitutive exons
         # Use the rRNA subtracted BAM file
         logger.info("Mapping BAM to GFF %s" %(const_exons.gff_filename))
-        exons_bam_fname = map_bam2gff(sample.ribosub_bam_filename,
-                                      const_exons.gff_filename,
-                                      bam2gff_outdir)
+        exons_bam_fname = map_bam2gff_subproc(logger,
+                                              sample.ribosub_bam_filename,
+                                              const_exons.gff_filename,
+                                              bam2gff_outdir)
         # Compute RPKMs for sample: use number of ribosub mapped reads
         num_mapped = int(sample.qc.qc_results["num_ribosub_mapped"])
         if num_mapped == 0:
@@ -146,6 +147,7 @@ def map_bam2gff_subproc(logger, bam_filename, gff_filename, output_dir,
         "%s -i %s -files %s -labels %s -intervals -f 1 | samtools view -h - " \
         %(tagBam, bam_filename, gff_filename,
           interval_label)
+    print "Calling: %s" %(tagBam_cmd)
     if utils.which(tagBam) is None:
         logger.error("Aborting operation: tagBam not found.")
         sys.exit(1)
@@ -157,7 +159,8 @@ def map_bam2gff_subproc(logger, bam_filename, gff_filename, output_dir,
                                    shell=True)
     # BAM process
     print "Preparing to output results as BAM..."
-    bam_cmd = "samtools view -Shb -o %s - "
+    bam_cmd = "samtools view -Shb -o %s - " %(output_filename)
+    print "BAM command: %s" %(bam_cmd)
     bam_proc = subprocess.Popen(bam_cmd,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT,
@@ -166,17 +169,26 @@ def map_bam2gff_subproc(logger, bam_filename, gff_filename, output_dir,
     # Iterate through the output of grep
     num_headers = 0
     num_hits = 0
+    num_skipped_reads = 0
     for sam_read in tagBam_proc.stdout:
+        # Skip reads that have no reference name
+        sam_fields = sam_read.split("\t")
+        read_name = sam_fields[0]
+        if read_name == "":
+            num_skipped_reads += 1
+            continue
         gff_interval = ":%s:" %(interval_label)
         # If it's a header or a SAM read that matches a GFF interval,
-        # pass it on to be converted to BAM
+        # pass it non to be converted to BAM
         if sam_read.startswith("@"):
             bam_proc.stdin.write(sam_read)
             num_headers += 1
         elif gff_interval in sam_read:
+            if num_hits % 1000000 == 0:
+                print "Through %d hits" %(num_hits)
             bam_proc.stdin.write(sam_read)
             num_hits += 1
-    tagBam_retval = tagBam_proc.wait()
+    print "Skipped total of %d reads." %(num_skipped_reads)
     if num_headers == 0:
         # If no headers were found even, something must have failed
         # at the tagBam call.
@@ -190,6 +202,7 @@ def map_bam2gff_subproc(logger, bam_filename, gff_filename, output_dir,
                      "Found %d headers in BAM file. Do your headers in the GFF " \
                      "file match the headers of the BAM?" \
                      %(num_headers))
+    tagBam_retval = tagBam_proc.wait()
     # Read the output of BAM proc
     bam_results = bam_proc.communicate()
     if bam_proc.returncode != 0:
