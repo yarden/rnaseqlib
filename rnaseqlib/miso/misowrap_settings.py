@@ -28,8 +28,8 @@ def set_default_misowrap_settings(settings_info,
     if "sample_labels" not in settings_info["data"]:
         # Set default sample labels
         settings_info["data"]["sample_labels"] = []
-        for bam_label, bam_file in settings_info["data"]["bam_files"]:
-            settings_info["data"]["sample_labels"].append([bam_label,
+        for bam_file, bam_label in settings_info["data"]["bam_files"]:
+            settings_info["data"]["sample_labels"].append([bam_file,
                                                            bam_label])
     # If no comparison groups are given, treat the entire
     # sample set as a group (i.e. compute all pairwise
@@ -108,8 +108,16 @@ def load_misowrap_settings(config_filename,
             elif option in STR_PARAMS:
                 settings_info[section][option] = str(config.get(section, option))
             elif option in DATA_PARAMS:
-                settings_info[section][option] = \
-                    json.loads(config.get(section, option))
+                try:
+                    settings_info[section][option] = \
+                        json.loads(config.get(section, option))
+                except:
+                    print "Failed to parse section \'%s\' on option \'%s\' in " \
+                          "settings file.\n" \
+                          %(section,
+                            option)
+                    # Raise the same Exception again
+                    raise 
             else:
                 settings_info[section][option] = \
                     ast.literal_eval(config.get(section, option))

@@ -94,3 +94,15 @@ def leven_dist(first, second):
             distance_matrix[i][j] = min(insertion, deletion, substitution)
     return distance_matrix[first_length-1][second_length-1]
 
+
+def zscore_df(df, scale="row"):
+    if scale == "row":
+        # Get mean across columns (mean per row)
+        df_mu = df.mean(axis=1)
+        # Standard deviation across columns (sdev per row)
+        df_sdev = df.std(axis=1)
+        # Subtract mean across rows and divide result by sdev
+        df = df.sub(mu, axis=0).div(df_sdev, axis=0)
+    else:
+        raise Exception, "Not implemented."
+

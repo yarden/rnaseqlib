@@ -45,7 +45,7 @@ def summarize(settings,
     sample_labels = misowrap_obj.sample_labels
     print "Summarizing MISO output..."
     for sample_label in sample_labels:
-        sample_basename = sample_label[0]
+        sample_basename = sample_label[1]
         sample_dir_path = \
             utils.pathify(os.path.join(misowrap_obj.miso_outdir,
                                        sample_basename))
@@ -176,6 +176,7 @@ def get_read_len(sample_label, readlen_val):
 @arg("--delay-every-n-jobs",
      help="Number of jobs after which a delay is imposed.")
 @arg("--dry-run", help="Dry run: do not submit or execute jobs.")
+@arg("--samples", help="Samples to run on.", nargs='+', type=str)
 def run(settings, logs_outdir,
         use_cluster=True,
         base_delay=10,
@@ -183,7 +184,8 @@ def run(settings, logs_outdir,
         batch_delay=60*20,
         delay_every_n_jobs=30,
         dry_run=False,
-        event_types=None):
+        event_types=None,
+        samples=[]):
     """
     Run MISO on a set of samples.
     """
@@ -214,6 +216,11 @@ def run(settings, logs_outdir,
     n = 0
     for bam_input in bam_files:
         bam_filename, sample_label = bam_input
+        # If asked to run on certain samples only,
+        # skip all others
+        if len(samples) > 0 and sample_label not in samples:
+            print "Skipping %s" %(sample_label)
+            continue
         bam_filename = utils.pathify(bam_filename)
         misowrap_obj.logger.info("Processing: %s" %(bam_filename))
         for event_type_dir in event_types_dirs:
