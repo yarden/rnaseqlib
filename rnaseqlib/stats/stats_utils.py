@@ -102,7 +102,8 @@ def zscore_df(df, scale="row"):
         # Standard deviation across columns (sdev per row)
         df_sdev = df.std(axis=1)
         # Subtract mean across rows and divide result by sdev
-        df = df.sub(mu, axis=0).div(df_sdev, axis=0)
+        norm_df = df.sub(df_mu, axis=0).div(df_sdev, axis=0)
+        return norm_df
     else:
         raise Exception, "Not implemented."
 

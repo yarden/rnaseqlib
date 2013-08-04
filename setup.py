@@ -41,21 +41,26 @@ setup(name = 'rnaseqlib',
                   'rnaseqlib.ribo',
                   'rnaseqlib.stats',
                   'rnaseqlib.tests',
-                  'scripts'],
+                  'rnaseqlib.scripts'],
+      # Only non-Python scripts go here
       # distutils always uses forward slashes      
-      scripts = ['scripts/rna_pipeline.py',
-                 'scripts/gtf2gff3.pl',
-                 'scripts/ucsc_table2gff3.pl',
-                 # MISO-related scripts
-                 'scripts/miso/intersect_events.py',
-                 'scripts/miso/misowrap.py',
-                 # GFF related scripts
-                 'scripts/gff_make_annotation.py',
-                 'scripts/gff_annotate_events.py',
-                 'scripts/gff_sanitize.py',
-                 'scripts/gff_create_db.py',
-                 'scripts/gff_extract_lens.py',
-                 'scripts/gff_extract_event_seqs.py'],
+      scripts = ['scripts/gtf2gff3.pl',
+                 'scripts/ucsc_table2gff3.pl'],
+      # Python scripts are defined as entry points
+      entry_points = {
+               'console_scripts':
+               ['rna_pipeline = rnaseqlib.scripts.rna_pipeline:main',
+                # MISO-related scripts
+                'misowrap = rnaseqlib.miso.misowrap:main',
+                'intersect_events = rnaseqlib.miso.intersect_events:main',
+                # GFF-related scripts
+                'gff_annotate_events = rnaseqlib.gff.gff_annotate_events:main',
+                'gff_make_annotation = rnaseqlib.gff.gff_make_annotation:main',
+                'gff_sanitize = rnaseqlib.gff.gff_sanitize:main',
+                'gff_create_db = rnaseqlib.gff.gff_create_db:main',
+                'gff_extract_lens = rnaseqlib.gff.gff_extract_lens:main',
+                'gff_extract_event_seqs = rnaseqlib.gff.gff_extract_event_seqs:main']
+      },
       # Required modules
       install_requires = [
 #          "matplotlib >= 1.1.0",
