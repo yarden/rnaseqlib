@@ -53,6 +53,7 @@ setup(name = 'rnaseqlib',
                 # MISO-related scripts
                 'misowrap = rnaseqlib.miso.misowrap:main',
                 'intersect_events = rnaseqlib.miso.intersect_events:main',
+                'miso_helper = rnaseqlib.miso.miso_helper:main',
                 # GFF-related scripts
                 'gff_annotate_events = rnaseqlib.gff.gff_annotate_events:main',
                 'gff_make_annotation = rnaseqlib.gff.gff_make_annotation:main',
