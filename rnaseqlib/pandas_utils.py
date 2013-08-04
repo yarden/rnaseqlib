@@ -194,7 +194,6 @@ def combine_dfs(dfs_list, axis=1, combine_first=True):
             continue
         nonredundant_dfs.append(df[new_cols])
         cols = new_cols + list(cols)
-        print "Checking redunancy of combined columns"
         assert (len(cols) == len(set(cols))), \
                "Combined columns are redundant!"
     new_df = pandas.concat(nonredundant_dfs, axis=axis)

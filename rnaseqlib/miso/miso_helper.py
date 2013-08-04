@@ -23,6 +23,7 @@ import rnaseqlib.utils as utils
 
 import pybedtools
 
+NA_VAL = "NA"
 
 DEFAULT_FILTERS = \
     {
@@ -72,16 +73,17 @@ def get_events_to_genes_from_gff(fname):
             events_to_genes[event_id] = attrs["refseq_id"]
     return events_to_genes
 
+
 @arg("dirname", help="MISO directory containing sample comparisons.")
 @arg("event-type", help="Event type (label that will be used to make combined file.")
 @arg("output-dir", help="Output directory.")
-@arg("--get-genes-from-gff",
+@arg("--genes-from-gff",
      help="If passed in a GFF3 file, incorporate gene IDs/symbols from " \
           "\'gene\' entries of GFF if they are present.")
 @arg("--logger-name", help="Name for logging file.")
 @arg("--dry-run", help="Dry run. Do not execute commands.")
 def combine_comparisons(dirname, event_type, output_dir,
-                        get_genes_from_gff=None,
+                        genes_from_gff=None,
                         logger_name="misowrap_combine",
                         dry_run=False):
     """
@@ -90,7 +92,7 @@ def combine_comparisons(dirname, event_type, output_dir,
 
     - dirname: directory containing MISO comparisons to process
 
-    - get_genes_from_gff: if a GFF filename, incorporate
+    - genes_from_gff: if a GFF filename, incorporate
     gene information (determined by the attributes in 'gene_id_cols')
     into the combined file.
     """
@@ -99,36 +101,42 @@ def combine_comparisons(dirname, event_type, output_dir,
     dirname = utils.pathify(dirname)
     output_dir = utils.pathify(output_dir)
     logs_dir = os.path.join(output_dir, "logs")
+    if not os.path.isdir(dirname):
+        logger.error("Cannot find directory %s" %(dirname))
+        sys.exit(1)
     logger = utils.get_logger(logger_name, logs_dir)
     glob_path = os.path.join(dirname, "*_vs_*")
     comp_dirs = glob.glob(glob_path)
     if len(comp_dirs) == 0:
-        print "No comparison directories in %s. Quitting." %(dirname)
+        logger.info("No comparison directories in %s. Quitting." %(dirname))
         return
     comparison_dfs = []
     for comp_num, comp_dirname in enumerate(comp_dirs):
         comparison_name = os.path.basename(comp_dirname)
         if (comp_num % 50 == 0) and comp_num > 0:
-            print "Loaded %d comparisons" %(comp_num)
+            logger.info("Loaded %d comparisons" %(comp_num))
         sample1, sample2 = comparison_name.split("_vs_")
         bf_data = miso_utils.load_miso_bf_file(dirname,
                                                comparison_name,
                                                substitute_labels=True)
         if bf_data is None:
-            misowrap_obj.logger.warning("Could not find comparison %s" \
-                                        %(comparison_name))
+            logger.warning("Could not find comparison %s" \
+                           %(comparison_name))
             continue
         comparison_dfs.append(bf_data)
     # Merge the comparison dfs together
     combined_df = pandas_utils.combine_dfs(comparison_dfs)
-    output_dir = os.path.join(curr_comp_dir, "combined_comparisons")
+    output_dir = os.path.join(output_dir, "combined_comparisons")
     utils.make_dir(output_dir)
     output_filename = os.path.join(output_dir,
                                    "%s.miso_bf" %(event_type))
     # Combine gene information if asked
-    if get_genes_from_gff is not None:
-        print "Importing genes..."
+    if genes_from_gff is not None:
+        genes_gff_fname = genes_from_gff
+        combined_df = \
+          add_gene_info_to_events_df(logger, combined_df, genes_gff_fname)
     if not dry_run:
+        logger.info("Outputting to: %s" %(output_filename))
         combined_df.to_csv(output_filename,
                            float_format="%.4f",
                            sep="\t",
@@ -136,6 +144,33 @@ def combine_comparisons(dirname, event_type, output_dir,
                            index=True,
                            index_label="event_name")
 
+
+def add_gene_info_to_events_df(logger, df, genes_gff_fname):
+    """
+    Add gene information to events DataFrame.
+    Assume the DataFrame is indexed by the event_name field.
+    """
+    logger.info("Importing genes from %s" %(genes_gff_fname))
+    if not os.path.isfile(genes_gff_fname):
+        logger.error("Cannot find genes GFF %s" %(genes_gff_fname))
+        sys.exit(1)
+    # Load mapping from events in GFF to gene info
+    events_to_genes = get_events_to_genes_from_gff(genes_gff_fname)
+    # Add the events to genes to the combined DataFrame
+    # Assume the combined dataframe is indexed by event name
+    if df.index[0] == 0:
+        logger.error("Combined dataframe not indexed by event name.")
+        sys.exit(1)
+    gene_symbols = []
+    ensembl_ids = []
+    for event_name in df.index:
+        gene_symbols.append(events_to_genes[event_name]["gsymbol"])
+        ensembl_ids.append(events_to_genes[event_name]["ensg_id"])
+    # Add gene symbol / Ensembl IDs to 
+    df["ensembl_id"] = ensembl_ids
+    df["gene_symbol"] = gene_symbols
+    return df
+    
 
 @arg("fname", help="MISO comparisons file (*.miso_bf) to filter.")
 @arg("output-dir", help="Output directory.")
