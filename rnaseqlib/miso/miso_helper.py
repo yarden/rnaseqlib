@@ -66,11 +66,11 @@ def get_events_to_genes_from_gff(fname):
         event_id = attrs["ID"]
         events_to_genes[event_id] = {}
         if "ensg_id" in attrs:
-            events_to_genes[event_id] = attrs["ensg_id"]
+            events_to_genes[event_id]["ensg_id"] = attrs["ensg_id"]
         if "gsymbol" in attrs:
-            events_to_genes[event_id] = attrs["gsymbol"]
+            events_to_genes[event_id]["gsymbol"] = attrs["gsymbol"]
         if "refseq_id" in attrs:
-            events_to_genes[event_id] = attrs["refseq_id"]
+            events_to_genes[event_id]["refseq_id"] = attrs["refseq_id"]
     return events_to_genes
 
 
@@ -163,14 +163,70 @@ def add_gene_info_to_events_df(logger, df, genes_gff_fname):
         sys.exit(1)
     gene_symbols = []
     ensembl_ids = []
+    gff_event_names = []
     for event_name in df.index:
-        gene_symbols.append(events_to_genes[event_name]["gsymbol"])
-        ensembl_ids.append(events_to_genes[event_name]["ensg_id"])
+        gsymbol = "NA"
+        ensembl_id = "NA"
+        possible_event_names = \
+          tuple([event_name,
+                 convert_event_name_to_gff_format(event_name),
+                 convert_event_name_to_gff_format(event_name,
+                                                  reverse_up_and_down=True)])
+        event_found = False
+        for curr_event_name in possible_event_names:
+            if curr_event_name in events_to_genes:
+                gsymbol = events_to_genes[curr_event_name]["gsymbol"]
+                ensembl_id = events_to_genes[curr_event_name]["ensg_id"]
+                gff_event_names.append(curr_event_name)
+                event_found = True
+                break
+        if not event_found:
+            raise Exception, "Failed to find event %s" %(event_name)
+        ##
+        ## Record gene symbol/ensembl ID
+        ##
+        gene_symbols.append(gsymbol)
+        ensembl_ids.append(ensembl_id)
     # Add gene symbol / Ensembl IDs to 
     df["ensembl_id"] = ensembl_ids
     df["gene_symbol"] = gene_symbols
+    if len(gff_event_names) > 0:
+        df["gff_event_name"] = gff_event_names
     return df
-    
+
+
+def convert_event_name_to_gff_format(event_name, reverse_up_and_down=False):
+    """
+    Given an event name like:
+
+    'chr10:100146958-100147064:-@chr10:100148111-100148265:-@chr10:100150355-100150511:-'
+
+    Convert it to GFF formatting using ':' instad of '-', as in:
+
+    'chr10:100146958:100147064:-@chr10:100148111:100148265:-@chr10:100150355:100150511:-'
+
+    Note that for minus event strands like above, the flanking exons are also
+    flipped.
+    """
+    strand = event_name.split(":")[-1]
+    print "STRAND --> ", strand
+    def colonify(exon_name):
+        chrom, coords, strand = exon_name.split(":")
+        return ":".join([chrom, coords.replace("-", ":"), strand])
+    if "@" not in event_name:
+        return None
+    # Replace ':' with '-'
+    new_event_name = event_name
+    fields = event_name.split("@")
+    if len(fields) != 3:
+        return None
+    up_exon, se_exon, dn_exon = fields
+    # Switch upstream and downstream exons if asked
+    if reverse_up_and_down:
+        up_exon, dn_exon = dn_exon, up_exon
+    new_event_name = "@".join(map(colonify, [up_exon, se_exon, dn_exon]))
+    return new_event_name
+
 
 @arg("fname", help="MISO comparisons file (*.miso_bf) to filter.")
 @arg("output-dir", help="Output directory.")
