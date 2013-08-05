@@ -9,7 +9,11 @@ import glob
 import re
 
 import tempfile
-import gffutils
+
+try:
+    import gffutils
+except:
+    print "Cannot import gffutils. GFF-related features might fail."
 import shutil
 import string
 from string import maketrans
