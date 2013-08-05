@@ -13,7 +13,8 @@ import tempfile
 try:
     import gffutils
 except:
-    print "Cannot import gffutils. GFF-related features might fail."
+    print "WARNING: Cannot import gffutils. GFF-related MISO helper " \
+          "scripts will need gffutils to be installed."
 import shutil
 import string
 from string import maketrans
