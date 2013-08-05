@@ -41,7 +41,7 @@ setup(name = 'rnaseqlib',
                   'rnaseqlib.ribo',
                   'rnaseqlib.stats',
                   'rnaseqlib.tests',
-                  'rnaseqlib.scripts'],
+                  'rnaseqlib.drivers'],
       # Only non-Python scripts go here
       # distutils always uses forward slashes      
       scripts = ['scripts/gtf2gff3.pl',
@@ -49,7 +49,7 @@ setup(name = 'rnaseqlib',
       # Python scripts are defined as entry points
       entry_points = {
                'console_scripts':
-               ['rna_pipeline = rnaseqlib.scripts.rna_pipeline:main',
+               ['rna_pipeline = rnaseqlib.drivers.rna_pipeline:main',
                 # MISO-related scripts
                 'misowrap = rnaseqlib.miso.misowrap:main',
                 'intersect_events = rnaseqlib.miso.intersect_events:main',
