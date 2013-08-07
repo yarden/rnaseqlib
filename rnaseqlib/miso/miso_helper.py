@@ -12,6 +12,10 @@ import sys
 import time
 import glob
 
+import pandas
+
+from collections import defaultdict, OrderedDict
+
 import argh
 from argcomplete.completers import EnvironCompleter
 from argh import arg
@@ -52,54 +56,119 @@ DEFAULT_FILTERS = \
     }
 
 
-def get_events_to_genes_from_gff(fname):
+def get_events_to_genes_from_gff(fname,
+                                 key_names=["ID",
+                                            "human_gff_id",
+                                            "mouse_gff_id"],
+                                 gene_id_cols=["ensg_id",
+                                               "gsymbol",
+                                               "refseq_id"]):
     """
     Create dictionary mapping event IDs to gene information
     from the given GFF file.
+
+    Uses as a key each attribute name in 'key_names'. 
     """
     gff_entries = pybedtools.BedTool(fname)
     gene_entries = gff_entries.filter(lambda x: x.fields[2] == "gene")
-    events_to_genes = {}
+    events_to_genes = defaultdict(dict)
     for gene in gene_entries:
         # Parse Ensembl gene, RefSeq and gene symbols
         attrs = gene.attrs
-        event_id = attrs["ID"]
-        events_to_genes[event_id] = {}
-        if "ensg_id" in attrs:
-            events_to_genes[event_id]["ensg_id"] = attrs["ensg_id"]
-        if "gsymbol" in attrs:
-            events_to_genes[event_id]["gsymbol"] = attrs["gsymbol"]
-        if "refseq_id" in attrs:
-            events_to_genes[event_id]["refseq_id"] = attrs["refseq_id"]
+        for key_name in key_names:
+            if key_name not in attrs:
+                continue
+            event_id = attrs[key_name]
+            for gene_col in gene_id_cols:
+                if gene_col in attrs:
+                    events_to_genes[event_id][gene_col] = attrs[gene_col]
+        for key_name in key_names:
+            if key_name not in attrs: continue
+            key_value = attrs[key_name]
+            events_to_genes[key_value][key_name] = key_value
     return events_to_genes
 
+
+def add_gene_info_to_df(df, genes_gff_fname,
+                        key_names=["ID",
+                                   "mouse_gff_id",
+                                   "human_gff_id"],
+                        gene_id_cols=["ensg_id", "gsymbol"]):
+    """
+    Given dataframe of comparisons add gene information
+    from GFF of genes in 'genes_gff_gff'.
+
+    Assumes 'df' is indexed by event_name. Searches
+    the attributes field of all 'gene' entries in
+    'genes_from_gff' to see if they have
+
+    'key_names' are the attributes of each 'gene' entry
+    that should be used as keys.
+    """
+    events_to_genes = \
+      get_events_to_genes_from_gff(genes_gff_fname,
+                                   key_names=key_names,
+                                   gene_id_cols=gene_id_cols)
+    # Make genes information dataframe
+    gene_info_df = []
+    combined_df = None
+    for event_name in df.index:
+        entry = {"event_name": event_name}
+        possible_event_names = \
+          [event_name,
+           convert_event_name_to_gff_format(event_name),
+           convert_event_name_to_gff_format(event_name,
+                                            reverse_up_and_down=True)]
+        event_found = False
+        for curr_event_name in possible_event_names:
+            if curr_event_name in events_to_genes:
+                # Try colonifying and reversing up and down exons
+                event_name = curr_event_name
+                event_found = True
+                break
+        if not event_found:
+            print "Possible events were: ", possible_event_names
+            raise Exception, "Could not find event %s gene info." %(event_name)
+        event_info = events_to_genes[event_name]
+        for gene_col in event_info:
+            entry[gene_col] = event_info[gene_col]
+        # Add remaining keys' information 
+        for key_name in key_names:
+            if key_name in event_info:
+                entry[key_name] = event_info[key_name]
+            else:
+                entry[key_name] = NA_VAL
+        gene_info_df.append(entry)
+    # Merge gene information into DataFrame
+    gene_info_df = pandas.DataFrame(gene_info_df).set_index("event_name")
+    combined_df = \
+      pandas.merge(df, gene_info_df,
+                   how="left",
+                   left_index=True,
+                   right_index=True)
+    print combined_df.columns
+    for k in key_names:
+        assert (k in combined_df.columns), "Could not find key %s in df." %(k)
+    return combined_df
+    
 
 @arg("dirname", help="MISO directory containing sample comparisons.")
 @arg("event-type", help="Event type (label that will be used to make combined file.")
 @arg("output-dir", help="Output directory.")
-@arg("--genes-from-gff",
-     help="If passed in a GFF3 file, incorporate gene IDs/symbols from " \
-          "\'gene\' entries of GFF if they are present.")
 @arg("--logger-name", help="Name for logging file.")
 @arg("--dry-run", help="Dry run. Do not execute commands.")
 def combine_comparisons(dirname, event_type, output_dir,
-                        genes_from_gff=None,
                         logger_name="misowrap_combine",
                         dry_run=False):
     """
     Given a directory containing MISO comparisons, output
-    a combined file pooling information from all the comparisosn.
-
+    a combined file pooling information from all the comparisons.
+    
     - dirname: directory containing MISO comparisons to process
-
-    - genes_from_gff: if a GFF filename, incorporate
-    gene information (determined by the attributes in 'gene_id_cols')
-    into the combined file.
     """
-    gene_id_cols = ["ensg_id", "gsymbol"]
     print "Merging comparisons for %s" %(event_type)
     dirname = utils.pathify(dirname)
-    output_dir = utils.pathify(output_dir)
+    output_dir = utils.pathify(output_dir)    
     logs_dir = os.path.join(output_dir, "logs")
     if not os.path.isdir(dirname):
         logger.error("Cannot find directory %s" %(dirname))
@@ -110,6 +179,14 @@ def combine_comparisons(dirname, event_type, output_dir,
     if len(comp_dirs) == 0:
         logger.info("No comparison directories in %s. Quitting." %(dirname))
         return
+    output_dir = os.path.join(output_dir, "combined_comparisons")
+    utils.make_dir(output_dir)
+    output_filename = os.path.join(output_dir,
+                                   "%s.miso_bf" %(event_type))
+    if os.path.isfile(output_filename):
+        logger.info("Found combined comparison file %s already, skipping" \
+                    %(output_filename))
+        return output_filename
     comparison_dfs = []
     for comp_num, comp_dirname in enumerate(comp_dirs):
         comparison_name = os.path.basename(comp_dirname)
@@ -126,15 +203,6 @@ def combine_comparisons(dirname, event_type, output_dir,
         comparison_dfs.append(bf_data)
     # Merge the comparison dfs together
     combined_df = pandas_utils.combine_dfs(comparison_dfs)
-    output_dir = os.path.join(output_dir, "combined_comparisons")
-    utils.make_dir(output_dir)
-    output_filename = os.path.join(output_dir,
-                                   "%s.miso_bf" %(event_type))
-    # Combine gene information if asked
-    if genes_from_gff is not None:
-        genes_gff_fname = genes_from_gff
-        combined_df = \
-          add_gene_info_to_events_df(logger, combined_df, genes_gff_fname)
     if not dry_run:
         logger.info("Outputting to: %s" %(output_filename))
         combined_df.to_csv(output_filename,
@@ -143,56 +211,7 @@ def combine_comparisons(dirname, event_type, output_dir,
                            na_rep=NA_VAL,
                            index=True,
                            index_label="event_name")
-
-
-def add_gene_info_to_events_df(logger, df, genes_gff_fname):
-    """
-    Add gene information to events DataFrame.
-    Assume the DataFrame is indexed by the event_name field.
-    """
-    logger.info("Importing genes from %s" %(genes_gff_fname))
-    if not os.path.isfile(genes_gff_fname):
-        logger.error("Cannot find genes GFF %s" %(genes_gff_fname))
-        sys.exit(1)
-    # Load mapping from events in GFF to gene info
-    events_to_genes = get_events_to_genes_from_gff(genes_gff_fname)
-    # Add the events to genes to the combined DataFrame
-    # Assume the combined dataframe is indexed by event name
-    if df.index[0] == 0:
-        logger.error("Combined dataframe not indexed by event name.")
-        sys.exit(1)
-    gene_symbols = []
-    ensembl_ids = []
-    gff_event_names = []
-    for event_name in df.index:
-        gsymbol = "NA"
-        ensembl_id = "NA"
-        possible_event_names = \
-          tuple([event_name,
-                 convert_event_name_to_gff_format(event_name),
-                 convert_event_name_to_gff_format(event_name,
-                                                  reverse_up_and_down=True)])
-        event_found = False
-        for curr_event_name in possible_event_names:
-            if curr_event_name in events_to_genes:
-                gsymbol = events_to_genes[curr_event_name]["gsymbol"]
-                ensembl_id = events_to_genes[curr_event_name]["ensg_id"]
-                gff_event_names.append(curr_event_name)
-                event_found = True
-                break
-        if not event_found:
-            raise Exception, "Failed to find event %s" %(event_name)
-        ##
-        ## Record gene symbol/ensembl ID
-        ##
-        gene_symbols.append(gsymbol)
-        ensembl_ids.append(ensembl_id)
-    # Add gene symbol / Ensembl IDs to 
-    df["ensembl_id"] = ensembl_ids
-    df["gene_symbol"] = gene_symbols
-    if len(gff_event_names) > 0:
-        df["gff_event_name"] = gff_event_names
-    return df
+    return output_filename
 
 
 def convert_event_name_to_gff_format(event_name, reverse_up_and_down=False):
@@ -209,7 +228,6 @@ def convert_event_name_to_gff_format(event_name, reverse_up_and_down=False):
     flipped.
     """
     strand = event_name.split(":")[-1]
-    print "STRAND --> ", strand
     def colonify(exon_name):
         chrom, coords, strand = exon_name.split(":")
         return ":".join([chrom, coords.replace("-", ":"), strand])

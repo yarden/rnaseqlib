@@ -22,7 +22,7 @@ try:
     from rpy2.robjects import r, Formula
     py2ri_orig = rpy2.robjects.conversion.py2ri
 except:
-    raise Exception, "Cannot import rpy2."
+    print "WARNING: Cannot import rpy2"
 
 
 def run_ma_loess(x, y, span=0.75):
