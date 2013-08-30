@@ -62,7 +62,8 @@ def get_events_to_genes_from_gff(fname,
                                             "mouse_gff_id"],
                                  gene_id_cols=["ensg_id",
                                                "gsymbol",
-                                               "refseq_id"]):
+                                               "refseq_id"],
+                                 main_key="ID"):
     """
     Create dictionary mapping event IDs to gene information
     from the given GFF file.
@@ -75,17 +76,20 @@ def get_events_to_genes_from_gff(fname,
     for gene in gene_entries:
         # Parse Ensembl gene, RefSeq and gene symbols
         attrs = gene.attrs
+        found_key_vals = {}
+        # Map all keys to gene information
         for key_name in key_names:
             if key_name not in attrs:
                 continue
             event_id = attrs[key_name]
+            found_key_vals[key_name] = event_id
             for gene_col in gene_id_cols:
                 if gene_col in attrs:
                     events_to_genes[event_id][gene_col] = attrs[gene_col]
-        for key_name in key_names:
-            if key_name not in attrs: continue
-            key_value = attrs[key_name]
-            events_to_genes[key_value][key_name] = key_value
+            # Map keys to all other keys
+            for key_name in key_names:
+                if key_name in attrs:
+                    events_to_genes[event_id][key_name] = attrs[key_name]
     return events_to_genes
 
 
@@ -132,7 +136,7 @@ def add_gene_info_to_df(df, genes_gff_fname,
         event_info = events_to_genes[event_name]
         for gene_col in event_info:
             entry[gene_col] = event_info[gene_col]
-        # Add remaining keys' information 
+        # Add remaining keys' information
         for key_name in key_names:
             if key_name in event_info:
                 entry[key_name] = event_info[key_name]
@@ -146,9 +150,9 @@ def add_gene_info_to_df(df, genes_gff_fname,
                    how="left",
                    left_index=True,
                    right_index=True)
-    print combined_df.columns
-    for k in key_names:
-        assert (k in combined_df.columns), "Could not find key %s in df." %(k)
+#    print combined_df.columns
+#    for k in key_names:
+#        assert (k in combined_df.columns), "Could not find key %s in df." %(k)
     return combined_df
     
 
