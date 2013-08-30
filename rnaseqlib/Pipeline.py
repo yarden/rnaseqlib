@@ -590,7 +590,7 @@ class Pipeline:
             self.logger.info("Processing sample %s" %(sample))
             job_name = "pipeline_run_%s" %(sample.label)
             sample_cmd = \
-                "python %s --run-on-sample %s --settings %s --output-dir %s" \
+                "%s --run-on-sample %s --settings %s --output-dir %s" \
                 %(PIPELINE_RUN_SCRIPT,
                   sample.label,
                   self.settings_filename,
