@@ -119,8 +119,12 @@ def load_misowrap_settings(config_filename,
                     # Raise the same Exception again
                     raise 
             else:
-                settings_info[section][option] = \
-                    ast.literal_eval(config.get(section, option))
+                value = config.get(section, option)
+                if value.startswith("~"):
+                    value = os.path.expanduser(value)
+                else:
+                    value = ast.literal_eval(value)
+                settings_info[section][option] = value
                 # Handle read length parameter. Normally just a single
                 # value interpreted as integer, but sometimes is a list of lists
                 # describing the read length for each of the samples, in case

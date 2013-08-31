@@ -18,6 +18,10 @@ import itertools
 import logging
 
 
+def invert_dict(d):
+    return dict((v,k) for k, v in d.iteritems())
+
+
 def parse_attributes(attributes_str):
     """
     Parse semi-colon separated key=val attributes
