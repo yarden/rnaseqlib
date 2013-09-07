@@ -161,6 +161,7 @@ def get_flanking_introns_coords(gene_obj):
 def parse_gff_attribs(attrib_str):
     attribs = {}
     for pair in attrib_str.split(";"):
+        if "=" not in pair: continue
         key, val = pair.split("=")
         attribs[key] = val
     return attribs
@@ -277,6 +278,9 @@ def get_nonredundant_genes(source_db, target_db, output_fname):
             line = "%s\n" %(str(source_gene).strip())
             genes_to_import.append(source_gene)
             out_file.write(line)
+        else:
+            print "Exons are matched for %s" %(str(source_gene))
+            time.sleep(1)
     out_file.close()
     t2 = time.time()
     print "  - Nonredundant genes fetching took %.2f secs" %(t2 - t1)

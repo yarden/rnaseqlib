@@ -95,7 +95,7 @@ def launchJob(cmd, job_name,
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE,
                                     stdin=subprocess.PIPE)
-	    print "Executing: ", scriptOptions["command"]
+            print "Executing: ", scriptOptions["command"]
             qsub.stdin.write(outtext)
             
             output = qsub.communicate()

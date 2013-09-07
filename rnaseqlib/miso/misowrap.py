@@ -45,7 +45,7 @@ def summarize(settings,
     sample_labels = misowrap_obj.sample_labels
     print "Summarizing MISO output..."
     for sample_label in sample_labels:
-        sample_basename = sample_label[0]
+        sample_basename = sample_label[1]
         sample_dir_path = \
             utils.pathify(os.path.join(misowrap_obj.miso_outdir,
                                        sample_basename))
@@ -189,6 +189,8 @@ def run(settings, logs_outdir,
     """
     Run MISO on a set of samples.
     """
+    if dry_run:
+        print " -- DRY RUN -- "
     settings_filename = utils.pathify(settings)
     if event_types is not None:
         print "Only running MISO on event types: ", event_types

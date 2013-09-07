@@ -31,7 +31,11 @@ def parse_attributes(attributes_str):
     if attributes_str.endswith(";"):
         attributes_str = attributes_str[0:-1]
     attribute_fields = attributes_str.split(";")
-    attributes = dict(map(lambda a: a.split("="), attribute_fields))
+    attributes = {}
+    for attr in attribute_fields:
+        if "=" not in attr: continue
+        attr_val = attr.split("=")
+        attributes[attr_val[0]] = attr_val[1]
     return attributes
 
 
