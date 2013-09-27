@@ -400,6 +400,13 @@ def in_any(s, l):
     return any([s in elt for elt in l])
 
 
+def reverse_in_any(l, s):
+    """
+    Return True if any of the elements of l are in s.
+    """
+    return any([elt in s for elt in l])
+
+
 def is_rpy2_available():
     """
     Return True if rpy2 is available, False otherwise.

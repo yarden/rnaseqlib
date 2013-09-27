@@ -53,7 +53,7 @@ def annotate_gff(gff_fname, genome):
     print "Annotating GFF %s (%s)" %(gff_fname, genome)
     table_fname = GENOME_TABLES[genome]
     print "  UCSC table: %s" %(table_fname)
-    cmd = "gff_annotate_events.py %s %s --in-place" %(gff_fname, table_fname)
+    cmd = "gff_annotate_events %s %s --in-place" %(gff_fname, table_fname)
     ret_val = os.system(cmd)
     if ret_val != 0:
         raise Exception, "GFF annotation failed for %s" %(gff_fname)
