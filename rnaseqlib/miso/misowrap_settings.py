@@ -90,7 +90,6 @@ def load_misowrap_settings(config_filename,
                                        "pipeline_dir"],
                            DATA_PARAMS=["bam_files",
                                         "sample_labels",
-                                        "comparison_groups",
                                         "readlen"]):
     config = ConfigParser.ConfigParser()
     print "Loading settings from: %s" %(config_filename)

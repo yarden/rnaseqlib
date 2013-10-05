@@ -262,12 +262,67 @@ class BindnSeq:
                 enriched_kmers_to_score = list(enriched_kmers["kmer"])
                 subseq_densities = \
                     fasta_counter.get_subseq_densities(enriched_kmers_to_score)
+                # Output enriched kmers ranks (fold change and ordinal)
+                fc_rank_str = \
+                  ",".join(map(str, list(enriched_kmers["rank"].values)))
+                ordinal_rank_str = \
+                  ",".join(map(str, list(enriched_kmers["ordinal_rank"].values)))
+                subseq_densities["fc_rank"] = fc_rank_str
+                subseq_densities["ordinal_rank"] = ordinal_rank_str
+                # Compute weighted densities using the fc rank
+                self.add_rank_weighted_densities(subseq_densities,
+                                                 enriched_kmers["rank"].values,
+                                                 kmer_len)
                 print "Outputting to: %s" %(output_fname)
                 subseq_densities.to_csv(output_fname,
                                         sep="\t",
                                         float_format="%.4f")
-            
 
+
+    def parse_counts(self, counts):
+        """
+        Parse counts field of kmer file.
+        """
+        return np.array(map(int, counts.split(",")))
+    
+
+    def add_rank_weighted_densities(self, subseq_densities, fc_rank, kmer_len):
+        """
+        Add to the given dataframe of kmer densities additional information,
+        namely the *weighted* densities of kmers which are the densities
+        multiplied by the rank (fold-change) of the kmer.
+        """
+        fc_rank = np.array(fc_rank)
+        # Record the weighted densities and the maximum
+        # fold enrichment of each kmer
+        weighted_densities = []
+        max_kmer_fcs = []
+        FC_FILTER = 4.0
+        for row_num, row in subseq_densities.iterrows():
+            # Observed number of counts for each kmer
+            obs_counts = self.parse_counts(row["obs_counts"])
+            # If the kmers are less than the threshold filter, consider them 0
+            obs_counts[np.where(fc_rank <= FC_FILTER)[0]] = 2**(-8.5)
+            # Multiply the observed counts by the fold change rank
+            # and sum the result
+            weighted_density = np.sum(obs_counts * fc_rank)
+            # Normalize density by sequence length
+            len_denom = float(row["seq_len"]) - kmer_len + 1
+            weighted_density = weighted_density / len_denom
+            weighted_densities.append(weighted_density)
+            # Record maximum fold change of any present kmer
+            nonzero_kmer_inds = np.where(obs_counts >= 1)[0]
+            if len(nonzero_kmer_inds) == 0:
+                # There are no enriched kmers in the region
+                max_kmer_fc = 2**(-8)#np.nan
+            else:
+                max_kmer_fc = max(fc_rank[nonzero_kmer_inds])
+            max_kmer_fcs.append(max_kmer_fc)
+        subseq_densities["weighted_density"] = weighted_densities
+        subseq_densities["max_kmer_fc"] = max_kmer_fcs
+        return subseq_densities
+
+    
     def __str__(self):
         return "BindnSeq(input_dir=%s)" %(self.results_dir)
 
