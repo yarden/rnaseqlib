@@ -426,9 +426,26 @@ def combine_comparisons(settings,
                 misowrap_obj.logger.info("Cannot find event type %s dir, " \
                                          "skipping..." %(event_type))
                 continue
-            # Look only at sample comparisons within each sample group
+            # Look only at sample comparisons within each sample group            
             for comp_group in comparison_groups:
-                sample_pairs = utils.get_pairwise_comparisons(comp_group)
+                sample_pairs = []
+                if type(comp_group) == tuple:
+                    # If it's a tuple, compare every element from first element 
+                    # of tuple to every element of second element from tuple
+                    if len(comp_group) != 2:
+                        raise Exception, \
+                          "Tuple comparison groups must have only two elements."
+                    first_comp_group, second_comp_group = comp_group
+                    num_comps = 0
+                    for first_elt in first_comp_group:
+                        for second_elt in second_comp_group:
+                            curr_comp = (first_elt, second_elt)
+                            if curr_comp in sample_pairs:
+                                # Don't add same comparison twice
+                                continue
+                            sample_pairs.append(curr_comp)
+                else:
+                    sample_pairs = utils.get_pairwise_comparisons(comp_group)
                 misowrap_obj.logger.info("  - Total of %d comparisons" \
                                          %(len(sample_pairs)))
                 for sample1, sample2 in sample_pairs:
