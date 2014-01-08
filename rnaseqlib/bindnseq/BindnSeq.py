@@ -136,7 +136,8 @@ class BindnSeq:
                           ascending=False)
         # Ordinal ranking
         ranked_or_df["ordinal_rank"] = \
-            ranked_or_df["rank"].rank(ascending=False)
+            ranked_or_df["rank"].rank(ascending=False,
+                                      method="min")
         return ranked_or_df
 
 
@@ -202,15 +203,35 @@ class BindnSeq:
         return fc_cutoff
 
 
-    def output_enriched_kmers_scores(self, kmer_lens, region_to_seq_fnames,
+    def get_enriched_kmers_df(self, kmer_len,
+                              method="max"):
+        # Load the OR data for this kmer length
+        kmer_data = self.odds_ratios[kmer_len]
+        # Order kmers by enrichment
+        ranked_kmers = self.rank_enriched_kmers(kmer_data, method=method)
+        fold_cutoff = self.get_fc_cutoff(ranked_kmers)
+        print "  - Fold for %d cutoff: %.2f" %(kmer_len, fold_cutoff)
+        # Select only kmers that meet the fold cutoff
+        enriched_kmers = ranked_kmers[ranked_kmers["rank"] >= fold_cutoff]
+        return enriched_kmers
+
+
+    def output_enriched_kmers_scores(self, kmer_lens,
+                                     region_to_seq_fnames,
                                      output_dir,
                                      method="max"):
         """
         Score enriched kmers in different regions. Calculates the
         sum of number of occurrences of each enriched kmer
-        in the region of interest and compares it to the expected
-        sum of occurrences based on a first-order Markov model.
+        in the region of interest.
 
+        Outputs:
+          - flat file format with summary statistics / enrichment
+            for kmers in each UTR
+          - series of BED-Detail files with positional information for use
+            in UCSC
+
+        
         Parameters:
         -----------
 
@@ -218,8 +239,6 @@ class BindnSeq:
         
         region_to_seq_fnames: mapping from region name (e.g. 3p_utr)
         to FASTA files with their sequences
-
-        fold_cutoff: fold cutoff for enriched kmers
 
         method: method to use for fold cutoff across BindnSeq concentrations
         (max uses maximum fold change across all concentrations)
@@ -236,14 +255,9 @@ class BindnSeq:
             if kmer_len not in self.odds_ratios:
                 raise Exception, "Cannot score enriched motifs for k = %d " \
                                  "since data is not loaded." %(kmer_len)
-            # Load the OR data for this kmer length
-            kmer_data = self.odds_ratios[kmer_len]
-            # Order kmers by enrichment
-            ranked_kmers = self.rank_enriched_kmers(kmer_data, method=method)
-            fold_cutoff = self.get_fc_cutoff(ranked_kmers)
-            print "  - Fold for %d cutoff: %.2f" %(kmer_len, fold_cutoff)
-            # Select only kmers that meet the fold cutoff
-            enriched_kmers = ranked_kmers[ranked_kmers["rank"] >= fold_cutoff]
+            # Get enriched kmers for this particular kmer len
+            enriched_kmers = \
+              self.get_enriched_kmers_df(kmer_len, method=method)
             print "Total of %d enriched kmers" %(len(enriched_kmers))
             # Load the sequences for the region of interest
             for region in region_to_seq_fnames:
@@ -270,13 +284,74 @@ class BindnSeq:
                 subseq_densities["fc_rank"] = fc_rank_str
                 subseq_densities["ordinal_rank"] = ordinal_rank_str
                 # Compute weighted densities using the fc rank
-                self.add_rank_weighted_densities(subseq_densities,
-                                                 enriched_kmers["rank"].values,
-                                                 kmer_len)
-                print "Outputting to: %s" %(output_fname)
+                #subseq_densities = \
+                #  self.add_rank_weighted_densities(subseq_densities,
+                #                                   enriched_kmers["rank"].values,
+                #                                   kmer_len)
+                ##
+                ## Output summary file
+                ##
+                print "Outputting summary file to: %s" %(output_fname)
                 subseq_densities.to_csv(output_fname,
                                         sep="\t",
                                         float_format="%.4f")
+                ##
+                ## Output BED files
+                ##
+                bed_output_fname = \
+                    os.path.join(output_dir,
+                                 "enriched_kmers.%s.%d_kmer.bed" \
+                                 %(region, kmer_len))
+                self.output_enriched_kmers_as_bed(seq_fname,
+                                                  enriched_kmers,
+                                                  kmer_len, 
+                                                  bed_output_fname)
+
+
+    def output_enriched_kmers_as_bed(self, seq_fname, 
+                                     enriched_kmers,
+                                     kmer_len,
+                                     bed_output_fname):
+        """
+        Output enriched kmers to the given BED filename as BED.
+
+        Arguments:
+
+          - seq_fname: FASTA sequences to count enriched kmers in
+          - enriched_kmers: DataFrame of enriched kmers
+          - 
+        """
+        print "Outputting BED file: %s" %(bed_output_fname)
+        fasta_counter = seq_counter.SeqCounter(seq_fname)
+        with open(bed_output_fname, "w") as bed_out:
+            # Enriched kmers to look at
+            enriched_kmers_to_score = list(enriched_kmers["kmer"])
+            print "ENRICHED KMERS TO SCORE: ", enriched_kmers_to_score
+            print fasta_counter.seqs
+            for curr_seq in fasta_counter.seqs:
+                seq_name = curr_seq[0]
+                # Get starting positions of all the enriched kmers in
+                # current sequence
+                enriched_kmers_starts = \
+                  fasta_counter.count_subseqs_with_starts(curr_seq[1],
+                                                          enriched_kmers_to_score)
+                # Output each enriched kmer start position
+                print "Current seq: "
+                print curr_seq[0]
+                print curr_seq[1]
+                # Parse the sequence chromosome, start, end coordinates
+                print seq_coords, " < < < ", " seq coords"
+                seq_chrom, seq_coords, seq_strand = \
+                  seq_name.split(";")[0].seq_coords.split(":")
+                seq_start, seq_end = map(int, seq_coords.split("-"))
+                ##
+                ## TODO: here add arithmetic to convert the start
+                ## position within the sequence to the corresponding
+                ## genomic coordinate
+                ##
+                print "kmer starts->", enriched_kmers_starts
+                print "----"
+                raise Exception, "test"
 
 
     def parse_counts(self, counts):
@@ -286,7 +361,8 @@ class BindnSeq:
         return np.array(map(int, counts.split(",")))
     
 
-    def add_rank_weighted_densities(self, subseq_densities, fc_rank, kmer_len):
+    def add_rank_weighted_densities(self, subseq_densities,
+                                    fc_rank, kmer_len):
         """
         Add to the given dataframe of kmer densities additional information,
         namely the *weighted* densities of kmers which are the densities
@@ -297,15 +373,15 @@ class BindnSeq:
         # fold enrichment of each kmer
         weighted_densities = []
         max_kmer_fcs = []
-        FC_FILTER = 4.0
         for row_num, row in subseq_densities.iterrows():
             # Observed number of counts for each kmer
             obs_counts = self.parse_counts(row["obs_counts"])
             # If the kmers are less than the threshold filter, consider them 0
-            obs_counts[np.where(fc_rank <= FC_FILTER)[0]] = 2**(-8.5)
+            #obs_counts[np.where(fc_rank >= FC_FILTER)[0]] = 2**(-8.5)
             # Multiply the observed counts by the fold change rank
             # and sum the result
-            weighted_density = np.sum(obs_counts * fc_rank)
+            #weighted_density = np.sum(obs_counts * fc_rank)
+            weighted_density = np.sum(obs_counts)
             # Normalize density by sequence length
             len_denom = float(row["seq_len"]) - kmer_len + 1
             weighted_density = weighted_density / len_denom

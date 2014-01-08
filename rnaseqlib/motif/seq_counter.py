@@ -12,11 +12,11 @@ import numpy as np
 import cogent
 from cogent.core.usage import DinucUsage
 
-
 import rnaseqlib
 import rnaseqlib.utils as utils
 import rnaseqlib.motif.dinuc_freq as dinuc_freq
 import rnaseqlib.fasta_utils as fasta_utils
+
 
 def overlap_count(s, sub):
     """
@@ -30,7 +30,26 @@ def overlap_count(s, sub):
         else:
             return count
 
+        
+def overlap_count_with_starts(s, sub):
+    """
+    Count overlapping occurrences of sub in s.
+    Return numbers of counts as well as vector of starting
+    positions (0-based) of each.
+    """
+    count = start = 0
+    start_positions = []
+    while True:
+        start = s.find(sub, start) + 1
+        if start > 0:
+            # Important to subtract 1 to get 0-based
+            # indexing
+            start_positions.append(start - 1) 
+            count += 1
+        else:
+            return count, start_positions
 
+        
 class SeqCounter:
     """
     Sequence counter for a given FASTA file.
@@ -79,6 +98,18 @@ class SeqCounter:
         return np.array(obs_counts)
 
 
+    def count_subseqs_with_starts(self, seq, subseqs):
+        """
+        Count occurrences of subseqs in seq. For each subseq,
+        return a list of its starting positions in seq.
+        """
+        start_positions = []
+        for subseq in subseqs:
+            counts, starts = overlap_count_with_starts(seq, subseq)
+            start_positions.append(starts)
+        return start_positions
+
+
     def get_subseq_densities(self, subseqs):
         """
         Collect densities of subsequences in sequence.
@@ -99,8 +130,9 @@ class SeqCounter:
                 (float(len(seq) - subseq_len + 1)) / KB
             # Vector of densities, one for each subsequence
             densities = subseq_counts / density_denom
-            mean_density = np.mean(densities)
-            median_density = np.median(densities)
+            #mean_density = np.mean(densities)
+            #median_density = np.median(densities)
+            sum_density = sum(densities)
             max_density = max(densities)
             obs_counts_str = \
                 ",".join(["%d" %(int(c)) for c in subseq_counts])
@@ -108,26 +140,25 @@ class SeqCounter:
                 ",".join([str(d) for d in densities])
             seq_len_in_kb = seq_len / KB
             entries.append([seq_name,
-                            mean_density,
-                            median_density,
+                            sum_density,
                             max_density,
                             obs_counts_str,
                             densities_str,
                             seq_len,
                             seq_len_in_kb])
         col_names = ["header",
-                     "mean_density", "median_density", "max_density",
+                     "sum_density", "max_density",
                      "obs_counts", "densities", "seq_len",
                      "seq_len_in_kb"]
         entries = pandas.DataFrame(entries,
                                    columns=col_names).set_index("header")
         # Sort in place by mean density in descending order
-        entries.sort(column=["mean_density"],
+        entries.sort(column=["sum_density", "max_density"],
                      ascending=False,
                      inplace=True)
         return entries
-                
 
+    
     def obs_over_exp_counts_dinuc(self, subseqs):
         """
         Get observed over expected ratio of counts (non-log!) of
