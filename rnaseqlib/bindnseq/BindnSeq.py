@@ -311,7 +311,9 @@ class BindnSeq:
     def output_enriched_kmers_as_bed(self, seq_fname, 
                                      enriched_kmers,
                                      kmer_len,
-                                     bed_output_fname):
+                                     bed_output_fname,
+                                     track_desc="BindnSeq enriched kmers",
+                                     db="mm9"):
         """
         Output enriched kmers to the given BED filename as BED.
 
@@ -326,8 +328,15 @@ class BindnSeq:
         with open(bed_output_fname, "w") as bed_out:
             # Enriched kmers to look at
             enriched_kmers_to_score = list(enriched_kmers["kmer"])
-            print "ENRICHED KMERS TO SCORE: ", enriched_kmers_to_score
-            print fasta_counter.seqs
+            # Output BED Detail header
+            bed_header = \
+              "track name=BindnSeq type=bedDetail description=%s " \
+              "db=%s visibility=3" %(track_desc, db)
+            print "BED Detail track header: "
+            print bed_header
+            bed_out.write("%s\n" %(bed_header))
+            # Go through all sequences (e.g. these might be 3' UTRs
+            # or other genomic features of interest)
             for curr_seq in fasta_counter.seqs:
                 seq_name = curr_seq[0]
                 # Get starting positions of all the enriched kmers in
@@ -340,15 +349,49 @@ class BindnSeq:
                 print curr_seq[0]
                 print curr_seq[1]
                 # Parse the sequence chromosome, start, end coordinates
-                print seq_coords, " < < < ", " seq coords"
                 seq_chrom, seq_coords, seq_strand = \
-                  seq_name.split(";")[0].seq_coords.split(":")
-                seq_start, seq_end = map(int, seq_coords.split("-"))
-                ##
-                ## TODO: here add arithmetic to convert the start
-                ## position within the sequence to the corresponding
-                ## genomic coordinate
-                ##
+                  seq_name.split(";")[0].split(":")
+                print seq_coords
+                seq_start, seq_end = seq_coords.split("-")
+                # Output a BED line for each occurrence of each
+                # enriched kmer in current sequence
+                for curr_kmer in enriched_kmers_starts:
+                    kmer_seq, kmer_starts = curr_kmer
+                    kmer_len = len(kmer_seq)
+                    for kmer_start in kmer_starts:
+                        ## BED:
+                        ## 1. chrom
+                        ## 2. chromStart
+                        ## 3. chromEnd
+                        ## 4. name
+                        ## 5. score
+                        ## 6. strand
+                        ## 7. thickStart
+                        ## 8. thickEnd
+                        ## 9. itemRgb
+                        kmer_score = 1
+                        # The start position of kmer within
+                        # the current sequence of interest
+                        kmer_start_in_seq = seq_start + kmer_start
+                        # The end position of kmer within current
+                        # sequence
+                        kmer_end_in_seq = kmer_start_in_seq + kmer_len
+                        bed_entry = {"chrom": seq_chrom,
+                                     "chromStart": str(kmer_start_in_seq),
+                                     "chromEnd": str(kmer_end_in_seq),
+                                     "name": kmer_seq
+                                     "score": kmer_score,
+                                     "strand": seq_strand}
+                        bed_line = \
+                          "%(chrom)s\t%(chromStart)s\t%(chromEnd)s" \
+                          "%(name)s\t%(score)s\t%(strand)s\n" \
+                          % bed_entry
+                        print bed_line
+                        ##
+                        ## TODO: here add arithmetic to convert the start
+                        ## position within the sequence to the corresponding
+                        ## genomic coordinate
+                        ##
                 print "kmer starts->", enriched_kmers_starts
                 print "----"
                 raise Exception, "test"

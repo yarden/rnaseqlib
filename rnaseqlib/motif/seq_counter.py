@@ -101,12 +101,13 @@ class SeqCounter:
     def count_subseqs_with_starts(self, seq, subseqs):
         """
         Count occurrences of subseqs in seq. For each subseq,
-        return a list of its starting positions in seq.
+        return a tuple of the subseq and a list of its starting positions
+        in seq.
         """
         start_positions = []
         for subseq in subseqs:
             counts, starts = overlap_count_with_starts(seq, subseq)
-            start_positions.append(starts)
+            start_positions.append((subseq, starts))
         return start_positions
 
 
