@@ -324,6 +324,7 @@ class BindnSeq:
           - 
         """
         print "Outputting BED file: %s" %(bed_output_fname)
+        print "SEQ FNAME: %s" %(seq_fname)
         fasta_counter = seq_counter.SeqCounter(seq_fname)
         with open(bed_output_fname, "w") as bed_out:
             # Enriched kmers to look at
@@ -338,7 +339,9 @@ class BindnSeq:
             # Go through all sequences (e.g. these might be 3' UTRs
             # or other genomic features of interest)
             for curr_seq in fasta_counter.seqs:
-                seq_name = curr_seq[0]
+                seq_name = curr_seq[0][1:]
+                print "SEQUENCE IS: %s" %(seq_name)
+                raise Exception
                 # Get starting positions of all the enriched kmers in
                 # current sequence
                 enriched_kmers_starts = \
@@ -346,8 +349,6 @@ class BindnSeq:
                                                           enriched_kmers_to_score)
                 # Output each enriched kmer start position
                 print "Current seq: "
-                print curr_seq[0]
-                print curr_seq[1]
                 # Parse the sequence chromosome, start, end coordinates
                 seq_chrom, seq_coords, seq_strand = \
                   seq_name.split(";")[0].split(":")
@@ -357,6 +358,10 @@ class BindnSeq:
                 # enriched kmer in current sequence
                 for curr_kmer in enriched_kmers_starts:
                     kmer_seq, kmer_starts = curr_kmer
+                    # If this kmer has no occurrences in current sequence,
+                    # continue to next
+                    if len(kmer_starts) == 0:
+                        continue
                     kmer_len = len(kmer_seq)
                     for kmer_start in kmer_starts:
                         ## BED:
@@ -372,21 +377,24 @@ class BindnSeq:
                         kmer_score = 1
                         # The start position of kmer within
                         # the current sequence of interest
-                        kmer_start_in_seq = seq_start + kmer_start
+                        kmer_start_in_seq = int(seq_start) + kmer_start
                         # The end position of kmer within current
                         # sequence
                         kmer_end_in_seq = kmer_start_in_seq + kmer_len
                         bed_entry = {"chrom": seq_chrom,
                                      "chromStart": str(kmer_start_in_seq),
                                      "chromEnd": str(kmer_end_in_seq),
-                                     "name": kmer_seq
+                                     "name": kmer_seq,
                                      "score": kmer_score,
                                      "strand": seq_strand}
                         bed_line = \
-                          "%(chrom)s\t%(chromStart)s\t%(chromEnd)s" \
+                          "%(chrom)s\t%(chromStart)s\t%(chromEnd)s\t" \
                           "%(name)s\t%(score)s\t%(strand)s\n" \
                           % bed_entry
                         print bed_line
+                        print "Occurs at position %d" %(kmer_start)
+                        print "IN: "
+                        print curr_seq
                         ##
                         ## TODO: here add arithmetic to convert the start
                         ## position within the sequence to the corresponding
