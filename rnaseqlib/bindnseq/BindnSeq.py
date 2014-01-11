@@ -340,8 +340,6 @@ class BindnSeq:
             # or other genomic features of interest)
             for curr_seq in fasta_counter.seqs:
                 seq_name = curr_seq[0][1:]
-                print "SEQUENCE IS: %s" %(seq_name)
-                raise Exception
                 # Get starting positions of all the enriched kmers in
                 # current sequence
                 enriched_kmers_starts = \
@@ -364,6 +362,8 @@ class BindnSeq:
                         continue
                     kmer_len = len(kmer_seq)
                     for kmer_start in kmer_starts:
+                        # Map start to be 1-based not 0 based
+                        kmer_start += 1
                         ## BED:
                         ## 1. chrom
                         ## 2. chromStart
@@ -375,12 +375,15 @@ class BindnSeq:
                         ## 8. thickEnd
                         ## 9. itemRgb
                         kmer_score = 1
-                        # The start position of kmer within
-                        # the current sequence of interest
-                        kmer_start_in_seq = int(seq_start) + kmer_start
-                        # The end position of kmer within current
-                        # sequence
-                        kmer_end_in_seq = kmer_start_in_seq + kmer_len
+                        if seq_strand == "-":
+                            continue
+                        else:
+                            # The start position of kmer within
+                            # the current sequence of interest
+                            kmer_start_in_seq = int(seq_start) + kmer_start
+                            # The end position of kmer within current
+                            # sequence
+                            kmer_end_in_seq = kmer_start_in_seq + kmer_len
                         bed_entry = {"chrom": seq_chrom,
                                      "chromStart": str(kmer_start_in_seq),
                                      "chromEnd": str(kmer_end_in_seq),
@@ -395,6 +398,7 @@ class BindnSeq:
                         print "Occurs at position %d" %(kmer_start)
                         print "IN: "
                         print curr_seq
+                        raise Exception, "Testing."
                         ##
                         ## TODO: here add arithmetic to convert the start
                         ## position within the sequence to the corresponding
@@ -402,7 +406,8 @@ class BindnSeq:
                         ##
                 print "kmer starts->", enriched_kmers_starts
                 print "----"
-                raise Exception, "test"
+                if seq_strand == "+":
+                    raise Exception, "test"
 
 
     def parse_counts(self, counts):
