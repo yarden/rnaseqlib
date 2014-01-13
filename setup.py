@@ -40,6 +40,7 @@ setup(name = 'rnaseqlib',
                   'rnaseqlib.motif',
                   'rnaseqlib.ribo',
                   'rnaseqlib.stats',
+                  'rnaseqlib.bindnseq',
                   'rnaseqlib.tests',
                   'rnaseqlib.drivers'],
       # Only non-Python scripts go here

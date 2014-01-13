@@ -258,6 +258,9 @@ class BindnSeq:
             # Get enriched kmers for this particular kmer len
             enriched_kmers = \
               self.get_enriched_kmers_df(kmer_len, method=method)
+            # Make mapping from enriched kmer to its fold change
+            enriched_kmer_to_fc = \
+              dict(enriched_kmers[["kmer", "rank"]].values)
             print "Total of %d enriched kmers" %(len(enriched_kmers))
             # Load the sequences for the region of interest
             for region in region_to_seq_fnames:
@@ -304,12 +307,14 @@ class BindnSeq:
                                  %(region, kmer_len))
                 self.output_enriched_kmers_as_bed(seq_fname,
                                                   enriched_kmers,
+                                                  enriched_kmer_to_fc,
                                                   kmer_len, 
                                                   bed_output_fname)
 
 
     def output_enriched_kmers_as_bed(self, seq_fname, 
                                      enriched_kmers,
+                                     enriched_kmer_to_fc,
                                      kmer_len,
                                      bed_output_fname,
                                      track_desc="BindnSeq enriched kmers",
@@ -321,7 +326,8 @@ class BindnSeq:
 
           - seq_fname: FASTA sequences to count enriched kmers in
           - enriched_kmers: DataFrame of enriched kmers
-          - 
+          - enriched_kmer_to_fc: dict mapping from enriched kmers to their
+            fold change 
         """
         print "Outputting BED file: %s" %(bed_output_fname)
         print "SEQ FNAME: %s" %(seq_fname)
@@ -340,17 +346,16 @@ class BindnSeq:
             # or other genomic features of interest)
             for curr_seq in fasta_counter.seqs:
                 seq_name = curr_seq[0][1:]
+                seq_len = len(curr_seq[1])
                 # Get starting positions of all the enriched kmers in
                 # current sequence
                 enriched_kmers_starts = \
                   fasta_counter.count_subseqs_with_starts(curr_seq[1],
                                                           enriched_kmers_to_score)
                 # Output each enriched kmer start position
-                print "Current seq: "
                 # Parse the sequence chromosome, start, end coordinates
                 seq_chrom, seq_coords, seq_strand = \
                   seq_name.split(";")[0].split(":")
-                print seq_coords
                 seq_start, seq_end = seq_coords.split("-")
                 # Output a BED line for each occurrence of each
                 # enriched kmer in current sequence
@@ -374,16 +379,22 @@ class BindnSeq:
                         ## 7. thickStart
                         ## 8. thickEnd
                         ## 9. itemRgb
-                        kmer_score = 1
+                        # Kmer score is defined to be the fold change
+                        # rescaled (multiplied by 100 and < 1000)
+                        kmer_score = \
+                          min(round(enriched_kmer_to_fc[kmer_seq] * 100.0),
+                              1000)
+                        print "kmer score is: ", kmer_score
                         if seq_strand == "-":
-                            continue
+                            # Minus strand: the start has to be calculated
+                            # from the end coordinate
+                            kmer_end_in_seq = int(seq_end) - kmer_start + 1
+                            kmer_start_in_seq = kmer_end_in_seq - kmer_len 
                         else:
-                            # The start position of kmer within
-                            # the current sequence of interest
+                            continue
+                            # Plus strand
                             kmer_start_in_seq = int(seq_start) + kmer_start
-                            # The end position of kmer within current
-                            # sequence
-                            kmer_end_in_seq = kmer_start_in_seq + kmer_len
+                            kmer_end_in_seq = kmer_start_in_seq + kmer_len - 1
                         bed_entry = {"chrom": seq_chrom,
                                      "chromStart": str(kmer_start_in_seq),
                                      "chromEnd": str(kmer_end_in_seq),
@@ -394,20 +405,13 @@ class BindnSeq:
                           "%(chrom)s\t%(chromStart)s\t%(chromEnd)s\t" \
                           "%(name)s\t%(score)s\t%(strand)s\n" \
                           % bed_entry
-                        print bed_line
-                        print "Occurs at position %d" %(kmer_start)
-                        print "IN: "
-                        print curr_seq
-                        raise Exception, "Testing."
+                        bed_out.write(bed_line)
                         ##
                         ## TODO: here add arithmetic to convert the start
                         ## position within the sequence to the corresponding
                         ## genomic coordinate
                         ##
-                print "kmer starts->", enriched_kmers_starts
-                print "----"
-                if seq_strand == "+":
-                    raise Exception, "test"
+                raise Exception, "Testing."
 
 
     def parse_counts(self, counts):
