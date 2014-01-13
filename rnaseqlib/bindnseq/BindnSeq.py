@@ -42,7 +42,15 @@ def load_bindnseq_counts_file(counts_fname, skiprows=1):
                                       skiprows=skiprows)
         counts_df.columns = columns
     return counts_df
-        
+
+
+def rescale_score(OldValue, OldMin, OldMax, NewMin, NewMax):
+    """
+    Rescale values, e.g. convert the value 3 from scale [1,5]
+    to new scale like [1,1000].
+    """
+    return (((OldValue - OldMin) * (NewMax - NewMin)) / (OldMax - OldMin)) + NewMin
+
 
 class BindnSeq:
     def __init__(self, results_dir, output_dir,
@@ -338,9 +346,7 @@ class BindnSeq:
             # Output BED Detail header
             bed_header = \
               "track name=BindnSeq type=bedDetail description=%s " \
-              "db=%s visibility=3" %(track_desc, db)
-            print "BED Detail track header: "
-            print bed_header
+              "db=%s visibility=3 useScore=1" %(track_desc, db)
             bed_out.write("%s\n" %(bed_header))
             # Go through all sequences (e.g. these might be 3' UTRs
             # or other genomic features of interest)
@@ -381,10 +387,16 @@ class BindnSeq:
                         ## 9. itemRgb
                         # Kmer score is defined to be the fold change
                         # rescaled (multiplied by 100 and < 1000)
+#                        kmer_score = \
+#                          int(min(round(enriched_kmer_to_fc[kmer_seq] * 100.0),
+#                              1000))
+                        # Rescale fold enrichments assuming 4 is basically
+                        # fold enrichment maximum
                         kmer_score = \
-                          min(round(enriched_kmer_to_fc[kmer_seq] * 100.0),
-                              1000)
-                        print "kmer score is: ", kmer_score
+                          min(rescale_score(enriched_kmer_to_fc[kmer_seq],
+                                            1, 4,
+                                            1, 1000), 1000)
+                        kmer_score = int(kmer_score)
                         if seq_strand == "-":
                             # Minus strand: the start has to be calculated
                             # from the end coordinate
@@ -399,7 +411,7 @@ class BindnSeq:
                                      "chromStart": str(kmer_start_in_seq),
                                      "chromEnd": str(kmer_end_in_seq),
                                      "name": kmer_seq,
-                                     "score": kmer_score,
+                                     "score": str(kmer_score),
                                      "strand": seq_strand}
                         bed_line = \
                           "%(chrom)s\t%(chromStart)s\t%(chromEnd)s\t" \
@@ -411,7 +423,9 @@ class BindnSeq:
                         ## position within the sequence to the corresponding
                         ## genomic coordinate
                         ##
-                raise Exception, "Testing."
+                print "quit"
+                sys.exit(0)
+                #raise Exception, "Testing."
 
 
     def parse_counts(self, counts):
