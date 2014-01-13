@@ -346,7 +346,7 @@ class BindnSeq:
             # Output BED Detail header
             bed_header = \
               "track name=BindnSeq type=bedDetail description=%s " \
-              "db=%s visibility=3 useScore=1" %(track_desc, db)
+              "db=%s visibility=3 useScore=1 itemRgb=On" %(track_desc, db)
             bed_out.write("%s\n" %(bed_header))
             # Go through all sequences (e.g. these might be 3' UTRs
             # or other genomic features of interest)
@@ -390,13 +390,20 @@ class BindnSeq:
 #                        kmer_score = \
 #                          int(min(round(enriched_kmer_to_fc[kmer_seq] * 100.0),
 #                              1000))
-                        # Rescale fold enrichments assuming 4 is basically
-                        # fold enrichment maximum
+                        # Rescale fold enrichments assuming maximum
+                        # value for fold change
+                        fc_ceiling = 4
                         kmer_score = \
                           min(rescale_score(enriched_kmer_to_fc[kmer_seq],
-                                            1, 4,
+                                            1, fc_ceiling,
                                             1, 1000), 1000)
                         kmer_score = int(kmer_score)
+                        # Kmer color
+                        kmer_color = \
+                          min(rescale_score(enriched_kmer_to_fc[kmer_seq],
+                                            1, fc_ceiling,
+                                            1, 255), 255)
+                        kmer_color = int(kmer_color)
                         if seq_strand == "-":
                             # Minus strand: the start has to be calculated
                             # from the end coordinate
@@ -412,20 +419,17 @@ class BindnSeq:
                                      "chromEnd": str(kmer_end_in_seq),
                                      "name": kmer_seq,
                                      "score": str(kmer_score),
-                                     "strand": seq_strand}
+                                     "strand": seq_strand,
+                                     "thickStart": str(kmer_start_in_seq),
+                                     "thickEnd": str(kmer_end_in_seq),
+                                     "itemRgb": "%d,0,0" %(kmer_color)}
                         bed_line = \
                           "%(chrom)s\t%(chromStart)s\t%(chromEnd)s\t" \
-                          "%(name)s\t%(score)s\t%(strand)s\n" \
+                          "%(name)s\t%(score)s\t%(strand)s\t" \
+                          "%(thickStart)s\t%(thickEnd)s\t%(itemRgb)s\n" \
                           % bed_entry
                         bed_out.write(bed_line)
-                        ##
-                        ## TODO: here add arithmetic to convert the start
-                        ## position within the sequence to the corresponding
-                        ## genomic coordinate
-                        ##
-                print "quit"
-                sys.exit(0)
-                #raise Exception, "Testing."
+        print "Completed BED output."
 
 
     def parse_counts(self, counts):
