@@ -202,7 +202,7 @@ class BindnSeq:
         meme_utils.run_meme(self.logger, self.seqs_fname, output_dir)
 
 
-    def get_fc_cutoff(self, or_df, percentile_cutoff=95):
+    def get_fc_cutoff(self, or_df, percentile_cutoff=98):
         """
         Return fold change cutoffs for each kmer length. Select
         cutoff to yield top %X percentile of kmers.
@@ -313,11 +313,15 @@ class BindnSeq:
                     os.path.join(output_dir,
                                  "enriched_kmers.%s.%d_kmer.bed" \
                                  %(region, kmer_len))
+                # Description of current track
+                curr_track_desc = \
+                  "BNS enriched kmers (%s, %d-mer)" %(region, kmer_len)
                 self.output_enriched_kmers_as_bed(seq_fname,
                                                   enriched_kmers,
                                                   enriched_kmer_to_fc,
                                                   kmer_len, 
-                                                  bed_output_fname)
+                                                  bed_output_fname,
+                                                  track_desc=curr_track_desc)
 
 
     def output_enriched_kmers_as_bed(self, seq_fname, 
@@ -345,8 +349,8 @@ class BindnSeq:
             enriched_kmers_to_score = list(enriched_kmers["kmer"])
             # Output BED Detail header
             bed_header = \
-              "track name=BindnSeq type=bedDetail description=%s " \
-              "db=%s visibility=3 useScore=1 itemRgb=On" %(track_desc, db)
+              "track name=\"%s\" description=\"%s\" useScore=1 " \
+              "db=%s visibility=3" %(track_desc, track_desc, db)
             bed_out.write("%s\n" %(bed_header))
             # Go through all sequences (e.g. these might be 3' UTRs
             # or other genomic features of interest)
@@ -384,7 +388,6 @@ class BindnSeq:
                         ## 6. strand
                         ## 7. thickStart
                         ## 8. thickEnd
-                        ## 9. itemRgb
                         # Kmer score is defined to be the fold change
                         # rescaled (multiplied by 100 and < 1000)
 #                        kmer_score = \
@@ -421,12 +424,11 @@ class BindnSeq:
                                      "score": str(kmer_score),
                                      "strand": seq_strand,
                                      "thickStart": str(kmer_start_in_seq),
-                                     "thickEnd": str(kmer_end_in_seq),
-                                     "itemRgb": "%d,0,0" %(kmer_color)}
+                                     "thickEnd": str(kmer_end_in_seq)}
                         bed_line = \
                           "%(chrom)s\t%(chromStart)s\t%(chromEnd)s\t" \
                           "%(name)s\t%(score)s\t%(strand)s\t" \
-                          "%(thickStart)s\t%(thickEnd)s\t%(itemRgb)s\n" \
+                          "%(thickStart)s\t%(thickEnd)s\n" \
                           % bed_entry
                         bed_out.write(bed_line)
         print "Completed BED output."
