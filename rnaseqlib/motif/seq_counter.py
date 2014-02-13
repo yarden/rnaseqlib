@@ -135,6 +135,8 @@ class SeqCounter:
             #median_density = np.median(densities)
             sum_density = sum(densities)
             max_density = max(densities)
+            # Sum of occurrences of all subseqs
+            sum_counts = sum(subseq_counts)
             obs_counts_str = \
                 ",".join(["%d" %(int(c)) for c in subseq_counts])
             densities_str = \
@@ -144,12 +146,17 @@ class SeqCounter:
                             sum_density,
                             max_density,
                             obs_counts_str,
+                            sum_counts,
                             densities_str,
                             seq_len,
                             seq_len_in_kb])
         col_names = ["header",
-                     "sum_density", "max_density",
-                     "obs_counts", "densities", "seq_len",
+                     "sum_density",
+                     "max_density",
+                     "obs_counts",
+                     "sum_counts",
+                     "densities",
+                     "seq_len",
                      "seq_len_in_kb"]
         entries = pandas.DataFrame(entries,
                                    columns=col_names).set_index("header")

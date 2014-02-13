@@ -61,18 +61,20 @@ def my_pdist(X, dist_func,
             if len(pairs) == 0:
                 continue
             dist = dist_func(pairs[:, 0],
-                             pairs[:, 1],
-                             na_vals=na_vals)
+                             pairs[:, 1])
             pdist_row.append(dist)
         dist_matrix.append(pdist_row)
     dist_matrix = array(dist_matrix)
     return dist_matrix
 
 
-def leven_dist(first, second):
+def leven_dist(first, second, na_vals=[]):
     """
     Levenshtein distance between two strings.
     """
+    if (len(first) == 1) or len(second) == 1:
+        raise Exception, "One of two vectors passed to leven dist has only 1 " \
+                         "element in it."
     if len(first) > len(second):
         first, second = second, first
     if len(second) == 0:

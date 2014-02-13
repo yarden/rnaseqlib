@@ -239,7 +239,6 @@ class BindnSeq:
           - series of BED-Detail files with positional information for use
             in UCSC
 
-        
         Parameters:
         -----------
 
@@ -276,13 +275,9 @@ class BindnSeq:
                     os.path.join(output_dir,
                                  "enriched_kmers.%s.%d_kmer.txt" \
                                  %(region, kmer_len))
-                if os.path.isfile(output_fname):
-                    print "Found %s. Skipping..." %(output_fname)
-                    continue
                 seq_fname = region_to_seq_fnames[region]
                 if seq_fname is None:
                     print "Skipping %s" %(region)
-                    continue
                 fasta_counter = seq_counter.SeqCounter(seq_fname)
                 enriched_kmers_to_score = list(enriched_kmers["kmer"])
                 subseq_densities = \
@@ -295,10 +290,10 @@ class BindnSeq:
                 subseq_densities["fc_rank"] = fc_rank_str
                 subseq_densities["ordinal_rank"] = ordinal_rank_str
                 # Compute weighted densities using the fc rank
-                #subseq_densities = \
-                #  self.add_rank_weighted_densities(subseq_densities,
-                #                                   enriched_kmers["rank"].values,
-                #                                   kmer_len)
+                subseq_densities = \
+                  self.add_rank_weighted_densities(subseq_densities,
+                                                   enriched_kmers["rank"].values,
+                                                   kmer_len)
                 ##
                 ## Output summary file
                 ##
@@ -306,6 +301,12 @@ class BindnSeq:
                 subseq_densities.to_csv(output_fname,
                                         sep="\t",
                                         float_format="%.4f")
+                if region == "cds":
+                    cds_per_gene_fname = \
+                      "%s.per_gene.txt" %(output_fname.split(".txt")[0])
+                    self.output_cds_kmers_per_gene(subseq_densities,
+                                                   cds_per_gene_fname,
+                                                   kmer_len)
                 ##
                 ## Output BED files
                 ##
@@ -319,11 +320,58 @@ class BindnSeq:
                 self.output_enriched_kmers_as_bed(seq_fname,
                                                   enriched_kmers,
                                                   enriched_kmer_to_fc,
-                                                  kmer_len, 
+                                                  kmer_len,
                                                   bed_output_fname,
                                                   track_desc=curr_track_desc)
 
 
+    def output_cds_kmers_per_gene(self, densities_df, output_fname, kmer_len):
+        """
+        Output enrichment of kmers in CDS per gene (pooling information from
+        all CDS exons of a transcript).
+        """
+        print "Outputting CDS kmers per gene..."
+        print "  - Output file: %s" %(output_fname)
+        print "  - Kmer length: %d" %(kmer_len)
+        # Add transcript IDs to df
+        trans_func = lambda name: name.split(";")[2]
+        densities_df["transcript_id"] = map(trans_func, densities_df.index)
+        # Add gene IDs to df
+        gene_func = lambda name: name.split(";")[3]
+        densities_df["gene_id"] = map(gene_func, densities_df.index)
+        # Calculate the number of starting positions (in KB units)
+        # in each exon given kmer length
+        one_kb = float(1000)
+        print "Calculating number of start positions in KB given kmer"
+        densities_df["num_start_pos_in_kb"] = \
+          densities_df["seq_len_in_kb"] + (kmer_len/one_kb) + (1/one_kb)
+        # Group entries by their transcript ID (e.g. ENST...)
+        grouped_df = densities_df.groupby(["gene_id", "transcript_id"])
+        # Take the sum of counts across exons per transcript
+        print "SUMMING COUNTS"
+        kmers_by_transcript = grouped_df.sum_counts.sum().reset_index()
+        print kmers_by_transcript.head(), " < < <"
+        # Calculate the number of possible starting positions in the
+        # transcript, i.e. sum of number of possible starting
+        # positions for kmers across exons of the transcript [in kb units]
+        kmers_by_transcript["num_starts_in_trans_in_kb"] = \
+          grouped_df.num_start_pos_in_kb.sum().reset_index()["num_start_pos_in_kb"]
+        # Calculate overall enrichment per transcript, defined as
+        # the sum of all the enriched kmers across all exons
+        # divided by the sum of possible positions in across all
+        # exons [latter in kb units]
+        kmers_by_transcript.rename(columns={"sum_counts":
+                                            "sum_counts_in_trans"},
+                                   inplace=True)
+        kmers_by_transcript["trans_density"] = \
+          kmers_by_transcript["sum_counts_in_trans"] / \
+          kmers_by_transcript["num_starts_in_trans_in_kb"]
+        print "COMPLETE ME!"
+        ###
+        ### Output CDS enrichment information here
+        ###
+    
+        
     def output_enriched_kmers_as_bed(self, seq_fname, 
                                      enriched_kmers,
                                      enriched_kmer_to_fc,
@@ -342,8 +390,10 @@ class BindnSeq:
             fold change 
         """
         print "Outputting BED file: %s" %(bed_output_fname)
-        print "SEQ FNAME: %s" %(seq_fname)
         fasta_counter = seq_counter.SeqCounter(seq_fname)
+        if os.path.isfile(bed_output_fname):
+            print "Found BED file. Skipping..."
+            return
         with open(bed_output_fname, "w") as bed_out:
             # Enriched kmers to look at
             enriched_kmers_to_score = list(enriched_kmers["kmer"])

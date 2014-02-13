@@ -369,19 +369,49 @@ def output_dinuc_enriched_kmers(logger,
             logger.info("Found %s, skipping.. " %(enrichment_fname))
 
 
-def save_kmers_as_fasta(kmers, fasta_fname):
+def save_kmers_as_fasta(kmers, fasta_fname, as_rna):
     """
     Dump kmers as FASTA files.
     """
     with open(fasta_fname, "w") as fasta_out:
         for n in range(len(kmers)):
             seq = kmers[n]
+            if as_rna:
+                seq = seq.replace("T", "U")
             header = ">%s" %(seq)
             fasta_out.write("%s\n" %(header))
             fasta_out.write("%s\n" %(seq))
     return fasta_fname
 
 
+def plot_with_weblogo(alignments_fname, plot_fname,
+                      xlabels=None):
+    """
+    Plog with weblogo.
+    """
+    if utils.which("weblogo") is None:
+        raise Exception, "Cannot find \'weblogo\'."
+    print "Making weblogo..."
+    print "  - Input alignments: %s" %(alignments_fname)
+    print "  - Output plot: %s" %(plot_fname)
+    if os.path.isfile(plot_fname):
+        print "Overwriting %s" %(plot_fname)
+    if not alignments_fname.endswith(".aln"):
+        print "WARNING: %s does not end in .aln" %(alignments_fname)
+        print "  - Are you sure it is an alignments file?"
+    cmd = \
+      "weblogo -f %s -o %s -F eps --errorbars NO " \
+      "--scale-width NO --color-scheme classic " \
+          %(alignments_fname,
+            plot_fname)
+    if xlabels is not None:
+        cmd += "--xlabel Position --annotate %s" %(xlabels)
+    print "Executing: "
+    print cmd
+    retval = os.system(cmd)
+    if retval != 0:
+        raise Exception, "weblogo call failed."
+    
 
 if __name__ == "__main__":
     pass

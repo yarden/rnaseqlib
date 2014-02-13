@@ -42,7 +42,8 @@ setup(name = 'rnaseqlib',
                   'rnaseqlib.stats',
                   'rnaseqlib.bindnseq',
                   'rnaseqlib.tests',
-                  'rnaseqlib.drivers'],
+                  'rnaseqlib.drivers',
+                  'rnaseqlib.formats'],
       # Only non-Python scripts go here
       # distutils always uses forward slashes      
       scripts = ['scripts/gtf2gff3.pl',
