@@ -19,6 +19,9 @@ def output_res_as_tsv(res_fname, output_fname,
     res_in = open(res_fname)
     header = res_in.readline().strip()
     header_fields = re.split(delim_in, header)
+    # Ignore description header field
+    # and treat first column as Gene
+    header_fields = ["Gene"] + header_fields[1:]
     print "Converting RES to TSV..."
     print "  - Input file: %s" %(res_fname)
     print "  - Output file: %s" %(output_fname)
@@ -28,11 +31,13 @@ def output_res_as_tsv(res_fname, output_fname,
         output_file.write(delim_out.join(header_fields) + "\n")
         for line in res_in:
             line = line.strip()
-            fields = re.split(delim_in, line)
-            # Skip lines with one or fewer fields
-            if len(fields) <= 1:
-                continue
             curr_fields = re.split(delim_in, line)
+            # Skip lines with one or fewer fields
+            if len(curr_fields) <= 1:
+                continue
+            # Get every other element (ignore A/P/M calls
+            # of microarray)
+            curr_fields = [curr_fields[0]] + curr_fields[1::2]
             tsv_line = "\t".join(curr_fields) + "\n"
             output_file.write(tsv_line)
     t2 = time.time()
