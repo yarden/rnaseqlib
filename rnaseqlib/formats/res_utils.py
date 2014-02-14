@@ -23,7 +23,7 @@ def output_res_as_tsv(res_fname, output_fname,
     header_fields = re.split(delim_header, header)
     # Ignore description header field
     # and treat first column as Gene
-    header_fields = ["Gene"] + header_fields[1:] + header_fields[2::2]
+    header_fields = ["Gene"] + header_fields[1:]
     print "Converting RES to TSV..."
     print "  - Input file: %s" %(res_fname)
     print "  - Output file: %s" %(output_fname)
