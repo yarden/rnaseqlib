@@ -37,7 +37,7 @@ def output_res_as_tsv(res_fname, output_fname,
                 continue
             # Get every other element (ignore A/P/M calls
             # of microarray)
-            curr_fields = [curr_fields[0]] + curr_fields[1::2]
+            curr_fields = curr_fields[0:2] + curr_fields[2::2]
             tsv_line = "\t".join(curr_fields) + "\n"
             output_file.write(tsv_line)
     t2 = time.time()
