@@ -8,7 +8,7 @@ import pandas
 import re
 
 def output_res_as_tsv(res_fname, output_fname,
-                      delim_header="\t",
+                      delim_header="\t+",
                       delim_row="\t\s?",
                       delim_out="\t",
                       na_val="NA"):
