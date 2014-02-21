@@ -41,12 +41,12 @@ class OrderedDefaultdict(collections.OrderedDict):
 
 class SpliceEdges:
     """
-    Splice site edges.
+    Splice site edges representation.
     """
     def __init__(self, strand):
         self.strand = strand
         self.edges = OrderedDefaultdict(list)
-
+        
 
     def count_from(self, node):
         """
@@ -111,7 +111,95 @@ class Donors(SpliceEdges):
     def __repr__(self):
         return self.__str__()
     
+
+def define_AFE(sg,
+               gff_out,
+               min_exon_len=10,
+               multi_iso=False):
+    """
+    Define alternative first exons.
+
+    Example:
+
+    [ A ]-------[ C ]
+    [   B   ]---[ C ]
+
+    Here, A and B are alternative first exons spliced to C.
+
+    To define AFEs, look at C's acceptors and see if there are
+    distinct donors in the same transcript that meet the minimum
+    exon length criterion. If so, they are alternative first
+    exons to C.
+
+    Parameters:
+    -----------
+
+    sg : SpliceGraph
+    min_exon_len : minimum alternative exon length
+    """
+    print "Defining alternative first exons (AFE)"
+    def get_exon_len(donor, acceptor):
+        """
+        Calculate exon length.
+        """
+        if donor.strand == "+":
+            exon_len = (acceptor.start_coord - 1) - \
+                       (donor.end_coord + 1) + 1
+        else:
+            # Minus strand -- reconsider length given that
+            # donor is "first" in transcript space compared to
+            # acceptor, and that start > end
+            exon_len = (donor.end_coord - 1) - \
+                       (acceptor.start_coord + 1) + 1
+        return exon_len
+    if multi_iso:
+        raise Exception, "Multiple isoforms not supported."
+    # Keep track of observed AFEs
+    alt_first_exons = {}
     
+    
+    # for strand in sg.donors_to_acceptors:
+    #     for acceptor in sg.acceptors_to_donors[strand].edges:
+    #         # If 
+            
+    #     for acceptor in sg.acceptors_to_donors[strand].edges:
+    #         # If any of the donor units to this acceptor
+    #         # have the acceptor end as their end coordinate, it's a retained
+    #         # intron event
+    #         donors = sg.acceptors_to_donors[strand].edges[acceptor]
+    #         for donor in donors:
+    #             # If there's a node that has this acceptor end as its end coordinate
+    #             # and the donor's start as the start coordinate, then it's a
+    #             # retained intron
+    #             intron_as_exon = Unit(donor.start, acceptor.end)
+    #             if sg.has_node(intron_as_exon):
+    #                 # Get length of intron
+    #                 intron_len = get_intron_len(donor, acceptor)
+    #                 if intron_len < min_intron_len:
+    #                     continue
+    #                 ri = (donor.coords_str, acceptor.coords_str)
+    #                 if ri in retained_introns:
+    #                     # Skip introns that we've seen already
+    #                     continue
+    #                 # Output retained intron to gff file
+    #                 output_RI(gff_out, donor, acceptor, intron_len)
+    #                 retained_introns[ri] = True
+
+
+
+def output_AFE():
+    """
+    Output alternative first exon event.
+    """
+    pass
+                    
+
+def output_ALE():
+    """
+    Output alternative last exon event.
+    """
+    pass
+
 
 
 def define_RI(sg,
@@ -353,6 +441,8 @@ class SpliceGraph:
         self.donors_to_acceptors = {"+": Donors(strand="+"),
                                     "-": Donors(strand="-")}
         self.all_nodes = OrderedDict()
+        self.unit_numbers = {"+": OrderedDefaultdict(list),
+                             "-": OrderedDefaultdict(list)}
         # Load the UCSC tables
         self.load_tables()
         # Populate the splice graph
@@ -372,6 +462,13 @@ class SpliceGraph:
             self.all_nodes[donor_unit] = True
         if acceptor_unit not in self.all_nodes:
             self.all_nodes[acceptor_unit] = True
+
+
+    def add_unit_number(self, source, source_num, strand):
+        """
+        Record the number of this source unit.
+        """
+        self.unit_numbers[strand][source_num].append(source)
 
 
     def has_node(self, node):
@@ -404,6 +501,8 @@ class SpliceGraph:
         """
         Add edges from acceptors to donors, donors to acceptors,
         on distinct strands.
+
+        Record the exon number within the transcript.
         """
         print "Populating graph..."
         t1 = time.time()
@@ -421,6 +520,8 @@ class SpliceGraph:
                     # end (in order of transcription)
                     startvals = startvals[::-1]
                     endvals = endvals[::-1]
+                # Zero-based exon number
+                curr_exon_num = 0
                 for curr_i, next_i in utils.iter_by_pair(indices, step=1):
                     # Splice from end of current exon to start of next exonp
                     donor_unit = Unit((chrom, startvals[curr_i], strand),
@@ -435,9 +536,15 @@ class SpliceGraph:
                         acceptor_unit = Unit((chrom, endvals[next_i], strand),
                                              (chrom, startvals[next_i], strand))
 #                        donor_unit, acceptor_unit = acceptor_unit, donor_unit
-                    # Record splice site as edge
+                    ## Record the exon number for donor and acceptor
+                    # Donor is exon number N
+                    self.add_unit_number(donor_unit, curr_exon_num, strand)
+                    # Acceptor is exon number N+1
+                    self.add_unit_number(donor_unit, curr_exon_num + 1,
+                                         strand=strand)
                     self.add_edge(donor_unit, acceptor_unit,
                                   strand=strand)
+                    curr_exon_num += 1
         t2 = time.time()
         print "Populating graph took %.2f seconds" %(t2 - t1)
 
@@ -456,15 +563,11 @@ class SpliceGraph:
 
 
 
-def main():
-    table_fname = \
-        os.path.expanduser("/home/yarden/jaen/rnaseqlib/rnaseqlib/test/test-data/ri-test/ensGene.txt")
-    tables = [table_fname]
-    sg = SpliceGraph(tables)
-    gff_out = gffutils.gffwriter.GFFWriter("./ri_test.gff3")
-    define_RI(sg, gff_out)
-    gff_out.close()
 
+
+def main():
+    test_ri()
+    test_afe()
     
         
 
