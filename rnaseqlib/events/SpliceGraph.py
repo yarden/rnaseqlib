@@ -157,7 +157,6 @@ def define_AFE(sg,
     # Keep track of observed AFEs
     alt_first_exons = {}
     
-    
     # for strand in sg.donors_to_acceptors:
     #     for acceptor in sg.acceptors_to_donors[strand].edges:
     #         # If 
