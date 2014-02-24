@@ -80,7 +80,6 @@ def annotate_gff_with_genes(args):
         raise Exception, "Cannot find %s" %(table_fname)
     table_bed = get_table_as_bedtool(table_fname)
     # Get BedTool for events, containing only the gene entries
-    print "TABLE BED: ", table_bed
     
 
 def main():
@@ -105,4 +104,4 @@ if __name__ == "__main__":
                         "overwriting the passed in file.) Also sanitizes "
                         "the GFF.")
     args = parser.parse_args()
-    make_annotation(args)
+    #make_annotation(args)
