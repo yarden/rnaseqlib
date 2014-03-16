@@ -384,16 +384,18 @@ class GeneTable:
         # If available, load ensemblToGeneName table and add this info to
         # main table
         if self.ensGene_to_name_avail:
-            ensGene_to_names = pandas.read_table(ensGene_name_filename,
-                                                 sep=self.delimiter,
-                                                 names=self.ensemblToGeneName_header)
+            ensGene_to_names = \
+              pandas.read_table(ensGene_name_filename,
+                                sep=self.delimiter,
+                                names=self.ensemblToGeneName_header)
             # Merge names into table
             self.table = pandas.merge(main_table, ensGene_to_names,
                                       how="left")
             self.gene_symbol_field = "value"
-        known_to_ensembl = pandas.read_table(known_to_ensembl_filename,
-                                             sep=self.delimiter,
-                                             names=self.knownToEnsembl_header)
+        known_to_ensembl = \
+          pandas.read_table(known_to_ensembl_filename,
+                            sep=self.delimiter,
+                            names=self.knownToEnsembl_header)
         # Add mapping from Ensembl to gene names
         self.ensembl_to_known = known_to_ensembl.set_index("name")
         self.raw_table = self.table
@@ -1102,17 +1104,25 @@ def download_all_ucsc_headers(genome, ucsc_tables, output_dir):
     headers_outdir = os.path.join(output_dir, "ucsc", "headers")
     print "  - Output dir: %s" %(headers_outdir)
     utils.make_dir(headers_outdir)
+    # Dictionary mapping headers to filenames
+    headers_found = {}
     for table_info in ucsc_tables:
         table_fname = table_info[0]
         table_name = table_fname.split(".")[0]
         # Get header for current table
         header = download_ucsc_table_header(genome, table_name)
+        if header is None:
+            print "Skipping %s" %(table_name)
+            continue
         header_fname = \
             os.path.join(headers_outdir, "%s.header.txt" %(table_name))
         # Write header to file in headers directory
         with open(header_fname, "w") as header_out:
             header_str = "\t".join(header)
             header_out.write("%s\n" %(header_str))
+        # Record header
+        headers_found[table_name] = header_fname
+    return headers_found
 
 
 def download_ucsc_table_header(genome, table_name):
@@ -1188,7 +1198,7 @@ def load_ucsc_table_headers(output_dir):
         table_name = fields[0]
         with open(header_fname, "r") as header_in:
             header = header_in.readline().strip().split("\t")
-            headers[table_name] = header
+            headers[table_fname] = header
     return headers
     
 
@@ -1203,9 +1213,17 @@ def download_ucsc_tables(genome,
     print "  - Output dir: %s" %(tables_outdir)
     ucsc_tables = get_ucsc_tables_urls(genome)
     # Download all the table headers and save them to file
-    download_all_ucsc_headers(genome, ucsc_tables, output_dir)
+    headers_found = \
+      download_all_ucsc_headers(genome, ucsc_tables, output_dir)
+    tables_downloaded = {}
     # Download the UCSC tables
     for table_label, table_url in ucsc_tables:
+        # If we couldn't retrieve header for a table,
+        # don't try to download it
+        table_name = table_label.split(".")[0]
+        if table_name not in headers_found:
+            print "Could not find %s. Skipping.." %(table_name)
+            continue
         print "Downloading %s" %(table_label)
         # If the table exists in uncompressed form, don't download it
         table_filename = os.path.join(tables_outdir, table_label)
@@ -1222,6 +1240,9 @@ def download_ucsc_tables(genome,
             continue
         # Uncompress table
         utils.gunzip_file(table_filename, tables_outdir)
+        # Record that table was downloaded
+        tables_downloaded[table_label] = table_filename
+    return tables_downloaded
 
 
 def add_introns_to_gff_files(gff_fnames, output_dir):
@@ -1261,7 +1282,6 @@ def process_ucsc_tables(genome, output_dir,
     # get tRNA table header
     tRNA_header = UCSC_TRNAS_HEADER
     if headers is not None:
-        print "HEADERS: ", headers
         tRNA_header = headers["tRNAs"]
     process_tRNA_table(tables_outdir, tRNA_header)
     for table_name in table_names:

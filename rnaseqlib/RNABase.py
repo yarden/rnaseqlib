@@ -28,6 +28,7 @@ class RNABase:
         self.with_index = with_index
         self.indices_dir = None
         self.init_params = init_params
+        self.tables_downloaded = {}
         ##
         ## Gene table names for various tasks
         ##
@@ -131,8 +132,9 @@ class RNABase:
         """
         print "Fetching tables.."
         # Download and process UCSC tables
-        tables.download_ucsc_tables(self.genome,
-                                    self.output_dir)
+        self.tables_downloaded = \
+          tables.download_ucsc_tables(self.genome,
+                                      self.output_dir)
         tables.process_ucsc_tables(self.genome,
                                    self.output_dir,
                                    init_params=self.init_params)
