@@ -1280,7 +1280,6 @@ def process_ucsc_tables(genome, output_dir,
     table_names = ["ensGene"]#, "refGene"]
     # Load table headers
     headers = load_ucsc_table_headers(output_dir)
-    print "HEADERS: ", headers
     # get tRNA table header
     tRNA_header = UCSC_TRNAS_HEADER
     if headers is not None:
