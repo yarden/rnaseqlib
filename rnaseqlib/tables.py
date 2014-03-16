@@ -1194,11 +1194,12 @@ def load_ucsc_table_headers(output_dir):
             continue
         fields = table_fname.split(".")
         if len(fields) != 3:
+            print "Skipping header: %s" %(header_fname)
             continue
         table_name = fields[0]
         with open(header_fname, "r") as header_in:
             header = header_in.readline().strip().split("\t")
-            headers[table_fname] = header
+            headers[table_name] = header
     return headers
     
 
@@ -1279,10 +1280,14 @@ def process_ucsc_tables(genome, output_dir,
     table_names = ["ensGene"]#, "refGene"]
     # Load table headers
     headers = load_ucsc_table_headers(output_dir)
+    print "HEADERS: ", headers
     # get tRNA table header
     tRNA_header = UCSC_TRNAS_HEADER
     if headers is not None:
-        tRNA_header = headers["tRNAs"]
+        if "tRNAs" not in headers:
+            print "WARNING: Could not find tRNAs header"
+        else:
+            tRNA_header = headers["tRNAs"]
     process_tRNA_table(tables_outdir, tRNA_header)
     for table_name in table_names:
         table = GeneTable(tables_outdir, table_name,
