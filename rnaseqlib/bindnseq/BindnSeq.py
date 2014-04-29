@@ -15,6 +15,8 @@ import rnaseqlib.motif.meme_utils as meme_utils
 import rnaseqlib.motif.seq_counter as seq_counter
 import rnaseqlib.utils as utils
 
+FC_FILTER = 2
+
 
 def load_bindnseq_or_file(odds_ratio_fname, skiprows=1):
     """
@@ -492,7 +494,9 @@ class BindnSeq:
     
 
     def add_rank_weighted_densities(self, subseq_densities,
-                                    fc_rank, kmer_len):
+                                    fc_rank, kmer_len,
+                                    min_density_val=2**(-8),
+                                    min_seq_len=15):
         """
         Add to the given dataframe of kmer densities additional information,
         namely the *weighted* densities of kmers which are the densities
@@ -507,22 +511,28 @@ class BindnSeq:
             # Observed number of counts for each kmer
             obs_counts = self.parse_counts(row["obs_counts"])
             # If the kmers are less than the threshold filter, consider them 0
-            #obs_counts[np.where(fc_rank >= FC_FILTER)[0]] = 2**(-8.5)
+            obs_counts[np.where(fc_rank >= FC_FILTER)[0]] = 0.0
             # Multiply the observed counts by the fold change rank
             # and sum the result
-            #weighted_density = np.sum(obs_counts * fc_rank)
-            weighted_density = np.sum(obs_counts)
+            weighted_density = np.sum(obs_counts * fc_rank)
+            weighted_density = max(weighted_density, min_density_val)
             # Normalize density by sequence length
             len_denom = float(row["seq_len"]) - kmer_len + 1
+            len_denom = max(len_denom, 1)
             weighted_density = weighted_density / len_denom
-            weighted_densities.append(weighted_density)
             # Record maximum fold change of any present kmer
             nonzero_kmer_inds = np.where(obs_counts >= 1)[0]
             if len(nonzero_kmer_inds) == 0:
                 # There are no enriched kmers in the region
-                max_kmer_fc = 2**(-8)#np.nan
+                max_kmer_fc = min_density_val
             else:
                 max_kmer_fc = max(fc_rank[nonzero_kmer_inds])
+            if row["seq_len"] < min_seq_len:
+                # If the length of the region is too short, mark it
+                # as zero
+                weighted_density = min_density_val
+                max_kmer_fc = min_density_val
+            weighted_densities.append(weighted_density)
             max_kmer_fcs.append(max_kmer_fc)
         subseq_densities["weighted_density"] = weighted_densities
         subseq_densities["max_kmer_fc"] = max_kmer_fcs

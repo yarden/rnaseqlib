@@ -36,6 +36,26 @@ def pearson_dist(u, v, na_vals=["NA", np.nan]):
     return 1 - pearson
 
 
+def pval_to_stars(pval, thresh=0.05):
+    """
+    Convert p-values to star notation (idiotic). 
+    """
+    stars = None
+    if pval > thresh:
+        stars = "NS"
+    elif pval <= 10**(-4):
+        stars = "****"
+    elif pval <= 10**(-3):
+        stars = "***"
+    elif pval <= 10**(-2):
+        stars = "**"
+    elif pval <= thresh:
+        stars = "*"
+    assert (stars is not None), "Failed to get star notation."
+    return stars
+        
+
+
 def my_pdist(X, dist_func,
              na_vals=["NA", np.nan, np.inf, -np.inf]):
     """
@@ -106,6 +126,17 @@ def zscore_df(df, scale="row"):
         # Subtract mean across rows and divide result by sdev
         norm_df = df.sub(df_mu, axis=0).div(df_sdev, axis=0)
         return norm_df
+    elif scale.startswith("col"):
+        if len(df.index) == 0:
+            raise Exception, "Cannot normalize by column with only one row."
+        # Get mean across rows
+        df_mu = df.mean(axis=0)
+        # Standard deviation across columns (sdev per row)
+        df_sdev = df.std(axis=0)
+        # Subtract mean across rows and divide result by sdev
+        norm_df = df.sub(df_mu, axis=1).div(df_sdev, axis=1)
+        return norm_df
     else:
-        raise Exception, "Not implemented."
+        raise Exception, "Unknown scale method %s" %(scale)
+        
 

@@ -133,7 +133,10 @@ class MotifCluster:
         return hclust
 
 
-def output_global_alignment(kmers_fname, output_dir):
+def output_global_alignment(kmers_fname, output_dir,
+                            alignment_program="mafft",
+                            overwrite_alignment=False,
+                            params={}):
     """
     Output a global alignment (*.aln) for a set of kmers.
 
@@ -144,19 +147,47 @@ def output_global_alignment(kmers_fname, output_dir):
     kmers_fname : filename of FASTA file containing kmers
     output_dir : output directory
     """
+    def get_clustal_cmd(fasta_fname, output_fname,
+                        params={}):
+        """
+        Return clustal alignment command.
+        """
+        clustalw_cmd = \
+            "clustalw -INFILE=%s -OUTFILE=%s -PIM" %(fasta_fname,
+                                                     output_fname)
+        for p in params:
+            clustalw_cmd += " -%s=%s" %(p, params[p])
+        return clustalw_cmd
+    def get_mafft_cmd(fasta_fname, output_fname,
+                      params={}):
+        """
+        Return mafft alignment command.
+        """
+        mafft_cmd = \
+            "mafft --auto %s > %s" %(fasta_fname, output_fname)
+        return mafft_cmd
     utils.make_dir(output_dir)
     output_fname = \
         os.path.join(output_dir,
                      "%s.aln" %(os.path.basename(kmers_fname)))
-    if os.path.isfile(output_fname):
+    if os.path.isfile(output_fname) and (not overwrite_alignment):
         print "Alignment filename %s exists. Skipping..." \
               %(output_fname)
-    clustalw_cmd = \
-        "clustalw -INFILE=%s -OUTFILE=%s -PIM" %(kmers_fname,
-                                                 output_fname)
-    print "Executing: %s" %(clustalw_cmd)
     t1 = time.time()
-    os.system(clustalw_cmd)
+    if alignment_program == "clustal":
+        cmd = get_clustal_cmd(kmers_fname, output_fname,
+                              params=params)
+    elif alignment_program == "mafft":
+        cmd = get_mafft_cmd(kmers_fname, output_fname,
+                            params=params)
+    else:
+        raise Exception, "Unknown alignment program %s" \
+              %(alignment_program)
+    ret_val = os.system(cmd)
+    if ret_val != 0:
+        print "Call to %s failed!" %(alignment_program)
+        print "Params were: ", str(params)
+        raise Exception, "Alignment failed."
     t2 = time.time()
     print "Global alignment took %.2f minutes." %((t2 - t1)/60.)
     return output_fname
