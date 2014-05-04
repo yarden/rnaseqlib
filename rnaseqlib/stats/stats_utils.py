@@ -7,7 +7,8 @@ import numpy as np
 from numpy import *
 from scipy import *
 
-from scipy.stats.stats import pearsonr, spearmanr
+from scipy.stats.stats import pearsonr, spearmanr, \
+                              nanmean, nanstd
 
 
 def spearman_dist(u, v, na_vals=["NA", np.nan]):
@@ -138,5 +139,16 @@ def zscore_df(df, scale="row"):
         return norm_df
     else:
         raise Exception, "Unknown scale method %s" %(scale)
+
+
+
+def nanzscore(x):
+    """
+    Z-score but ignore nan's. Return same size
+    array as 'x'.
+    """
+    return (x - nanmean(x)) / nanstd(x)
+
+
         
 
