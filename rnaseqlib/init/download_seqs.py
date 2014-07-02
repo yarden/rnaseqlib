@@ -131,8 +131,8 @@ def download_misc_seqs(genome, output_dir):
     elif genome.startswith("mm"):
         organism = "mouse"
     else:
-        print "Error: Unsupported genome."
-        sys.exit(1)
+        print "Error: Cannot find rRNAs for genome %s" %(genome)
+        return None
     # Fetch the accession numbers for the organism's
     # misc sequences and download them
     misc_seqs = NCBI_MISC_SEQS[organism]

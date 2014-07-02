@@ -26,7 +26,7 @@ def load_phylop_bed(chrom, phylop_dir):
     # Ignore the '_random' chromosome files
     candidate_fnames = filter(lambda f: "random" not in f,
                               candidate_fnames)
-    candidate_fnames = ["./test.bed"]
+#    candidate_fnames = ["./test.bed"]
     if len(candidate_fnames) == 0:
         raise Exception, "Could not find PhyloP *.bed files for %s" \
                          %(chrom)
