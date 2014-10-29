@@ -24,6 +24,15 @@ def spearman_dist(u, v, na_vals=["NA", np.nan]):
     return 1 - spearman
 
 
+def coeff_var(vals):
+    """
+    Compute coefficient of variation for an array 'vals'.
+
+    sigma / mu
+    """
+    return (np.std(vals) / np.mean(vals))
+
+
 def pearson_dist(u, v, na_vals=["NA", np.nan]):
     """
     Compute Pearson distance for vectors u, v.

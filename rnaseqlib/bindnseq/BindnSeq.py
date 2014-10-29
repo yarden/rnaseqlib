@@ -15,8 +15,9 @@ import rnaseqlib.motif.meme_utils as meme_utils
 import rnaseqlib.motif.seq_counter as seq_counter
 import rnaseqlib.utils as utils
 
-FC_FILTER = 2
-
+# Fold change filter for BNS analyses (filter for enrichmed
+# kmers)
+FC_FILTER = 2.0
 
 def load_bindnseq_or_file(odds_ratio_fname, skiprows=1):
     """
@@ -280,6 +281,7 @@ class BindnSeq:
                 seq_fname = region_to_seq_fnames[region]
                 if seq_fname is None:
                     print "Skipping %s" %(region)
+                    continue
                 fasta_counter = seq_counter.SeqCounter(seq_fname)
                 enriched_kmers_to_score = list(enriched_kmers["kmer"])
                 subseq_densities = \
@@ -350,9 +352,7 @@ class BindnSeq:
         # Group entries by their transcript ID (e.g. ENST...)
         grouped_df = densities_df.groupby(["gene_id", "transcript_id"])
         # Take the sum of counts across exons per transcript
-        print "SUMMING COUNTS"
         kmers_by_transcript = grouped_df.sum_counts.sum().reset_index()
-        print kmers_by_transcript.head(), " < < <"
         # Calculate the number of possible starting positions in the
         # transcript, i.e. sum of number of possible starting
         # positions for kmers across exons of the transcript [in kb units]
@@ -510,17 +510,28 @@ class BindnSeq:
         for row_num, row in subseq_densities.iterrows():
             # Observed number of counts for each kmer
             obs_counts = self.parse_counts(row["obs_counts"])
-            # If the kmers are less than the threshold filter, consider them 0
-            obs_counts[np.where(fc_rank >= FC_FILTER)[0]] = 0.0
-            # Multiply the observed counts by the fold change rank
+            ##
+            ## If the kmers are less than the threshold filter, consider them 0
+            ##
+            # Indices for observed counts where condition is met
+            counts_met_inds = np.where(fc_rank >= FC_FILTER)[0]
+            counts_not_met_inds = np.where(fc_rank < FC_FILTER)[0]
+            if len(counts_met_inds) == 0:
+                print "WARNING: Unable to find counts where %.2f FC_FILTER " \
+                      "is met" %(FC_FILTER)
+            # Where condition is *NOT* met, set counts to 0
+            # note the tilde (~)
+            obs_counts[counts_not_met_inds] = 0
+            # Normalize each observed counts by sequence length (in KB!)
+            KB = 1000.0
+            len_denom = (float(row["seq_len"]) - kmer_len + 1) / KB
+            norm_density = obs_counts / len_denom
+            # Multiply the observed counts by the fold change
             # and sum the result
-            weighted_density = np.sum(obs_counts * fc_rank)
+#            weighted_density = np.sum(norm_density * fc_rank)
+            weighted_density = np.sum(norm_density)
             weighted_density = max(weighted_density, min_density_val)
-            # Normalize density by sequence length
-            len_denom = float(row["seq_len"]) - kmer_len + 1
-            len_denom = max(len_denom, 1)
-            weighted_density = weighted_density / len_denom
-            # Record maximum fold change of any present kmer
+            # Record maximum fold change all kmers present in region
             nonzero_kmer_inds = np.where(obs_counts >= 1)[0]
             if len(nonzero_kmer_inds) == 0:
                 # There are no enriched kmers in the region
@@ -534,7 +545,8 @@ class BindnSeq:
                 max_kmer_fc = min_density_val
             weighted_densities.append(weighted_density)
             max_kmer_fcs.append(max_kmer_fc)
-        subseq_densities["weighted_density"] = weighted_densities
+        # Record log2_weighted_density
+        subseq_densities["log2_weighted_density"] = np.log2(weighted_densities)
         subseq_densities["max_kmer_fc"] = max_kmer_fcs
         return subseq_densities
 

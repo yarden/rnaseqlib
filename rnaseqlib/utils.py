@@ -400,6 +400,14 @@ def in_any(s, l):
     return any([s in elt for elt in l])
 
 
+def startswith_any(s, l):
+    """
+    Return True if any element of 'l' starts with
+    the string 's'.
+    """
+    return any([elt.startswith(s) for elt in l])
+
+
 def reverse_in_any(l, s):
     """
     Return True if any of the elements of l are in s.
