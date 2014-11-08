@@ -13,6 +13,40 @@ import rnaseqlib
 import rnaseqlib.fastx_utils as fastx_utils
 
 
+def parse_tagBam_opt_field(opt_field,
+                           interval_label="gff",
+                           gff_coords=True):
+    """
+    Parse regions from optional field of a tagBam line.
+    Example:
+    gff:chr3:157199297-157199344,exon,.,+,gff:chr3:157197382-157197438,exon,.,+
+
+    Args:
+    - opt_field: Optional field (YB:...) of tagBam
+
+    Kwargs:
+    - interval_label: interval label to split on
+    - gff_coords: if True, add 1 to start coordinate
+    """
+    fields = opt_field.split(",")
+    label_with_delim = "%s:" %(interval_label)
+    regions = []
+    for entry_num, entry in enumerate(fields):
+        if entry.startswith(label_with_delim):
+            region_chrom, coords_field = \
+              entry.split(label_with_delim)[1].split(":")
+            strand = fields[entry_num + 3]
+            # Parse coordinate
+            region_start, region_end = map(int, coords_field.split("-"))
+            if gff_coords:
+                region_start += 1
+            region_str = "%s:%d-%d:%s" %(region_chrom,
+                                         region_start,
+                                         region_end,
+                                         strand)
+            regions.append(region_str)
+    return regions
+
 
 ##
 ## Utilities for converting bam to UCSC formats like

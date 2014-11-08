@@ -11,6 +11,7 @@ import subprocess
 
 import rnaseqlib
 import rnaseqlib.utils as utils
+import rnaseqlib.coverage.coverage_utils as coverage_utils
 
 import pandas
 
@@ -226,19 +227,26 @@ def output_rpkm_from_gff_aligned_bam(bam_filename,
                                                   "rpkm",
                                                   "counts",
                                                   "exons"],
-                                     na_val="NA"):
+                                     na_val="NA",
+                                     interval_label="gff",
+                                     with_exon_cov_stats=True):
     """
     Given a BAM file aligned by bedtools (with 'gff' field),
     compute RPKM for each region, incorporating relevant
     optional fields from gff.
 
-    Takes as input:
+    Args:
+    - bam_filename: the BAM file
+    - num_mapped: number of mapped reads to normalize to
+    - read_len: read length
+    - const_exons: Constitutive exons object
+    - output_filename: output filename
 
-     - bam_filename: the BAM file
-     - num_mapped: number of mapped reads to normalize to
-     - read_len: read length
-     - const_exons: Constitutive exons object
-     - output_filename: output filename
+    Kwargs:
+    - rpkm_header: header for output RPKM file
+    - na_val: NA value to use
+    - with_exon_cov_stats: if True, output exon coverage
+    statistics
     """
     bam_file = pysam.Samfile(bam_filename, "rb")
     print "Computing RPKM from BAM aligned to GFF..."
@@ -297,6 +305,23 @@ def output_rpkm_from_gff_aligned_bam(bam_filename,
                       "exons": exons}
         rpkm_table.append(rpkm_entry)
     rpkm_df = pandas.DataFrame(rpkm_table)
+    if with_exon_cov_stats:
+        # Output version of RPKM table with coverage columns
+        # for exons
+        # Strip filename extension and add a .coverage
+        output_fname_with_cov = output_filename.rsplit(".", 1)[0]
+        output_fname_with_cov += ".coverage.txt" 
+        # If asked, output a table with RPKM coverage
+        rpkm_df_with_cov, coverage_cols = \
+          add_exons_coverage_from_bam_to_rpkm_df(rpkm_df,
+                                                 bam_filename,
+                                                 interval_label=interval_label)
+        rpkm_header_with_cols = rpkm_header + coverage_cols
+        rpkm_df_with_cov.to_csv(output_fname_with_cov,
+                                cols=rpkm_header_with_cols,
+                                na_rep=na_val,
+                                sep="\t",
+                                index=False)
     rpkm_df.to_csv(output_filename,
                    cols=rpkm_header,
                    na_rep=na_val,
@@ -306,6 +331,112 @@ def output_rpkm_from_gff_aligned_bam(bam_filename,
                    #float_format="%.4f",
                    index=False)
     return output_filename
+
+
+def parse_tagBam_opt_field(opt_field,
+                           interval_label="gff",
+                           gff_coords=True):
+    """
+    Parse regions from optional field of a tagBam line.
+    Example:
+    gff:chr3:157199297-157199344,exon,.,+,gff:chr3:157197382-157197438,exon,.,+
+
+    Args:
+    - opt_field: Optional field (YB:...) of tagBam
+
+    Kwargs:
+    - interval_label: interval label to split on
+    - gff_coords: if True, add 1 to start coordinate
+    """
+    fields = opt_field.split(",")
+    label_with_delim = "%s:" %(interval_label)
+    regions = []
+    for entry_num, entry in enumerate(fields):
+        if entry.startswith(label_with_delim):
+            region_chrom, coords_field = \
+              entry.split(label_with_delim)[1].split(":")
+            strand = fields[entry_num + 3]
+            # Parse coordinate
+            region_start, region_end = map(int, coord_field.split("-"))
+            if gff_coords:
+                region_start += 1
+            region_str = "%s:%d-%d:%s" %(region_chrom,
+                                         region_start,
+                                         region_end,
+                                         strand)
+            regions.append(region_str)
+    return regions
+
+
+def add_exons_coverage_from_bam_to_rpkm_df(rpkm_df,
+                                           bam_fname,
+                                           interval_label="gff",
+                                           na_val="NA",
+                                           coverage_cols=["kurtosis",
+                                                          "min",
+                                                          "max",
+                                                          "mean",
+                                                          "std",
+                                                          "cv"]):
+    """
+    Add exons coverage to RPKM dataframe from a BAM file
+    produced by tagBam.
+
+    Args:
+    - rpkm_df: RPKM dataframe
+    - bam_fname: BAM file produced by tagBam
+
+    Kwargs:
+    - interval_label: Interval label from BAM filename
+    - na_val: NA value to use
+    """
+    exon_stats_dict = \
+      coverage_utils.get_exons_coverage_from_tagBam(bam_fname,
+                                                    interval_label=interval_label,
+                                                    gff_coords=True)
+    gene_entries = []
+    # Add exon coverage statistics to RPKM table
+    for rpkm_row, curr_entry in rpkm_df.iterrows():
+        # Find the stats values for all exons in this gene
+        gene_id = curr_entry["gene_id"]
+        rpkm_exons = curr_entry["exons"].split(",")
+        # Remove "cds." prefix for exons if found
+        rpkm_exons = \
+          map(lambda x: \
+              x.split("cds.")[1] if x.startswith("cds.") else x,
+              rpkm_exons)
+        # Statistics for each exon. Each value in the list
+        # corresponds to the
+        gene_entry = curr_entry.copy()
+        gene_entry["rpkm_exons"] = curr_entry["exons"]
+        gene_entry["gene_id"] = gene_id
+        for cov_col in coverage_cols:
+            gene_entry[cov_col] = []
+        for curr_rpkm_exon in rpkm_exons:
+            if curr_rpkm_exon not in exon_stats_dict:
+                # If exon from RPKM table does not appear in BAM
+                # it likely means that the gene was not expressed
+                # (i.e. its RPKM is zero) or that it did not
+                # meet a read counts criteria applied to
+                # the table. In this case mark the entry as NA.
+                for cov_col in coverage_cols:
+                    gene_entry[cov_col].append("NA")
+            else:
+                curr_exon_stats = exon_stats_dict[curr_rpkm_exon]
+                # If exon is found, record the value
+                # for each of the coverage columns
+                for cov_col in coverage_cols:
+                    # Record the exon stat value in the gene entry
+                    gene_entry[cov_col].append(curr_exon_stats[cov_col])
+        # Convert list values for each coverage statistic column
+        # into strings
+        for cov_col in coverage_cols:
+            gene_entry[cov_col] = ",".join(map(str, gene_entry[cov_col]))
+        gene_entries.append(gene_entry)
+    # Convert to dataframe
+    gene_df = pandas.DataFrame(gene_entries)
+    return gene_df, coverage_cols
+
 
 
 def compute_rpkm(region_count,
