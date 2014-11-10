@@ -438,7 +438,6 @@ def add_exons_coverage_from_bam_to_rpkm_df(rpkm_df,
     return gene_df, coverage_cols
 
 
-
 def compute_rpkm(region_count,
                  region_len,
                  num_total_reads):

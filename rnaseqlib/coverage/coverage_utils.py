@@ -85,6 +85,38 @@ from collections import defaultdict
 #     output_fname = os.path.basename(bam_fname)
 
 
+
+def add_summary_coverage_col_to_df(df, col,
+                                   op="max",
+                                   na_val="NA"):
+    """
+    Summarize a coverage column 'col' in the given
+    dataframe 'df', e.g. by taking its max across exons.
+
+    Kwargs:
+    - op: the operation (e.g. "max") to summarize the coverage
+    column across exons.
+    - na_val: NA value to assume in input exon values in df
+    """
+    values = []
+    val_to_keep = na_val
+    for row_num, row_entry in df.iterrows():
+        if not pandas.notnull(row_entry[col]):
+            val_to_keep = np.nan
+        else:
+            curr_values = row_entry[col].split(",")
+            curr_values = \
+              [np.nan if elt == na_val else float(elt) \
+               for elt in curr_values]
+            if op == "max":
+                val_to_keep = max(curr_values)
+        values.append(val_to_keep)
+    # Add column to df
+    summary_col = "max_%s" %(col)
+    df[summary_col] = values
+    return df, summary_col
+
+
 def get_exons_coverage_from_tagBam(bam_fname,
                                    interval_label="gff",
                                    gff_coords=True):
@@ -131,7 +163,8 @@ def get_exons_coverage_from_tagBam(bam_fname,
                  "std": np.std(exon_counts),
                  "max": np.max(exon_counts),
                  "min": np.min(exon_counts),
-                 "kurtosis": scipy.stats.kurtosis(exon_counts),
+                 "kurtosis": scipy.stats.kurtosis(exon_counts,
+                                                  fisher=False),
                  "cv": stats_utils.coeff_var(exon_counts)}
         exon_stats_dict[exon] = entry
     return exon_stats_dict
