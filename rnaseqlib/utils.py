@@ -378,6 +378,25 @@ def parse_coords(coords):
     return chrom, start, end, strand
 
 
+def parse_dash_coords(coords):
+    """
+    Parse coordinates of the form:
+
+      chrom:start-end:strand
+    """
+    fields = coords.split(":")
+    if len(fields) != 3:
+        return None
+    chrom, coords, strand = fields
+    coords_field = coords.split("-")
+    if len(coords_field) != 2:
+        raise Exception, "Needed start-end coordinates in %s" %(coords)
+    start, end = coords_field[0], coords_field[1]
+    start = int(start)
+    end = int(end)
+    return chrom, start, end, strand
+    
+
 def get_gff_filenames_in_dir(dirname):
     """
     Get all file names that end in the given extensions

@@ -17,7 +17,7 @@ import rnaseqlib.stats.stats_utils as stats_utils
 import rnaseqlib.bam.bam_utils as bam_utils
 import rnaseqlib.utils as utils
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 
 # def output_bam_coverage_per_base(bam_fname, gff_fname, output_dir,
@@ -117,6 +117,46 @@ def add_summary_coverage_col_to_df(df, col,
     return df, summary_col
 
 
+def init_region_start_pos(region, ordered=True):
+    """
+    Given a region as string, 'chr13:21281961-21281993:+',
+    return a dictionary of size length of the region.
+
+    Assumes GFF coordinate conventions.
+
+    Args:
+      - region: region as string, e.g. 'chr13:21281961-21281993:+'
+
+    Kwargs:
+      - ordered: if True, use OrderedDict
+
+    Returns:
+      dictionary mapping start positions to 0
+    """
+    chrom, start, end, strand = utils.parse_dash_coords(region)
+    # Check that start < end
+    assert (start <= end), \
+      "Start (%d) must be less than end (%d): %s" %(start, end, region)
+    # Check strand
+    if not (strand == "+" or strand == "-"):
+        raise Exception, "Unknown strand symbol %s" %(str(strand))
+    # Region length according to GFF
+    region_len = end - start + 1
+    # Dictionary mapping region starts to counts
+    region_pos = {}
+    if ordered:
+        region_pos = OrderedDict()
+    for pos in range(start, end + 1):
+        region_pos[pos] = 0
+    # Check that the length of the start positions dict equals the
+    # length of the region (assuming GFF coordinates)
+    pos_dict_len = len(region_pos)
+    assert (region_len == pos_dict_len), \
+      "Error: Region length (%d) does not match start pos " \
+      "dictionary length (%d)" %(region_len, pos_dict_len)
+    return region_pos
+
+
 def get_exons_coverage_from_tagBam(bam_fname,
                                    interval_label="gff",
                                    gff_coords=True):
@@ -140,8 +180,15 @@ def get_exons_coverage_from_tagBam(bam_fname,
     #  exon1 -> genomic start_pos1 -> # at genomic start position 1
     #        -> genomic start_pos4 -> # at genomic start position 4
     #  exon2 -> ...
-    exons_to_start_pos_counts = defaultdict(lambda: defaultdict(int))
+
+    ###
+    ### TODO: need to account for zero coverage positions, which
+    ### default dict does not do!
+    #exons_to_start_pos_counts = defaultdict(lambda: defaultdict(int))
+    exons_to_start_pos_counts = {}
+    
     bam_file = pysam.Samfile(bam_fname, "rb")
+    num_unmatched = 0
     for bam_read in bam_file:
         gff_aligned_regions = bam_read.opt("YB")
         # Get GFF regions that read aligns to
@@ -149,11 +196,74 @@ def get_exons_coverage_from_tagBam(bam_fname,
           bam_utils.parse_tagBam_opt_field(gff_aligned_regions,
                                            gff_coords=gff_coords)
         # Get read start position
-        read_start_pos = bam_read.pos
+        read_start_pos = bam_read.pos + 1
         for region in parsed_regions:
-            exons_to_start_pos_counts[region][read_start_pos] += 1
+            # If we've seen this exon region before, use its dictionary
+            if region in exons_to_start_pos_counts:
+                curr_region_starts = exons_to_start_pos_counts[region]
+            else:
+                curr_region_starts = init_region_start_pos(region)
+                exons_to_start_pos_counts[region] = curr_region_starts
+            # Add +1 to each read position that the read overlaps
+            # Have a simple read position counter that starts with
+            # read start and counts the bases covered by a Match
+            # according to the cigar string
+            read_counter = read_start_pos
+            read_matched_to_interval = False
+            for cigar_type, cigar_len in bam_read.cigar:
+                # Skip the non-matches (denoted as 0 in pysam)
+                # but increment the read_counter
+                if cigar_type != 0:
+                    read_counter += cigar_len
+                    continue
+                # It's a match, so record the bases covered
+                for match_pos in range(read_counter,
+                                       read_counter + cigar_len + 1):
+                    # This match portion of read does not land in region
+                    if match_pos not in curr_region_starts:
+                        # Advance counter
+                        read_counter += 1
+                        continue
+                    curr_region_starts[match_pos] += 1
+                    # Record that the read was matched to this interval
+                    read_matched_to_interval = True
+            if not read_matched_to_interval:
+                num_unmatched += 1
+#                print "Error: read ", bam_read, " never matched to: ", \
+#                      region, "!"
+#                print "Current region starts: "
+#                print curr_region_starts.keys()
+#                print max(curr_region_starts.values())
+#                raise Exception, "Test"
+ #   print "Total number of reads unmatched: %d" %(num_unmatched)
+#    raise Exception, "Test"
     # Calculate statistics and return as dictionary
     # indexed by exons
+    print "PRINTING VALUES FOR EXONS: "
+    ex = ["chr13:21281961-21281993:+",
+          "chr13:21272364-21272783:+"]
+    ###
+    ### TODO: here, try out several measures for the two exons, including
+    ### kurtosis, CV, and some measure using entropy.
+    ###
+    ### Can use KL divergence to uniform distribution, total entropy,
+    ### or JSD
+    ###
+    for e in ex:
+        print "e: %s" %(e)
+        print "-" * 10
+        # Number of reads covering each base in exon
+        exon_reads_per_base = exons_to_start_pos_counts[e].values()
+        cv_val = stats_utils.coeff_var(exon_reads_per_base)
+        kurtosis_val = scipy.stats.kurtosis(exon_reads_per_base,
+                                            fisher=False)
+        print "CV: ", cv_val
+        print "kurtosis: ", kurtosis_val
+        for p in exons_to_start_pos_counts[e]:
+            print p, " => ", exons_to_start_pos_counts[e][p]
+        print "\n"
+    raise Exception, "End Test"
+    
     exon_stats_dict = {}
     for exon in exons_to_start_pos_counts:
         exon_info = exons_to_start_pos_counts[exon]

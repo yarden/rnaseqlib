@@ -33,6 +33,25 @@ def coeff_var(vals):
     return (np.std(vals) / np.mean(vals))
 
 
+def jsd(x, y):
+    """
+    Jensen-Shannon divergence.
+    """
+    d1 = x * np.log2(2*x / (x+y))
+    d2 = y * np.log2(2*y / (x+y))
+    d1[np.isnan(d1)] = 0
+    d2[np.isnan(d2)] = 0
+    d = 0.5 * np.sum(d1 + d2)
+    return d
+
+
+def sqrt_jsd(x, y):
+    """
+    Square root of the Jensen-Shannon divergence.
+    """
+    return np.sqrt(jsd(x, y))
+
+
 def pearson_dist(u, v, na_vals=["NA", np.nan]):
     """
     Compute Pearson distance for vectors u, v.
