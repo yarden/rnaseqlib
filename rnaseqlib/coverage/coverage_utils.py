@@ -257,8 +257,18 @@ def get_exons_coverage_from_tagBam(bam_fname,
         cv_val = stats_utils.coeff_var(exon_reads_per_base)
         kurtosis_val = scipy.stats.kurtosis(exon_reads_per_base,
                                             fisher=False)
+        # Calculate square root of JSD to uniform distribution
+        exon_len = len(exon_reads_per_base)
+        # Compare to uniform distribution
+        uniform_dist = np.array([1 / float(exon_len)] * exon_len)
+        # Actual coverage per base: number of reads at base
+        # divided by total number of reads
+        total_reads = np.sum(exon_reads_per_base)
+        observed_dist = np.array(exon_reads_per_base) / float(total_reads)
+        sqrt_jsd_val = stats_utils.sqrt_jsd(observed_dist, sqrt_jsd_val)
         print "CV: ", cv_val
         print "kurtosis: ", kurtosis_val
+        print "sqrt JSD(observed, uniform): ", jsd_val
         for p in exons_to_start_pos_counts[e]:
             print p, " => ", exons_to_start_pos_counts[e][p]
         print "\n"
