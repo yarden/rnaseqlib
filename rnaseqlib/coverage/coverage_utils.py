@@ -157,6 +157,30 @@ def init_region_start_pos(region, ordered=True):
     return region_pos
 
 
+def coverage_dist_from_uniform(obs_reads_per_base):
+    """
+    Given a vector of reads per base, calculate the square
+    root of Jensen-Shannon divergence from a uniform distribution.
+
+    Args:
+    - obs_reads_per_base: Observed number of reads per base (integers)
+
+    Returns:
+    - sqrt(JSD(observed_reads_dist, uniform_reads_dist))
+    """
+    # Total number of reads
+    total_num_reads = float(np.sum(obs_reads_per_base))
+    # Observed fraction of reads per base (the observed distribution)
+    obs_reads_dist = np.array(obs_reads_per_base) / total_num_reads
+    # Theoretical uniform distribution of reads per base
+    num_bases = len(obs_reads_per_base)
+    uniform_reads_dist = np.array([1 / float(num_bases)] * num_bases)
+    # Calculate sqrt(JSD(observed_reads_dist, uniform_dist))
+    sqrt_jsd_dist = \
+      stats_utils.sqrt_jsd(obs_reads_dist, uniform_reads_dist)
+    return sqrt_jsd_dist
+
+
 def get_exons_coverage_from_tagBam(bam_fname,
                                    interval_label="gff",
                                    gff_coords=True):
@@ -180,13 +204,7 @@ def get_exons_coverage_from_tagBam(bam_fname,
     #  exon1 -> genomic start_pos1 -> # at genomic start position 1
     #        -> genomic start_pos4 -> # at genomic start position 4
     #  exon2 -> ...
-
-    ###
-    ### TODO: need to account for zero coverage positions, which
-    ### default dict does not do!
-    #exons_to_start_pos_counts = defaultdict(lambda: defaultdict(int))
     exons_to_start_pos_counts = {}
-    
     bam_file = pysam.Samfile(bam_fname, "rb")
     num_unmatched = 0
     for bam_read in bam_file:
@@ -229,55 +247,14 @@ def get_exons_coverage_from_tagBam(bam_fname,
                     read_matched_to_interval = True
             if not read_matched_to_interval:
                 num_unmatched += 1
-#                print "Error: read ", bam_read, " never matched to: ", \
-#                      region, "!"
-#                print "Current region starts: "
-#                print curr_region_starts.keys()
-#                print max(curr_region_starts.values())
-#                raise Exception, "Test"
- #   print "Total number of reads unmatched: %d" %(num_unmatched)
-#    raise Exception, "Test"
     # Calculate statistics and return as dictionary
     # indexed by exons
-    print "PRINTING VALUES FOR EXONS: "
-    ex = ["chr13:21281961-21281993:+",
-          "chr13:21272364-21272783:+"]
-    ###
-    ### TODO: here, try out several measures for the two exons, including
-    ### kurtosis, CV, and some measure using entropy.
-    ###
-    ### Can use KL divergence to uniform distribution, total entropy,
-    ### or JSD
-    ###
-    for e in ex:
-        print "e: %s" %(e)
-        print "-" * 10
-        # Number of reads covering each base in exon
-        exon_reads_per_base = exons_to_start_pos_counts[e].values()
-        cv_val = stats_utils.coeff_var(exon_reads_per_base)
-        kurtosis_val = scipy.stats.kurtosis(exon_reads_per_base,
-                                            fisher=False)
-        # Calculate square root of JSD to uniform distribution
-        exon_len = len(exon_reads_per_base)
-        # Compare to uniform distribution
-        uniform_dist = np.array([1 / float(exon_len)] * exon_len)
-        # Actual coverage per base: number of reads at base
-        # divided by total number of reads
-        total_reads = np.sum(exon_reads_per_base)
-        observed_dist = np.array(exon_reads_per_base) / float(total_reads)
-        sqrt_jsd_val = stats_utils.sqrt_jsd(observed_dist, sqrt_jsd_val)
-        print "CV: ", cv_val
-        print "kurtosis: ", kurtosis_val
-        print "sqrt JSD(observed, uniform): ", jsd_val
-        for p in exons_to_start_pos_counts[e]:
-            print p, " => ", exons_to_start_pos_counts[e][p]
-        print "\n"
-    raise Exception, "End Test"
-    
     exon_stats_dict = {}
     for exon in exons_to_start_pos_counts:
         exon_info = exons_to_start_pos_counts[exon]
         exon_counts = exon_info.values()
+        # Calculate sqrt JSD-based coverage metric
+        sqrt_jsd_val = coverage_dist_from_uniform(exon_counts)
         entry = {"exon": exon,
                  "mean": np.mean(exon_counts),
                  "std": np.std(exon_counts),
@@ -285,9 +262,40 @@ def get_exons_coverage_from_tagBam(bam_fname,
                  "min": np.min(exon_counts),
                  "kurtosis": scipy.stats.kurtosis(exon_counts,
                                                   fisher=False),
-                 "cv": stats_utils.coeff_var(exon_counts)}
+                 "cv": stats_utils.coeff_var(exon_counts),
+                 "sqrt_jsd": sqrt_jsd_val}
         exon_stats_dict[exon] = entry
     return exon_stats_dict
+
+    # DEBUGGING
+    # print "PRINTING VALUES FOR EXONS: "
+    # ex = ["chr13:21281961-21281993:+",
+    #       "chr13:21272364-21272783:+"]
+    # ###
+    # ### TODO: here, try out several measures for the two exons, including
+    # ### kurtosis, CV, and some measure using entropy.
+    # ###
+    # ### Can use KL divergence to uniform distribution, total entropy,
+    # ### or JSD
+    # ###
+    # for e in ex:
+    #     print "e: %s" %(e)
+    #     print "-" * 10
+    #     # Number of reads covering each base in exon
+    #     exon_reads_per_base = exons_to_start_pos_counts[e].values()
+    #     cv_val = stats_utils.coeff_var(exon_reads_per_base)
+    #     kurtosis_val = scipy.stats.kurtosis(exon_reads_per_base,
+    #                                         fisher=False)
+    #     sqrt_jsd_val = coverage_dist_from_uniform(exon_reads_per_base)
+    #     print "CV: ", cv_val
+    #     print "kurtosis: ", kurtosis_val
+    #     print "sqrt JSD(observed, uniform): ", sqrt_jsd_val
+    #     for p in exons_to_start_pos_counts[e]:
+    #         print p, " => ", exons_to_start_pos_counts[e][p]
+    #     print "\n"
+    # raise Exception, "End Test"
+    
+
 #    output_cols = ["exon", "mean", "max", "std", "cv", "kurtosis"]
 #    exon_stats_df.to_csv(output_fname,
 #                         sep="\t",
