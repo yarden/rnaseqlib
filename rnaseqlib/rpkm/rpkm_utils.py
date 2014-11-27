@@ -377,7 +377,8 @@ def add_exons_coverage_from_bam_to_rpkm_df(rpkm_df,
                                                           "max",
                                                           "mean",
                                                           "std",
-                                                          "cv"]):
+                                                          "cv",
+                                                          "sqrt_jsd"]):
     """
     Add exons coverage to RPKM dataframe from a BAM file
     produced by tagBam.
