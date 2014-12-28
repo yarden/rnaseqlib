@@ -17,9 +17,13 @@ class Cluster:
                  cluster_type,
                  output_dir,
                  logger,
-                 supported_types=["bsub", "qsub", "none"]):
+                 supported_types=["bsub", "qsub", "none"],
+                 cluster_queue=None,
+                 cluster_memory=None):
         self.logger = logger
         self.cluster_type = cluster_type.lower()
+        self.cluster_queue = cluster_queue
+        self.cluster_memory = cluster_memory
         self.output_dir = output_dir
 
         self._curjobid = 0
@@ -55,8 +59,7 @@ class Cluster:
 
     def launch_job(self, cmd, job_name,
                    ppn=1,
-                   unless_exists=None,
-                   bsub_queue_type="normal"):
+                   unless_exists=None):
         """
         Launch job on cluster and return a job id.
 
@@ -77,7 +80,8 @@ class Cluster:
             job_id = Mybsub.launchJob(cmd, job_name,
                                       script_options,
                                       self.output_dir,
-                                      queue_type=bsub_queue_type,
+                                      queue_type=self.cluster_queue,
+                                      memory=self.cluster_memory,
                                       ppn=ppn)
         elif self.cluster_type == "qsub":
             # Use qsub for submission

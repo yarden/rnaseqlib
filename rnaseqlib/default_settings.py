@@ -98,6 +98,11 @@ def set_default_settings(settings_info):
         print "Error: Need \'data_type\' to be set in [pipeline]."
         sys.exit(1)
     data_type = settings_info["pipeline"]["data_type"]
+    # Cluster settings
+    if "cluster_queue" not in settings_info["mapping"]:
+        settings_info["mapping"]["cluster_queue"] = None
+    if "cluster_memory" not in settings_info["mapping"]:
+        settings_info["mapping"]["cluster_memory"] = None
     if "paired" not in settings_info["mapping"]:
         # Not paired-end by default, only if no setting was given
         settings_info["mapping"]["paired"] = False

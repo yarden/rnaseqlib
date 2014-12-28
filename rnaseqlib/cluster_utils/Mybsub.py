@@ -31,7 +31,8 @@ def launchJob(cmd, job_name,
               verbose=False,
               test=False,
               ppn="4",
-              queue_type="normal"):
+              queue_type=None,
+              memory=None):
     """
     Submits a job on the cluster which will run command 'cmd',
     with options 'scriptOptions'
@@ -50,9 +51,12 @@ def launchJob(cmd, job_name,
     scriptOptions.setdefault("ppn", str(ppn))
     scriptOptions.setdefault("scriptuser", getpass.getuser())
     scriptOptions.setdefault("jobname", job_name)
-    # remove queue name option
-    #scriptOptions.setdefault("queue", queue_type)
     scriptOptions.setdefault("outdir", output_dir)
+    # if given queue type and memory request, add them
+    if queue_type is not None:
+        scriptOptions["queue"] = queue_type
+    if memory is not None:
+        scriptOptions["memory"] = memory
 
     scriptOptions["command"] = " ".join(cmd)
 
@@ -76,8 +80,15 @@ def launchJob(cmd, job_name,
     #BSUB -R "rusage[mem=800]"
     #BSUB -o %(outf)s 
     #BSUB -J %(jobname)s
+    """ % scriptOptions
 
-    echo Working directory is %(workingdir)s
+    # Add optional features
+    if scriptOptions["queue"] is not None:
+        outtext += "#BSUB -q %s\n" %(scriptOptions["queue"])
+    if scriptOptions["memory"] is not None:
+        outtext += "#BSUB -M %s\n" %(scriptOptions["memory"])
+
+    outtext += """echo Working directory is %(workingdir)s
     cd %(workingdir)s
 
     echo "%(command)s"

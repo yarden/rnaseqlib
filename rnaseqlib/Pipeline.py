@@ -442,7 +442,9 @@ class Pipeline:
         self.my_cluster = \
             cluster.Cluster(self.settings_info["mapping"]["cluster_type"],
                             self.output_dir,
-                            self.logger)
+                            self.logger,
+                            cluster_queue=self.settings_info["mapping"]["cluster_queue"],
+                            cluster_memory=self.settings_info["mapping"]["cluster_memory"])
         
 
     def load_sequence_files(self):
