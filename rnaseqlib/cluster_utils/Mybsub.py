@@ -52,12 +52,8 @@ def launchJob(cmd, job_name,
     scriptOptions.setdefault("scriptuser", getpass.getuser())
     scriptOptions.setdefault("jobname", job_name)
     scriptOptions.setdefault("outdir", output_dir)
-    # if given queue type and memory request, add them
-    if queue_type is not None:
-        scriptOptions["queue"] = queue_type
-    if memory is not None:
-        scriptOptions["memory"] = memory
-
+    scriptOptions.setdefault("queue", queue_type)
+    scriptOptions.setdefault("memory", memory)
     scriptOptions["command"] = " ".join(cmd)
 
     if verbose:
