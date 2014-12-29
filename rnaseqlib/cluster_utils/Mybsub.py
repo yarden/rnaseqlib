@@ -74,10 +74,12 @@ def launchJob(cmd, job_name,
     scriptOptions["outf"] = \
         os.path.abspath(os.path.join(script_outdir,
                                      outscriptName+".out"))
+    # exclude rusage
+    ##BSUB -R "rusage[mem=800]"
+    
     outtext = """#!/bin/sh
 
     #BSUB -n %(ppn)s 
-    #BSUB -R "rusage[mem=800]"
     #BSUB -o %(outf)s 
     #BSUB -J %(jobname)s
     """ % scriptOptions

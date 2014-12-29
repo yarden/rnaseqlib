@@ -857,7 +857,8 @@ class Pipeline:
             try:
                 ribo_reads = mapped_reads.fetch(reference=chr_ribo,
                                                 start=None,
-                                                end=None)
+                                                end=None,
+                                                multiple_iterators=True)
             except:
                 self.logger.warning("Could not fetch %s from %s" \
                                     %(chr_ribo,
