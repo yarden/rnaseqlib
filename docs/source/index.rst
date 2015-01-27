@@ -6,6 +6,7 @@
    contain the root `toctree` directive.
 
 
+.. toctree::
 
 .. contents::
   :depth: 3
