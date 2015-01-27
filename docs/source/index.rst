@@ -7,9 +7,11 @@
 
 
 .. toctree::
+   :maxdepth: 3
 
-.. contents::
-  :depth: 3
+   index.rst
+
+
 
 
 ``rnaseqlib``
