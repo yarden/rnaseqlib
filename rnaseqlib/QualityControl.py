@@ -219,7 +219,8 @@ class QualityControl:
         try:
             ribo_reads = bamfile.fetch(reference=chr_ribo,
                                        start=None,
-                                       end=None)
+                                       end=None,
+                                       multiple_iterators=True)
             # Count reads (fetch returns an iterator)
             # Do not count duplicates
             num_ribo = count_nondup_reads(ribo_reads)

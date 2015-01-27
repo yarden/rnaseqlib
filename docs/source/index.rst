@@ -329,6 +329,43 @@ This outputs single files that contain information about events pooled from all 
           - ...
 
 
+Creating custom GFF annotations
+===============================
+
+``rnaseqlib`` has a set of scripts in the ``gff`` module that can generate a GFF annotation of exon-centric alternative events which can be used by MISO for quantitation using RNA-Seq. Given a set of transcripts in the UCSC genePred format, these scripts will build a "splice graph" representation of how each exon in the transcript can be spliced, and then produce a set of possible events (categorized into alternative event types) by traversing this graph. For example, suppose we have a genePred table called ``ensGene.txt``: ::
+
+  $ head -n 3 ensGene.txt
+  585     ENST00000619216.1       chr1    -       17368   17436   17368   17368   1       17368,  17436,  0       MIR6859-2       none    none    -1,
+  585     ENST00000473358.1       chr1    +       29553   31097   29553   29553   3       29553,30563,30975,      30039,30667,31097,      0       MIR1302-11      none    none    -1,-1,-1,
+  585     ENST00000469289.1       chr1    +       30266   31109   30266   30266   2       30266,30975,    30667,31109,    0       MIR1302-11      none    none    -1,-1,
+
+We can produce a set of exon-centric GFF events from this table using the ``gff_make_annotation`` script from ``rnaseqlib``: ::
+
+  $ gff_make_annotation ./ ./gff --flanking-rule commonshortest --genome-label hg38
+  Making GFF alternative events annotation...
+    - UCSC tables read from: ./
+    - Output dir: ./gff
+  Loaded 1 UCSC tables.
+  Loading tables...
+  Populating graph...
+  Adding splice edges from table ensGene.txt
+  Populating graph took 37.50 seconds
+  Reading table ./ensGene.txt
+  Generating skipped exons (SE)
+  Generating mutually exclusive exons (MXE)
+  Generating alternative 3' splice sites (A3SS)
+  Generating alternative 5' splice sites (A5SS)
+  Outputting retained introns...
+  Defining retained introns (RI)
+  Took 1.60 minutes to make the annotation.
+
+The call to ``gff_make_annotation`` says: load all genePred tables in the current directory (``./``) and output the set of GFF events into the directory ``./gff``. The ``--flanking-shortest`` parameter specifies how to pick the flanking exons of an alternative event when there are multiple options (e.g. which flanking exons to use for an alternatively skipped exon.) In the above call, we chose to the take the common shortest region as flanking exons. The ``--genome-label`` option specifies what the name of the GFF annotation should be. Note that ``rnaseqlib`` will only load genePred tables if they are named ``ensGene.txt``, ``refGene.txt`` or ``knownGene.txt``. Any genePred files with these names that are in the input directory will be parsed and used to populate the splice graph, so that information from multiple annotation genePred tables can be used to make the GFF events.
+
+This call should generate an output directory with a GFF file for each of the event types: ::
+
+  $ ls ./gff/commonshortest/
+  A3SS.hg38.gff3  A5SS.hg38.gff3  MXE.hg38.gff3  RI.hg38.gff3  SE.hg38.gff3
+
 
 Frequently Asked Questions (FAQ)
 ================================
