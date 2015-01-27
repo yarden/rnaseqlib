@@ -8,6 +8,7 @@
 
 
 .. contents::
+  :depth: 3
 
 
 ``rnaseqlib``
