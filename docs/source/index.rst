@@ -333,8 +333,8 @@ This outputs single files that contain information about events pooled from all 
           - ...
 
 
-Creating custom GFF annotations for use with MISO
-=================================================
+Creating custom GFF annotations for MISO
+========================================
 
 ``rnaseqlib`` has a set of scripts in the ``gff`` module that can generate a GFF annotation of exon-centric alternative events which can be used by MISO for quantitation using RNA-Seq. Given a set of transcripts in the UCSC genePred format, these scripts will build a "splice graph" representation of how each exon in the transcript can be spliced, and then produce a set of possible events (categorized into alternative event types) by traversing this graph. For example, suppose we have a genePred table called ``ensGene.txt``: ::
 
