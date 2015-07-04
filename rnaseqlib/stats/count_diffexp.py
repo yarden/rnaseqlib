@@ -16,6 +16,8 @@ import rpy2.robjects as robjects
 import rpy2.robjects.numpy2ri
 
 def main(count_file):
+    if not os.path.isfile(count_file):
+        raise Exception, "Cannot find %s" %(count_file)
     base, ext = os.path.splitext(count_file)
     outfile = "%s-diffs.csv" % (base)
     counts = read_count_file(count_file)
@@ -83,7 +85,7 @@ def run_edger(data, groups, sizes, genes):
     assert len(pvals_w_index) == len(indexes)
     return [p for i,p in pvals_w_index]
 
-def get_conditions_and_genes(work_counts): 
+def get_conditions_and_genes(work_counts):
     conditions = work_counts.keys()
     conditions.sort()
     all_genes = []
@@ -99,6 +101,8 @@ def edger_matrices(work_counts):
     """Retrieve matrices for input into edgeR differential expression analysis.
     """
     conditions, all_genes, sizes = get_conditions_and_genes(work_counts)
+    print "conditions: ", conditions
+    print "sizes: ", sizes
     assert len(sizes) == 2
     groups = [1, 2]
     data = []
@@ -111,12 +115,12 @@ def edger_matrices(work_counts):
     return (numpy.array(data), numpy.array(groups), numpy.array(sizes),
             conditions, final_genes)
 
-def read_count_file(in_file):
+def read_count_file(in_file, delimiter='\t'):
     """Read count information from a simple CSV file into a dictionary.
     """
     counts = collections.defaultdict(dict)
     with open(in_file) as in_handle:
-        reader = csv.reader(in_handle)
+        reader = csv.reader(in_handle, delimiter=delimiter)
         header = reader.next()
         conditions = header[1:]
         for parts in reader:
