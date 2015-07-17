@@ -14,13 +14,14 @@ import collections
 import numpy
 import rpy2.robjects as robjects
 import rpy2.robjects.numpy2ri
+rpy2.robjects.numpy2ri.activate()
 
-def main(count_file):
+def main(count_file, delimiter=","):
     if not os.path.isfile(count_file):
         raise Exception, "Cannot find %s" %(count_file)
     base, ext = os.path.splitext(count_file)
     outfile = "%s-diffs.csv" % (base)
-    counts = read_count_file(count_file)
+    counts = read_count_file(count_file, delimiter=delimiter)
     data, groups, sizes, conditions, genes = edger_matrices(counts)
     probs = run_edger(data, groups, sizes, genes)
     write_outfile(outfile, genes, conditions, counts, probs)
@@ -51,11 +52,15 @@ def run_edger(data, groups, sizes, genes):
         is_13_plus = False
 
     params = {'group' : groups, 'lib.size' : sizes}
+    print "data: ", data
     dgelist = robjects.r.DGEList(data, **params)
     # 1.3+ version has a different method of calling and retrieving p values
+    is_13_plus = False
     if is_13_plus:
         # perform Poisson adjustment and assignment as recommended in the manual
-        robjects.globalEnv['dP'] = dgelist
+        robjects.globalenv['dP'] = dgelist
+#        robjects.globalEnv['dP'] = dgelist
+        print "testing..."
         robjects.r('''
             msP <- de4DGE(dP, doPoisson = TRUE)
             dP$pseudo.alt <- msP$pseudo
@@ -63,7 +68,9 @@ def run_edger(data, groups, sizes, genes):
             dP$conc <- msP$conc
             dP$common.lib.size <- msP$M
         ''')
-        dgelist = robjects.globalEnv['dP']
+        print "are we here?"
+        #dgelist = robjects.globalEnv['dP']
+        dgelist = robjects.globalenv['dP']
         de = robjects.r.exactTest(dgelist)
         tags = robjects.r.topTags(de, n=len(genes))
         tag_table = tags[0]
@@ -101,8 +108,6 @@ def edger_matrices(work_counts):
     """Retrieve matrices for input into edgeR differential expression analysis.
     """
     conditions, all_genes, sizes = get_conditions_and_genes(work_counts)
-    print "conditions: ", conditions
-    print "sizes: ", sizes
     assert len(sizes) == 2
     groups = [1, 2]
     data = []
@@ -115,18 +120,26 @@ def edger_matrices(work_counts):
     return (numpy.array(data), numpy.array(groups), numpy.array(sizes),
             conditions, final_genes)
 
-def read_count_file(in_file, delimiter='\t'):
+def read_count_file(in_file,
+                    delimiter=',',
+                    conditions_to_load=None):
     """Read count information from a simple CSV file into a dictionary.
     """
     counts = collections.defaultdict(dict)
     with open(in_file) as in_handle:
         reader = csv.reader(in_handle, delimiter=delimiter)
         header = reader.next()
-        conditions = header[1:]
+        all_conditions = header[1:]
+        if conditions_to_load is None:
+            # Load all conditions if not asked to load specific ones
+            conditions_to_load = header[1:]
         for parts in reader:
             region_name = parts[0]
             region_counts = [float(x) for x in parts[1:]]
-            for ci, condition in enumerate(conditions):
+            for ci, condition in enumerate(all_conditions):
+                if condition not in conditions_to_load:
+                    # Skip condition if asked not to load it
+                    continue
                 counts[condition][region_name] = region_counts[ci]
     return dict(counts)
 
