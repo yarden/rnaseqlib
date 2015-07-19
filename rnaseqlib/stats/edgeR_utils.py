@@ -5,6 +5,7 @@ import collections
 import time
 
 import pandas
+import pandas.rpy.common as com
 
 import rnaseqlib
 import rnaseqlib.stats.count_diffexp as count_diffexp
@@ -20,7 +21,7 @@ import rpy2.robjects.numpy2ri
 rpy2.robjects.numpy2ri.activate()
 base = importr("base")
 
-def run_edgeR(counts_fname, sample1_name, sample2_name, output_fname,
+def run_edgeR(counts_fname, sample1_name, sample2_name,
               dispersion=0.1,
               gene_id_col="GeneID",
               delimiter="\t"):
@@ -46,11 +47,13 @@ def run_edgeR(counts_fname, sample1_name, sample2_name, output_fname,
 #    counts = read_delim(counts_fname, **counts_file_params)
     counts = pandas.read_table(counts_fname, sep=delimiter)
     counts = counts.set_index(gene_id_col)
+    row_names = list(counts.index)
     # Select only relevant samples
     counts = counts[[sample1_name, sample2_name]]
-    counts = rpy2_utils.df_to_r(counts)
+    #counts = rpy2_utils.df_to_r(counts)
+    counts = com.convert_to_r_dataframe(counts)
+    counts.rownames = row_names
     col_names = [curr_col for curr_col in counts.colnames]
-    print "col names: ", col_names
     for curr_sample in [sample1_name, sample2_name]:
         if curr_sample not in col_names:
             raise Exception, "No %s in counts file." %(curr_sample)
@@ -63,7 +66,7 @@ def run_edgeR(counts_fname, sample1_name, sample2_name, output_fname,
     tags = robjects.r.topTags(et)
     tags_df = tags[0]
     result = {"exactTest": et,
-              "tags": tags_df,
+              "topTags": tags_df,
               "y": y}
     return result
     
@@ -80,8 +83,6 @@ def main():
     results = \
       run_edgeR(counts_fname, sample1_name, sample2_name, output_fname)
     print results["exactTest"]
-    
-    
 
 if __name__ == "__main__":
     main()
