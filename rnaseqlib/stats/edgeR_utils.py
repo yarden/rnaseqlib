@@ -8,6 +8,7 @@ import pandas
 
 import rnaseqlib
 import rnaseqlib.stats.count_diffexp as count_diffexp
+import rnaseqlib.stats.rpy2_utils as rpy2_utils
 
 import numpy
 import rpy2.robjects as robjects
@@ -20,10 +21,18 @@ rpy2.robjects.numpy2ri.activate()
 base = importr("base")
 
 def run_edgeR(counts_fname, sample1_name, sample2_name, output_fname,
+              dispersion=0.1,
               gene_id_col="GeneID",
               delimiter="\t"):
     """
-    Run edgeR on counts dataframe.
+    Run edgeR on counts dataframe. Emulates basic edgeR call:
+    
+    > y <- DGEList(counts=x,group=group)
+    > y <- calcNormFactors(y)
+    > y <- estimateCommonDisp(y)
+#    > y <- estimateTagwiseDisp(y)
+    > et <- exactTest(y)
+    > topTags(et)
     """
     robjects.r('''
         library(edgeR)
@@ -32,34 +41,31 @@ def run_edgeR(counts_fname, sample1_name, sample2_name, output_fname,
     # Assume two groups (pairwise comparison)
     groups = robjects.r('''1:2''')
     read_delim = robjects.r["read.delim"]
-    counts_file_params = {"sep": delimiter,
-                          "row.names": gene_id_col}
-    counts = read_delim(counts_fname, **counts_file_params)
-    print "counts: ", counts
+#    counts_file_params = {"sep": delimiter,
+#                          "row.names": gene_id_col}
+#    counts = read_delim(counts_fname, **counts_file_params)
+    counts = pandas.read_table(counts_fname, sep=delimiter)
+    counts = counts.set_index(gene_id_col)
+    # Select only relevant samples
+    counts = counts[[sample1_name, sample2_name]]
+    counts = rpy2_utils.df_to_r(counts)
+    col_names = [curr_col for curr_col in counts.colnames]
+    print "col names: ", col_names
+    for curr_sample in [sample1_name, sample2_name]:
+        if curr_sample not in col_names:
+            raise Exception, "No %s in counts file." %(curr_sample)
     # can include lib.sizes here if needed
     params = {'group' : groups}
-    dgelist = robjects.r.DGEList(counts, **params)
-    print "DGELIST: ", dgelist
-    # # perform Poisson adjustment and assignment as recommended in the manual
-    # robjects.globalenv['dP'] = dgelist
-    # print "testing..."
-    # robjects.r('''
-    #   msP <- de4DGE(dP, doPoisson = TRUE)
-    #   dP$pseudo.alt <- msP$pseudo
-    #   dP$common.dispersion <- 1e-06
-    #   dP$conc <- msP$conc
-    #   dP$common.lib.size <- msP$M
-    # ''')
-    # print "are we here?"
-    # #dgelist = robjects.globalEnv['dP']
-    # dgelist = robjects.globalenv['dP']
-    # de = robjects.r.exactTest(dgelist)
-    # tags = robjects.r.topTags(de, n=len(genes))
-    # tag_table = tags[0]
-    # indexes = [int(t) - 1 for t in tag_table.rownames()]
-    # # can retrieve either raw or adjusted p-values
-    # #pvals = list(tags.r['p.value'][0])
-    # pvals = list(tag_table.r['adj.p.val'][0])
+    y = robjects.r.DGEList(counts, **params)
+    y = robjects.r.calcNormFactors(y)
+    y = robjects.r.estimateCommonDisp(y)
+    et = robjects.r.exactTest(y, dispersion=dispersion)
+    tags = robjects.r.topTags(et)
+    tags_df = tags[0]
+    result = {"exactTest": et,
+              "tags": tags_df,
+              "y": y}
+    return result
     
 
 def main():
@@ -69,9 +75,12 @@ def main():
     if not os.path.isfile(counts_fname):
         raise Exception, "Cannot find file %s" %(counts_fname)
     output_fname = "./edger_results.txt"
-    sample1_name = "Condition 1"
-    sample2_name = "Condition 2"
-    run_edgeR(counts_fname, sample1_name, sample2_name, output_fname)
+    sample1_name = "Condition1"
+    sample2_name = "Condition2"
+    results = \
+      run_edgeR(counts_fname, sample1_name, sample2_name, output_fname)
+    print results["exactTest"]
+    
     
 
 if __name__ == "__main__":

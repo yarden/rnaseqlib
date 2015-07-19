@@ -8,6 +8,8 @@ import time
 import pandas
 import numpy as np
 
+from collections import OrderedDict
+
 import rnaseqlib
 import rnaseqlib.utils as utils
 
@@ -23,6 +25,41 @@ try:
     py2ri_orig = rpy2.robjects.conversion.py2ri
 except:
     print "WARNING: Cannot import rpy2"
+
+def series2ndarray(s):
+    if isinstance(s, pandas.core.series.Series):
+        return s.values
+    else:
+        return s
+
+py2ri_orig = rpy2.robjects.conversion.py2ri
+    
+def conversion_pydataframe(obj):
+    if isinstance(obj, pandas.core.frame.DataFrame):
+        od = OrderedDict()
+        for name, values in obj.iteritems():
+            if values.dtype.kind == 'O':
+                od[name] = rpy2.robjects.vectors.StrVector(series2ndarray(values))
+            else:
+                od[name] = rpy2.robjects.conversion.py2ri(series2ndarray(values))
+        return rpy2.robjects.vectors.DataFrame(od)
+    else:
+        return py2ri_orig(obj)
+
+rpy2.robjects.conversion.py2ri = conversion_pydataframe
+df_to_r = conversion_pydataframe
+
+def r_df_get_col(r_df, col_name):
+    """
+    Return the column named 'col_name' from the R DataFrame
+    object.
+    """
+    col_names = [curr_col for curr_col in r_df.colnames]
+    if col_name not in col_names:
+        raise Exception, "No column %s found in R dataframe." %(col_name)
+    # Add 1 because R is 0-based (ugh)
+    col_index = col_names.index(col_name) + 1
+    return r_df.rx(col_index)
 
 
 def run_ma_loess(x, y, span=0.75):
