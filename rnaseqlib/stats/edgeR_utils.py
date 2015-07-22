@@ -17,8 +17,12 @@ robjects.r('''
   library(edgeR)
 ''')
 from rpy2.robjects.packages import importr
+from rpy2.robjects import pandas2ri
+pandas2ri.activate()
+
 import rpy2.robjects.numpy2ri
 rpy2.robjects.numpy2ri.activate()
+
 base = importr("base")
 
 def run_edgeR(counts_fname, sample1_name, sample2_name,
@@ -46,8 +50,7 @@ def run_edgeR(counts_fname, sample1_name, sample2_name,
 #                          "row.names": gene_id_col}
 #    counts = read_delim(counts_fname, **counts_file_params)
     counts = pandas.read_table(counts_fname, sep=delimiter)
-    counts = counts.set_index(gene_id_col)
-    row_names = list(counts.index)
+    row_names = list(counts[gene_id_col].values)
     # Select only relevant samples
     counts = counts[[sample1_name, sample2_name]]
     #counts = rpy2_utils.df_to_r(counts)
@@ -65,8 +68,8 @@ def run_edgeR(counts_fname, sample1_name, sample2_name,
     et = robjects.r.exactTest(y, dispersion=dispersion)
     tags = robjects.r.topTags(et)
     tags_df = tags[0]
-    result = {"exactTest": et,
-              "topTags": tags_df,
+    result = {"exactTest": com.convert_robj(et),
+              "topTags": com.convert_robj(tags_df),
               "y": y}
     return result
     
