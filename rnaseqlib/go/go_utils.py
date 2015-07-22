@@ -8,9 +8,9 @@ import time
 import rnaseqlib
 
 def get_genes_to_go_terms(gene_assoc_fname,
-                          gene_id_col=10,
-                          go_term_col=4,
-                          gene_id_prefix="ENS"):
+                          ensembl_to_mgi_fname,
+                          mgi_col=1,
+                          go_term_col=4):
     """
     Return a mapping (dictionary) from gene IDs to their GO terms.
 
@@ -18,23 +18,37 @@ def get_genes_to_go_terms(gene_assoc_fname,
 
     Args:
     - gene_assoc_fname: gene association filename from GO (*.mgi file)
-    - gene_id_col: the column number (0-based) in gene_assoc_fname
-      that contains the gene ID.
+    - ensembl_to_mgi_fname: mapping from Ensembl ID to MGI IDs 
+    - mgi_col: the column number (0-based) in gene_assoc_fname
+      that contains the MGI ID.
     """
     gene_to_go_terms = {}
+    # Load mapping from MGI to Ensembl
+    mgi_to_ensembl = {}
+    with open(ensembl_to_mgi_fname) as mapping_in:
+        # Skip header
+        mapping_in.readline()
+        for line in mapping_in:
+            fields = line.split("\t")
+            mgi_to_ensembl[fields[1]] = fields[0]
+    not_found = 0
     with open(gene_assoc_fname) as go_in:
         for line in go_in:
             if line.startswith("!"):
                 # Skip GO comments
                 continue
             fields = line.split("\t")
-            if len(fields) < gene_id_col:
+            if len(fields) < mgi_col:
                 continue
-            gene_id = fields[gene_id_col]
-            if not gene_id.startswith(gene_id_prefix):
-                # Skip gene entries that do not start with required ID
+            mgi_id = fields[mgi_col]
+            go_term = fields[go_term_col]
+            # Retrieve Ensembl ID for current MGI ID
+            if mgi_id not in mgi_to_ensembl:
+                not_found += 1
                 continue
-            gene_to_go_terms[gene_id] = fields[go_term_col]
+            curr_gene_id = mgi_to_ensembl[mgi_id]
+            gene_to_go_terms[curr_gene_id] = go_term
+    print "Total of %d genes not found in MGI -> Ensembl" %(not_found)
     return gene_to_go_terms
 
 
