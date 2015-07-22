@@ -2,7 +2,7 @@
 """Provide topGO analysis of overrepresented GO annotation terms in a dataset.
 
 Usage:
-    stats_go_analysis.py <input CVS> <gene to GO file>
+    diffexp_go_analysis.py <input CVS> <gene to GO file>
 """
 from __future__ import with_statement
 import sys
@@ -109,6 +109,8 @@ def parse_go_map_file(in_handle, genes_w_pvals):
     gene_to_go = collections.defaultdict(list)
     go_to_gene = collections.defaultdict(list)
     for line in in_handle:
+        # Skip GO comments
+        if line.startswith("!"): continue
         parts = line.split("\t")
         gene_id = parts[0]
         go_id = parts[1].strip()
@@ -117,11 +119,14 @@ def parse_go_map_file(in_handle, genes_w_pvals):
             go_to_gene[go_id].append(gene_id)
     return dict(gene_to_go), dict(go_to_gene)
 
-def parse_input_csv(in_handle):
-    reader = csv.reader(in_handle)
-    reader.next() # header
-    all_genes = dict()
-    for (gene_name, _, _, pval) in reader:
+def parse_input_csv(in_handle, delim="\t"):
+    # skip header
+    in_handle.readline()
+    all_genes = {}
+    for line in in_handle:
+        fields = line.strip().split(delim)
+        gene_name = fields[0]
+        pval = fields[3]
         all_genes[gene_name] = float(pval)
     return all_genes
 
